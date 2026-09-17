@@ -1,0 +1,5 @@
+category,elasticity,p_value,ci_lower,ci_upper,r_squared,n_obs,price_cv_pct,reliability,model_status
+Accessories,-0.1827,0.3430,-0.5605,0.1952,0.0081,1095,5.6500,Insufficient Data,SUCCESS
+Hardware & Tools,-1.3925,0.0000,-1.5989,-1.1861,0.5297,2190,15.5100,High Confidence,SUCCESS
+IoT Hardware,-2.3603,0.0000,-2.7521,-1.9685,0.1590,1095,5.3100,High Confidence,SUCCESS
+Software,-0.7109,0.0000,-1.0345,-0.3874,0.0257,1095,5.5400,High Confidence,SUCCESS

@@ -1,0 +1,147 @@
+/* ==========================================================================
+   PriceMind AI — Design System Tokens
+   Institutional Pricing Intelligence & Terminal Aesthetics
+   Dark-first with full light mode support.
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --pm-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --pm-font-mono: 'JetBrains Mono', 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Backgrounds & Surfaces (Dark - Default) */
+  --pm-bg-app: #07090E;             /* Deepest terminal black/slate */
+  --pm-bg-surface: #0D111A;         /* Primary container surface */
+  --pm-bg-elevated: #131A27;        /* Dropdowns, modals, elevated panels */
+  --pm-bg-subtle: #0B0E17;          /* Recessed table headers, inset wells */
+  --pm-bg-hover: #172032;           /* Interactive item hover state */
+  --pm-bg-active: #1D283E;          /* Interactive item active/pressed */
+  --pm-bg-selected: #1E293B;        /* Selected table rows or tab items */
+
+  /* Borders & Separators */
+  --pm-border-subtle: #182030;      /* Ultra-thin data grid lines, dividers */
+  --pm-border-default: #222D42;     /* Card borders, input outlines */
+  --pm-border-strong: #334155;      /* Emphasized boundaries, active tabs */
+  --pm-border-focus: #6366F1;       /* Focus ring / keyboard navigation */
+  --pm-border-accent: #6366F1;      /* Key action outline */
+
+  /* Text & Content Hierarchy */
+  --pm-text-primary: #F8FAFC;       /* Primary figures, headings, key values */
+  --pm-text-secondary: #CBD5E1;     /* Body labels, table cell content */
+  --pm-text-muted: #94A3B8;         /* Metric subheadings, secondary notes */
+  --pm-text-dim: #64748B;           /* Timestamps, disabled labels, micro captions */
+  --pm-text-inverse: #05070A;       /* Text on solid accent pills */
+
+  /* Semantic Status Colors */
+  /* Positive / Margin Lift / Above Target */
+  --pm-positive: #10B981;
+  --pm-positive-hover: #059669;
+  --pm-positive-subtle: rgba(16, 185, 129, 0.12);
+  --pm-positive-border: rgba(16, 185, 129, 0.30);
+  --pm-positive-text: #34D399;
+
+  /* Negative / Revenue Risk / Margin Compression */
+  --pm-negative: #EF4444;
+  --pm-negative-hover: #DC2626;
+  --pm-negative-subtle: rgba(239, 68, 68, 0.12);
+  --pm-negative-border: rgba(239, 68, 68, 0.30);
+  --pm-negative-text: #F87171;
+
+  /* Warning / Review Required / Inventory Outlier */
+  --pm-warning: #F59E0B;
+  --pm-warning-hover: #D97706;
+  --pm-warning-subtle: rgba(245, 158, 11, 0.12);
+  --pm-warning-border: rgba(245, 158, 11, 0.30);
+  --pm-warning-text: #FBBF24;
+
+  /* Information / Strategy Guidance / Elasticity */
+  --pm-info: #0284C7;
+  --pm-info-hover: #0369A1;
+  --pm-info-subtle: rgba(2, 132, 199, 0.12);
+  --pm-info-border: rgba(2, 132, 199, 0.30);
+  --pm-info-text: #38BDF8;
+
+  /* Accent / Platform Identity (Institutional Indigo/Cyan) */
+  --pm-accent: #6366F1;
+  --pm-accent-hover: #4F46E5;
+  --pm-accent-subtle: rgba(99, 102, 241, 0.12);
+  --pm-accent-border: rgba(99, 102, 241, 0.35);
+  --pm-accent-text: #818CF8;
+
+  --pm-cyan: #06B6D4;
+  --pm-cyan-subtle: rgba(6, 182, 212, 0.12);
+  --pm-cyan-border: rgba(6, 182, 212, 0.30);
+
+  /* Shadows (Minimal, restrained, enterprise) */
+  --pm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --pm-shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+  --pm-shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.7);
+  --pm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.75);
+}
+
+/* Light Mode Overrides */
+.light, html.light, body.light {
+  /* Backgrounds & Surfaces */
+  --pm-bg-app: #F4F6F9;             /* Crisp institutional light gray */
+  --pm-bg-surface: #FFFFFF;         /* Pure white container cards */
+  --pm-bg-elevated: #FFFFFF;        /* Elevated menus / popovers */
+  --pm-bg-subtle: #F8FAFC;          /* Recessed table headers */
+  --pm-bg-hover: #F1F5F9;           /* Item hover */
+  --pm-bg-active: #E2E8F0;          /* Item pressed */
+  --pm-bg-selected: #EFF6FF;        /* Selected rows */
+
+  /* Borders & Separators */
+  --pm-border-subtle: #E2E8F0;
+  --pm-border-default: #CBD5E1;
+  --pm-border-strong: #94A3B8;
+  --pm-border-focus: #4F46E5;
+  --pm-border-accent: #4F46E5;
+
+  /* Text & Content Hierarchy */
+  --pm-text-primary: #0F172A;       /* Deep slate black */
+  --pm-text-secondary: #334155;     /* Dark slate body */
+  --pm-text-muted: #64748B;         /* Muted annotations */
+  --pm-text-dim: #94A3B8;           /* Dim timestamps */
+  --pm-text-inverse: #FFFFFF;
+
+  /* Semantic Status Colors (Light Theme Adjusted) */
+  --pm-positive: #059669;
+  --pm-positive-hover: #047857;
+  --pm-positive-subtle: #ECFDF5;
+  --pm-positive-border: #A7F3D0;
+  --pm-positive-text: #065F46;
+
+  --pm-negative: #DC2626;
+  --pm-negative-hover: #B91C1C;
+  --pm-negative-subtle: #FEF2F2;
+  --pm-negative-border: #FECACA;
+  --pm-negative-text: #991B1B;
+
+  --pm-warning: #D97706;
+  --pm-warning-hover: #B45309;
+  --pm-warning-subtle: #FFFBEB;
+  --pm-warning-border: #FDE68A;
+  --pm-warning-text: #92400E;
+
+  --pm-info: #0284C7;
+  --pm-info-hover: #0369A1;
+  --pm-info-subtle: #F0F9FF;
+  --pm-info-border: #BAE6FD;
+  --pm-info-text: #075985;
+
+  --pm-accent: #4F46E5;
+  --pm-accent-hover: #4338CA;
+  --pm-accent-subtle: #EEF2FF;
+  --pm-accent-border: #C7D2FE;
+  --pm-accent-text: #3730A3;
+
+  --pm-cyan: #0891B2;
+  --pm-cyan-subtle: #ECFEFF;
+  --pm-cyan-border: #A5F3FC;
+
+  /* Shadows (Light Theme) */
+  --pm-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --pm-shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  --pm-shadow-lg: 0 12px 28px -4px rgba(15, 23, 42, 0.12);
+  --pm-shadow-drawer: -4px 0 24px rgba(15, 23, 42, 0.15);
+}

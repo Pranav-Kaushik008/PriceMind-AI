@@ -1,0 +1,8 @@
+model_name,split,n_samples,n_features,mae,rmse,r2,wape_pct,mape_pct,mape_coverage_pct,total_actual_demand,total_predicted_demand,demand_bias,demand_bias_pct,train_time_sec,inference_time_ms
+XGBoost (XGBRegressor),test,759,79,1.9144,2.8752,0.9444,11.37,11.95,100.0,12784.0,12706.8,-77.2,-0.6,2.4741,31.01
+LightGBM (LGBMRegressor),test,759,79,1.9134,2.8774,0.9443,11.36,12.35,100.0,12784.0,12804.0,20.0,0.16,0.6882,12.19
+Scikit-Learn (HistGradientBoosting),test,759,79,1.9441,2.9065,0.9432,11.54,12.39,100.0,12784.0,12748.7,-35.3,-0.28,1.7323,17.66
+Scikit-Learn (Random Forest),test,759,79,1.9558,2.9562,0.9412,11.61,12.12,100.0,12784.0,12495.0,-289.0,-2.26,3.0656,74.31
+Baseline (Seasonal 7-Day),test,759,79,2.6126,4.0317,0.8907,15.51,15.64,100.0,12784.0,12645.0,-139.0,-1.09,0.0002,0.2
+Baseline (Historical Mean),test,759,79,3.5906,5.4227,0.8022,21.32,27.27,100.0,12784.0,14313.5,1529.5,11.96,0.0026,1.21
+Baseline (Lag-1 Naive),test,759,79,4.0369,6.1123,0.7487,23.97,26.15,100.0,12784.0,12666.0,-118.0,-0.92,0.0002,0.59

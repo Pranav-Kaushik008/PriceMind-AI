@@ -1,0 +1,85 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply h-full w-full m-0 p-0 font-sans antialiased;
+    background-color: var(--pm-bg-app);
+    color: var(--pm-text-primary);
+  }
+
+  * {
+    border-color: var(--pm-border-subtle);
+  }
+
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "tnum";
+  }
+
+  /* Focus Ring for Keyboard Accessibility */
+  :focus-visible {
+    outline: 2px solid var(--pm-accent);
+    outline-offset: 1px;
+  }
+}
+
+/* High-Density Enterprise Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--pm-bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pm-border-default);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pm-border-strong);
+}
+
+/* Tabular Numerals for Financial Data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Terminal Grid Line Pattern */
+.bg-grid-subtle {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, var(--pm-border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--pm-border-subtle) 1px, transparent 1px);
+}
+
+/* Restrained Enterprise Surface Container */
+.pm-panel {
+  background-color: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-default);
+  border-radius: 6px;
+  box-shadow: var(--pm-shadow-sm);
+}
+
+.pm-panel-elevated {
+  background-color: var(--pm-bg-elevated);
+  border: 1px solid var(--pm-border-strong);
+  border-radius: 6px;
+  box-shadow: var(--pm-shadow-md);
+}
+
+.pm-panel-subtle {
+  background-color: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: 6px;
+}
+
+/* Micro-interaction transition */
+.pm-transition {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 150ms;
+}

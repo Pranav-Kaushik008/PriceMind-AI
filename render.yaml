@@ -1,0 +1,24 @@
+services:
+  # FastAPI Backend Web Service
+  - type: web
+    name: pricemind-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: SECRET_KEY
+        generateValue: true
+
+  # React Frontend Static Site
+  - type: web
+    name: pricemind-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    rootDir: frontend
+    envVars:
+      - key: VITE_API_URL
+        value: https://pricemind-backend.onrender.com/api/v1
