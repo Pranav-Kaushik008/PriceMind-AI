@@ -1,0 +1,71 @@
+sku_id,sku_name,category,forecast_date,horizon_step,predicted_demand,lower_bound,upper_bound,model_name,status
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-01,1,124.05,114.96,133.14,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-02,2,130.12,120.7,139.54,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-03,3,124.33,114.59,134.07,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-04,4,119.99,109.94,130.04,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-05,5,78.29,67.94,88.64,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-06,6,79.05,68.41,89.69,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-07,7,123.37,112.44,134.3,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-08,8,124.84,113.63,136.05,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-09,9,128.76,117.28,140.24,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-10,10,126.16,114.42,137.9,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-11,11,119.29,107.29,131.29,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-12,12,79.21,66.96,91.46,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-13,13,78.86,66.36,91.36,Recursive_LightGBM,READY
+SKU-1090-CAB,Armored Industrial Bus Cable 50m,Accessories,2026-09-14,14,124.76,112.02,137.5,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-01,1,70.75,64.69,76.81,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-02,2,71.21,64.93,77.49,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-03,3,68.48,61.99,74.97,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-04,4,69.32,62.63,76.01,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-05,5,43.64,36.75,50.53,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-06,6,41.0,33.91,48.09,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-07,7,69.62,62.34,76.9,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-08,8,68.31,60.85,75.77,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-09,9,68.61,60.97,76.25,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-10,10,67.43,59.61,75.25,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-11,11,65.36,57.37,73.35,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-12,12,41.5,33.34,49.66,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-13,13,41.5,33.18,49.82,Recursive_LightGBM,READY
+SKU-3320-SENS,ThermoGuard Pro Multi-Sensor,IoT Hardware,2026-09-14,14,66.03,57.55,74.51,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-01,1,28.9,26.65,31.15,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-02,2,28.73,26.4,31.06,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-03,3,28.51,26.1,30.92,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-04,4,29.07,26.58,31.56,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-05,5,17.07,14.51,19.63,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-06,6,17.28,14.64,19.92,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-07,7,28.93,26.22,31.64,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-08,8,28.97,26.2,31.74,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-09,9,29.27,26.43,32.11,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-10,10,29.25,26.34,32.16,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-11,11,29.07,26.1,32.04,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-12,12,17.05,14.02,20.08,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-13,13,17.37,14.28,20.46,Recursive_LightGBM,READY
+SKU-4412-MTR,UltraFlow Core Flowmeter 500,Hardware & Tools,2026-09-14,14,29.68,26.53,32.83,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-01,1,16.73,15.32,18.14,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-02,2,17.05,15.58,18.52,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-03,3,16.94,15.43,18.45,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-04,4,16.88,15.32,18.44,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-05,5,9.98,8.37,11.59,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-06,6,10.21,8.55,11.87,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-07,7,16.54,14.84,18.24,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-08,8,16.65,14.91,18.39,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-09,9,17.05,15.27,18.83,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-10,10,17.48,15.65,19.31,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-11,11,17.47,15.6,19.34,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-12,12,10.83,8.93,12.73,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-13,13,10.96,9.02,12.9,Recursive_LightGBM,READY
+SKU-7731-SFT,SensorCore Analytics Suite,Software,2026-09-14,14,17.25,15.27,19.23,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-01,1,49.35,45.55,53.15,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-02,2,48.82,44.89,52.75,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-03,3,50.57,46.5,54.64,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-04,4,50.57,46.37,54.77,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-05,5,31.11,26.79,35.43,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-06,6,31.02,26.58,35.46,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-07,7,48.61,44.05,53.17,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-08,8,49.01,44.33,53.69,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-09,9,50.6,45.81,55.39,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-10,10,50.97,46.07,55.87,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-11,11,50.14,45.13,55.15,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-12,12,31.11,26.0,36.22,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-13,13,30.21,24.99,35.43,Recursive_LightGBM,READY
+SKU-8921-PRO,Precision Industrial Calibrator X1,Hardware & Tools,2026-09-14,14,48.58,43.26,53.9,Recursive_LightGBM,READY
