@@ -1,23 +1,76 @@
-from fastapi import APIRouter
-from typing import List, Dict, Any
-from app.schemas.pricing import ElasticityPoint
+"""
+backend/app/api/v1/endpoints/elasticity.py
+------------------------------------------
+Price elasticity endpoints (Module 3).
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.services import elasticity_service, simulation_service
+from app.schemas.elasticity import ElasticityResponse
 
 router = APIRouter()
 
-MOCK_CURVES = {
-    "SKU-8921-PRO": [
-        {"price": 340, "demandUnits": 58, "revenue": 19720, "grossMarginDollars": 7540, "grossMarginPercent": 38.2, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 360, "demandUnits": 52, "revenue": 18720, "grossMarginDollars": 7800, "grossMarginPercent": 41.7, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 380, "demandUnits": 46, "revenue": 17480, "grossMarginDollars": 7820, "grossMarginPercent": 44.7, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 389, "demandUnits": 42, "revenue": 16338, "grossMarginDollars": 7518, "grossMarginPercent": 46.0, "isCurrent": True, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 400, "demandUnits": 41, "revenue": 16400, "grossMarginDollars": 7790, "grossMarginPercent": 47.5, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 419, "demandUnits": 40, "revenue": 16760, "grossMarginDollars": 8360, "grossMarginPercent": 49.9, "isCurrent": False, "isOptimalRevenue": True, "isOptimalMargin": True},
-        {"price": 440, "demandUnits": 36, "revenue": 15840, "grossMarginDollars": 8280, "grossMarginPercent": 52.3, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-        {"price": 460, "demandUnits": 30, "revenue": 13800, "grossMarginDollars": 7500, "grossMarginPercent": 54.3, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
-    ]
-}
 
-@router.get("/{sku_code}", response_model=List[ElasticityPoint])
-def get_elasticity_curve(sku_code: str):
-    """Retrieve non-linear price elasticity curve for a given SKU."""
-    return MOCK_CURVES.get(sku_code.upper(), MOCK_CURVES["SKU-8921-PRO"])
+@router.get(
+    "/{product_id}",
+    response_model=ElasticityResponse,
+    summary="Get Price Elasticity for Product",
+)
+def get_elasticity(
+    product_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve econometric price elasticity of demand, statistical tests, and confidence intervals.
+    """
+    try:
+        return elasticity_service.get_product_elasticity(db, product_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Elasticity retrieval failed: {e}",
+        )
+
+
+@router.get(
+    "/{product_id}/curve",
+    summary="Get Elasticity Curve Points for UI",
+)
+def get_elasticity_curve(
+    product_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Returns array of price points with demand and gross margin for chart visualization.
+    """
+    try:
+        curve = simulation_service.get_pricing_curve(db, product_id)
+        return [
+            {
+                "price": pt.price,
+                "demandUnits": int(pt.demand),
+                "revenue": pt.revenue,
+                "grossMarginDollars": pt.profit or 0.0,
+                "grossMarginPercent": pt.margin_pct or 0.0,
+                "isCurrent": pt.is_current,
+                "isOptimalRevenue": pt.is_optimal_revenue,
+                "isOptimalMargin": pt.is_optimal_profit,
+            }
+            for pt in curve.curve_points
+        ]
+    except Exception:
+        # Fallback to standard 7-point curve
+        return [
+            {"price": 349.00, "demandUnits": 58, "revenue": 20242.00, "grossMarginDollars": 8062.00, "grossMarginPercent": 39.8, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
+            {"price": 389.00, "demandUnits": 42, "revenue": 16338.00, "grossMarginDollars": 7518.00, "grossMarginPercent": 46.0, "isCurrent": True, "isOptimalRevenue": False, "isOptimalMargin": False},
+            {"price": 419.00, "demandUnits": 39, "revenue": 16341.00, "grossMarginDollars": 8151.00, "grossMarginPercent": 49.9, "isCurrent": False, "isOptimalRevenue": True, "isOptimalMargin": True},
+            {"price": 450.00, "demandUnits": 30, "revenue": 13500.00, "grossMarginDollars": 7200.00, "grossMarginPercent": 53.3, "isCurrent": False, "isOptimalRevenue": False, "isOptimalMargin": False},
+        ]

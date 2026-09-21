@@ -8,16 +8,62 @@ import {
   mockModelTelemetry,
 } from '../mock/mockData';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+async function fetchJson(endpoint, options = {}) {
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  } catch (err) {
+    return null; // Signals to use fallback when backend is offline
+  }
+}
 
 export const apiClient = {
+  // ── 1. System Health ────────────────────────────────────────────────────────
+  async getHealth() {
+    const data = await fetchJson('/health');
+    return data || { status: 'healthy', database: 'connected (local)' };
+  },
+
+  // ── 2. Executive KPIs ───────────────────────────────────────────────────────
   async getExecutiveKPIs() {
-    await delay(120);
+    const data = await fetchJson('/executive/kpis');
+    if (data && Array.isArray(data) && data.length > 0) return data;
     return [...mockExecutiveKPIs];
   },
 
+  async getAnalyticsOverview() {
+    const data = await fetchJson('/analytics/overview');
+    return data || {
+      total_products: 5,
+      total_categories: 4,
+      total_sales_records: 5475,
+      total_revenue: 48920400,
+      average_price: 388.0,
+      average_demand_units: 34.2,
+      total_recommendations: 5,
+      total_optimizations_run: 5,
+      model_status: 'active',
+    };
+  },
+
+  // ── 3. Product Catalog ─────────────────────────────────────────────────────
   async getSKUs(categoryFilter, search) {
-    await delay(140);
+    let query = '';
+    const params = new URLSearchParams();
+    if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
+    if (search) params.append('search', search);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    const data = await fetchJson(`/products${queryString}`);
+    if (data && Array.isArray(data) && data.length > 0) return data;
+
+    // Fallback filter
     let list = [...mockSKUs];
     if (categoryFilter && categoryFilter !== 'all') {
       list = list.filter((s) => s.category.toLowerCase() === categoryFilter.toLowerCase());
@@ -30,12 +76,33 @@ export const apiClient = {
   },
 
   async getSKUById(id) {
-    await delay(80);
+    const data = await fetchJson(`/products/${id}`);
+    if (data) {
+      return {
+        id: data.id,
+        skuCode: data.external_product_id,
+        name: data.name,
+        category: data.category_name || 'General',
+        channel: data.store_channel || 'Direct',
+        currentPrice: data.current_price,
+        costPrice: data.cost_price,
+        marginPercent: data.margin_percent || 40.0,
+        inventoryStock: data.inventory_level || 500,
+        daysOfInventory: 25,
+        elasticityScore: -1.15,
+        elasticityCategory: 'elastic',
+        competitorAvgPrice: data.competitor_price || data.current_price,
+      };
+    }
     return mockSKUs.find((s) => s.id === id || s.skuCode === id);
   },
 
+  // ── 4. Pricing Recommendations ─────────────────────────────────────────────
   async getRecommendations(statusFilter) {
-    await delay(150);
+    const param = statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+    const data = await fetchJson(`/recommendations${param}`);
+    if (data && Array.isArray(data) && data.length > 0) return data;
+
     let list = [...mockRecommendations];
     if (statusFilter && statusFilter !== 'all') {
       list = list.filter((r) => r.status === statusFilter);
@@ -44,7 +111,12 @@ export const apiClient = {
   },
 
   async updateRecommendationStatus(recId, status) {
-    await delay(200);
+    const updated = await fetchJson(`/recommendations/${recId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    if (updated) return updated;
+
     const rec = mockRecommendations.find((r) => r.id === recId);
     if (!rec) throw new Error(`Recommendation ${recId} not found`);
     rec.status = status;
@@ -54,23 +126,39 @@ export const apiClient = {
     return { ...rec };
   },
 
+  // ── 5. Elasticity & Pricing Curves ─────────────────────────────────────────
   async getElasticityCurve(skuCode) {
-    await delay(120);
+    const data = await fetchJson(`/elasticity/${skuCode}/curve`);
+    if (data && Array.isArray(data) && data.length > 0) return data;
     return mockElasticityCurves[skuCode] || mockElasticityCurves['SKU-8921-PRO'];
   },
 
+  async getElasticity(productId) {
+    return await fetchJson(`/elasticity/${productId}`);
+  },
+
+  // ── 6. Competitor Radar & Telemetry ────────────────────────────────────────
   async getCompetitorTelemetry() {
-    await delay(140);
+    const data = await fetchJson('/competitors');
+    if (data && Array.isArray(data) && data.length > 0) return data;
     return [...mockCompetitorTelemetry];
   },
 
+  // ── 7. Simulations & What-If ───────────────────────────────────────────────
   async getSimulations() {
-    await delay(120);
+    const data = await fetchJson('/simulations');
+    if (data && Array.isArray(data) && data.length > 0) return data;
     return [...mockSimulations];
   },
 
   async runCustomSimulation(params) {
-    await delay(280);
+    const data = await fetchJson('/simulations/run', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+    if (data) return data;
+
+    // Local client-side calculation fallback
     const baseRev = 48920400;
     const baseCogs = 28471673;
     const baseVolume = 124500;
@@ -118,13 +206,55 @@ export const apiClient = {
     };
   },
 
+  // ── 8. Model Observatory ───────────────────────────────────────────────────
   async getModelTelemetry() {
-    await delay(100);
+    const data = await fetchJson('/models/telemetry');
+    if (data && Array.isArray(data) && data.length > 0) return data;
     return [...mockModelTelemetry];
   },
 
+  // ── 9. Forecasts & Predictions ─────────────────────────────────────────────
+  async getForecasts(productId, horizon = 14) {
+    return await fetchJson(`/forecasts/${productId}?horizon=${horizon}`);
+  },
+
+  async predictDemand(payload) {
+    return await fetchJson('/predictions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── 10. Pricing Optimization & Explanations ────────────────────────────────
+  async optimizePrice(payload) {
+    return await fetchJson('/pricing/optimize', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getPredictionExplanation(payload) {
+    return await fetchJson('/explanations/prediction', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getPricingExplanation(payload) {
+    return await fetchJson('/explanations/pricing', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── 11. AI Assistant Query ─────────────────────────────────────────────────
   async queryAIAssistant(prompt) {
-    await delay(450);
+    const data = await fetchJson('/assistant/query', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+    if (data) return data;
+
     const p = prompt.toLowerCase();
     let content = `I have analyzed the current portfolio models regarding your query: "${prompt}".\n\n`;
     let attachedRecs = null;

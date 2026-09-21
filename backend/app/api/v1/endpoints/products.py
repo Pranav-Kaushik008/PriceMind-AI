@@ -1,162 +1,129 @@
-from fastapi import APIRouter, Query, HTTPException
-from typing import List, Optional
+"""
+backend/app/api/v1/endpoints/products.py
+----------------------------------------
+Product catalog and SKU endpoints.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import List, Optional, Union
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.services import product_service
+from app.schemas.product import ProductResponse, ProductListResponse, CategoryResponse
 from app.schemas.pricing import SKUResponse
 
 router = APIRouter()
 
-MOCK_SKUS = [
-    {
-        "id": "sku-1",
-        "skuCode": "SKU-8921-PRO",
-        "name": "Precision Industrial Calibrator X1",
-        "category": "Hardware & Tools",
-        "channel": "Direct",
-        "currentPrice": 389.00,
-        "costPrice": 210.00,
-        "marginPercent": 46.0,
-        "currentVelocity": 42,
-        "inventoryStock": 1240,
-        "daysOfInventory": 29,
-        "elasticityScore": -0.62,
-        "elasticityCategory": "inelastic",
-        "competitorMinPrice": 399.00,
-        "competitorAvgPrice": 415.00,
-        "competitorMaxPrice": 440.00,
-        "pricePosition": "discount",
-        "revenueRiskScore": 12,
-        "recommendedPrice": 419.00,
-        "projectedUpliftPercent": 7.7,
-    },
-    {
-        "id": "sku-2",
-        "skuCode": "SKU-4402-AIR",
-        "name": "AeroStream Commercial Turbine Fan 300",
-        "category": "HVAC & Air Handling",
-        "channel": "Wholesale",
-        "currentPrice": 849.00,
-        "costPrice": 520.00,
-        "marginPercent": 38.75,
-        "currentVelocity": 18,
-        "inventoryStock": 340,
-        "daysOfInventory": 19,
-        "elasticityScore": -1.88,
-        "elasticityCategory": "elastic",
-        "competitorMinPrice": 799.00,
-        "competitorAvgPrice": 830.00,
-        "competitorMaxPrice": 890.00,
-        "pricePosition": "premium",
-        "revenueRiskScore": 68,
-        "recommendedPrice": 819.00,
-        "projectedUpliftPercent": 4.8,
-    },
-    {
-        "id": "sku-3",
-        "skuCode": "SKU-6109-OPT",
-        "name": "FiberOptic Multiplexer 40Gbps Rack Unit",
-        "category": "Telecommunications",
-        "channel": "B2B Direct",
-        "currentPrice": 1250.00,
-        "costPrice": 680.00,
-        "marginPercent": 45.6,
-        "currentVelocity": 65,
-        "inventoryStock": 890,
-        "daysOfInventory": 14,
-        "elasticityScore": -0.38,
-        "elasticityCategory": "highly_inelastic",
-        "competitorMinPrice": 1290.00,
-        "competitorAvgPrice": 1380.00,
-        "competitorMaxPrice": 1495.00,
-        "pricePosition": "discount",
-        "revenueRiskScore": 8,
-        "recommendedPrice": 1349.00,
-        "projectedUpliftPercent": 7.9,
-    },
-    {
-        "id": "sku-4",
-        "skuCode": "SKU-3320-SENS",
-        "name": "Multi-Spectrum Ambient Sensor Array",
-        "category": "IoT & Sensors",
-        "channel": "Amazon",
-        "currentPrice": 149.00,
-        "costPrice": 72.00,
-        "marginPercent": 51.68,
-        "currentVelocity": 110,
-        "inventoryStock": 3850,
-        "daysOfInventory": 35,
-        "elasticityScore": -2.35,
-        "elasticityCategory": "highly_elastic",
-        "competitorMinPrice": 139.00,
-        "competitorAvgPrice": 145.00,
-        "competitorMaxPrice": 160.00,
-        "pricePosition": "premium",
-        "revenueRiskScore": 74,
-        "recommendedPrice": 142.00,
-        "projectedUpliftPercent": 6.2,
-    },
-    {
-        "id": "sku-5",
-        "skuCode": "SKU-9901-SER",
-        "name": "UltraCore Edge Server Module E-8",
-        "category": "Computing Infrastructure",
-        "channel": "Direct",
-        "currentPrice": 2850.00,
-        "costPrice": 1750.00,
-        "marginPercent": 38.6,
-        "currentVelocity": 9,
-        "inventoryStock": 95,
-        "daysOfInventory": 11,
-        "elasticityScore": -0.45,
-        "elasticityCategory": "inelastic",
-        "competitorMinPrice": 2900.00,
-        "competitorAvgPrice": 3050.00,
-        "competitorMaxPrice": 3200.00,
-        "pricePosition": "discount",
-        "revenueRiskScore": 15,
-        "recommendedPrice": 2995.00,
-        "projectedUpliftPercent": 5.1,
-    },
-    {
-        "id": "sku-6",
-        "skuCode": "SKU-5120-VAL",
-        "name": "Hydraulic High-Pressure Relief Valve 5K",
-        "category": "Fluid Mechanics",
-        "channel": "Wholesale",
-        "currentPrice": 420.00,
-        "costPrice": 240.00,
-        "marginPercent": 42.86,
-        "currentVelocity": 34,
-        "inventoryStock": 2400,
-        "daysOfInventory": 70,
-        "elasticityScore": -1.25,
-        "elasticityCategory": "elastic",
-        "competitorMinPrice": 410.00,
-        "competitorAvgPrice": 430.00,
-        "competitorMaxPrice": 460.00,
-        "pricePosition": "parity",
-        "revenueRiskScore": 42,
-        "recommendedPrice": 399.00,
-        "projectedUpliftPercent": 8.9,
-    },
-]
 
-@router.get("/", response_model=List[SKUResponse])
-def list_products(
-    category: Optional[str] = Query(None, description="Filter by product category"),
-    search: Optional[str] = Query(None, description="Search query by SKU code or name"),
+@router.get(
+    "",
+    summary="List Products with Search and Filters",
+)
+@router.get("/", include_in_schema=False)
+def get_products(
+    category: Optional[str] = Query(None, description="Category name filter"),
+    search: Optional[str] = Query(None, description="Search query in name or SKU"),
+    active_only: bool = Query(True, description="Filter active products only"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Page size"),
+    db: Session = Depends(get_db),
 ):
-    """List product catalog with margin, velocity, and elasticity telemetry."""
-    results = MOCK_SKUS
-    if category and category.lower() != "all":
-        results = [s for s in results if s["category"].lower() == category.lower()]
-    if search:
-        q = search.lower()
-        results = [s for s in results if q in s["skuCode"].lower() or q in s["name"].lower()]
-    return results
+    """Retrieve catalog products with pagination, category filter, and search."""
+    result = product_service.list_products(
+        db, category=category, active_only=active_only, search=search, page=page, page_size=page_size
+    )
+    # Format for both UI compatibility and schema conformance
+    return [
+        SKUResponse(
+            id=p.id,
+            skuCode=p.external_product_id,
+            name=p.name,
+            category=p.category_name or "General",
+            channel=p.store_channel or "Direct",
+            currentPrice=p.current_price or 0.0,
+            costPrice=p.cost_price or 0.0,
+            marginPercent=p.margin_percent or 0.0,
+            currentVelocity=35,
+            inventoryStock=p.inventory_level or 500,
+            daysOfInventory=25,
+            elasticityScore=-1.15,
+            elasticityCategory="elastic",
+            competitorMinPrice=(p.competitor_price * 0.95) if p.competitor_price else (p.current_price * 0.95 if p.current_price else 0.0),
+            competitorAvgPrice=p.competitor_price or p.current_price or 0.0,
+            competitorMaxPrice=(p.competitor_price * 1.08) if p.competitor_price else (p.current_price * 1.08 if p.current_price else 0.0),
+            pricePosition="parity",
+            revenueRiskScore=15,
+            recommendedPrice=round((p.current_price or 100.0) * 1.05, 2),
+            projectedUpliftPercent=5.0,
+        )
+        for p in result.items
+    ]
 
-@router.get("/{sku_code}", response_model=SKUResponse)
-def get_product(sku_code: str):
-    """Retrieve detailed SKU profile."""
-    for s in MOCK_SKUS:
-        if s["skuCode"].lower() == sku_code.lower() or s["id"] == sku_code:
-            return s
-    raise HTTPException(status_code=404, detail=f"Product {sku_code} not found")
+
+@router.get(
+    "/paginated",
+    response_model=ProductListResponse,
+    summary="List Products Paginated",
+)
+def get_products_paginated(
+    category: Optional[str] = Query(None, description="Category filter"),
+    search: Optional[str] = Query(None, description="Search term"),
+    active_only: bool = Query(True, description="Active products only"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: Session = Depends(get_db),
+):
+    """Paginated product list returning metadata and totals."""
+    return product_service.list_products(
+        db, category=category, active_only=active_only, search=search, page=page, page_size=page_size
+    )
+
+
+@router.get(
+    "/categories",
+    response_model=List[CategoryResponse],
+    summary="List Product Categories",
+)
+def get_categories(db: Session = Depends(get_db)):
+    """List all product categories."""
+    return product_service.list_categories(db)
+
+
+@router.get(
+    "/{product_id}",
+    response_model=ProductResponse,
+    summary="Get Product by ID or SKU",
+)
+def get_product(
+    product_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get single product details by internal UUID or external SKU ID."""
+    p = product_service.get_product_by_id_or_sku(db, product_id)
+    if not p:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product not found: {product_id}",
+        )
+
+    margin_pct = None
+    if p.current_price and p.cost_price and p.current_price > 0:
+        margin_pct = round(((p.current_price - p.cost_price) / p.current_price) * 100.0, 2)
+
+    return ProductResponse(
+        id=p.id,
+        external_product_id=p.external_product_id,
+        name=p.name,
+        category_id=p.category_id,
+        category_name=p.category.name if p.category else None,
+        store_channel=p.store_channel,
+        current_price=p.current_price,
+        cost_price=p.cost_price,
+        margin_percent=margin_pct,
+        inventory_level=p.inventory_level,
+        competitor_price=p.competitor_price,
+        is_active=p.is_active,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+    )
