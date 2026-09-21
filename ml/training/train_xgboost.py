@@ -1,0 +1,166 @@
+"""
+ml/training/train_xgboost.py
+----------------------------
+Reproducible XGBoost Demand Model Training Pipeline with MLflow Tracking.
+"""
+
+from pathlib import Path
+import time
+import logging
+import pandas as pd
+import numpy as np
+import xgboost as xgb
+import mlflow
+import mlflow.xgboost
+from mlflow.models.signature import infer_signature
+
+from ml.models.preprocessing import DataSplitter, FeaturePreprocessor
+from ml.models.evaluate import ModelEvaluator
+from ml.tracking.mlflow_config import setup_mlflow, EXPERIMENT_DEMAND_PREDICTION
+from ml.tracking.experiment import set_active_experiment
+from ml.tracking.tracking_utils import (
+    log_dataset_metadata,
+    log_model_parameters,
+    log_evaluation_metrics,
+    log_feature_artifacts,
+    log_evaluation_plots,
+)
+from ml.tracking.model_registry import register_model_version, promote_model_to_production
+
+logger = logging.getLogger(__name__)
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+FEATURES_PATH = ROOT_DIR / "data" / "processed" / "features.parquet"
+
+
+def train_and_track_xgboost(
+    features_path: Path = FEATURES_PATH,
+    random_seed: int = 42,
+    n_estimators: int = 150,
+    max_depth: int = 6,
+    learning_rate: float = 0.08,
+    subsample: float = 0.85,
+    colsample_bytree: float = 0.85,
+    register_model: bool = True,
+    promote_to_production: bool = True,
+) -> dict:
+    """
+    Train XGBoost Regressor with full MLflow tracking, metrics, artifacts, and registration.
+    """
+    setup_mlflow()
+    set_active_experiment(EXPERIMENT_DEMAND_PREDICTION)
+
+    if not features_path.exists():
+        raise FileNotFoundError(f"Feature dataset not found: {features_path}")
+
+    df = pd.read_parquet(features_path)
+
+    # 1. Chronological Split
+    train_df, val_df, test_df = DataSplitter.chronological_split(
+        df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15, date_col="date"
+    )
+
+    preprocessor = FeaturePreprocessor(target_col="units_sold")
+    X_train, y_train, feature_names = preprocessor.get_features_and_target(train_df, is_training=True)
+    X_val, y_val, _ = preprocessor.get_features_and_target(val_df)
+    X_test, y_test, _ = preprocessor.get_features_and_target(test_df)
+
+    hp = {
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "learning_rate": learning_rate,
+        "subsample": subsample,
+        "colsample_bytree": colsample_bytree,
+        "random_state": random_seed,
+        "n_jobs": -1,
+    }
+
+    with mlflow.start_run(run_name="XGBoost_Demand_Production") as run:
+        run_id = run.info.run_id
+        logger.info(f"[TrainXGBoost] Started MLflow Run: {run_id}")
+
+        # Log Dataset Tags & Params
+        train_dates = (str(train_df["date"].min()), str(train_df["date"].max())) if "date" in train_df.columns else None
+        test_dates = (str(test_df["date"].min()), str(test_df["date"].max())) if "date" in test_df.columns else None
+        log_dataset_metadata(
+            dataset_name="features.parquet",
+            n_rows=len(df),
+            n_features=len(feature_names),
+            train_dates=train_dates,
+            test_dates=test_dates,
+            feature_version="v1",
+        )
+        log_model_parameters(
+            model_type="XGBoost (XGBRegressor)",
+            hyperparameters=hp,
+            target_col="units_sold",
+            random_seed=random_seed,
+        )
+
+        # Train Model
+        start_time = time.perf_counter()
+        model = xgb.XGBRegressor(**hp)
+        model.fit(
+            X_train,
+            y_train,
+            eval_set=[(X_val, y_val)],
+            verbose=False,
+        )
+        train_duration = time.perf_counter() - start_time
+        mlflow.log_metric("train_duration_sec", train_duration)
+
+        # Evaluate on Validation and Test Splits
+        val_preds = model.predict(X_val)
+        val_metrics = ModelEvaluator.calculate_metrics(y_val.values, val_preds)
+        log_evaluation_metrics(val_metrics, prefix="val")
+
+        test_preds = model.predict(X_test)
+        test_metrics = ModelEvaluator.calculate_metrics(y_test.values, test_preds)
+        log_evaluation_metrics(test_metrics, prefix="test")
+
+        # Feature Importances & Artifacts
+        feat_imp = dict(zip(feature_names, model.feature_importances_))
+        log_feature_artifacts(feature_names, feat_imp)
+        log_evaluation_plots(y_test.values, test_preds, model_name="XGBoost")
+
+        # Model Signature & Logging
+        signature = infer_signature(X_train.head(10), model.predict(X_train.head(10)))
+        input_example = X_train.head(5)
+
+        mlflow.xgboost.log_model(
+            xgb_model=model,
+            artifact_path="model",
+            signature=signature,
+            input_example=input_example,
+        )
+
+        registered_version = None
+        if register_model:
+            reg = register_model_version(
+                run_id=run_id,
+                artifact_path="model",
+                registered_model_name="PriceMind-Demand-XGBoost",
+                tags={"framework": "xgboost", "stage": "production"},
+            )
+            registered_version = reg.version
+            if promote_to_production:
+                promote_model_to_production("PriceMind-Demand-XGBoost", registered_version)
+
+        logger.info(f"[TrainXGBoost] Complete. Test RMSE: {test_metrics['rmse']:.4f}, R²: {test_metrics['r2']:.4f}")
+
+        return {
+            "run_id": run_id,
+            "model": model,
+            "test_metrics": test_metrics,
+            "registered_version": registered_version,
+            "feature_names": feature_names,
+        }
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    results = train_and_track_xgboost()
+    print("\n✓ Training and MLflow tracking complete:")
+    print(f"  Run ID: {results['run_id']}")
+    print(f"  Registered Version: {results['registered_version']}")
+    print(f"  Metrics: {results['test_metrics']}")

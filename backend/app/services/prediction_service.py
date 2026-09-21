@@ -1,15 +1,14 @@
 """
 backend/app/services/prediction_service.py
 ------------------------------------------
-Service layer for demand prediction (Module 4).
-Loads and caches the production XGBoost model artifact.
+Service layer for demand prediction (Module 4 & Module 10).
+Loads production model via ProductionModelLoader (MLflow Model Registry with local fallback).
 """
 
 from datetime import datetime, date, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import logging
-import joblib
 import pandas as pd
 import numpy as np
 from sqlalchemy.orm import Session
@@ -20,29 +19,32 @@ from app.repositories.analytics_repo import save_prediction
 from app.services.product_service import get_product_by_id_or_sku
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 
+from ml.tracking.model_loader import ProductionModelLoader
+
 logger = logging.getLogger(__name__)
 
-# Model artifact paths
 ROOT_DIR = Path(__file__).resolve().parents[3]
-MODEL_PATH = ROOT_DIR / "ml" / "artifacts" / "models" / "demand_model_production.joblib"
 FEATURES_PATH = ROOT_DIR / "data" / "processed" / "features.parquet"
 
-# Cached instances
-_cached_model = None
-_cached_feature_names = None
+_model_loader = ProductionModelLoader()
 _cached_features_df = None
 
 
-def get_model():
-    global _cached_model, _cached_feature_names
-    if _cached_model is None:
-        if not MODEL_PATH.exists():
-            raise FileNotFoundError(f"Production demand model not found at: {MODEL_PATH}")
-        _cached_model = joblib.load(MODEL_PATH)
-        if hasattr(_cached_model, "feature_names_in_"):
-            _cached_feature_names = list(_cached_model.feature_names_in_)
-        logger.info(f"[PredictionService] Loaded model: {type(_cached_model).__name__} with {len(_cached_feature_names or [])} features")
-    return _cached_model, _cached_feature_names
+def get_model() -> Tuple[Any, list]:
+    """Get model instance and feature names from the production model loader."""
+    model, version, source = _model_loader.load()
+    feature_names = _model_loader.feature_names
+    return model, feature_names
+
+
+def get_model_metadata() -> Dict[str, str]:
+    """Get production model version and source info."""
+    model, version, source = _model_loader.load()
+    return {
+        "model_name": type(model).__name__,
+        "model_version": version,
+        "source": source,
+    }
 
 
 def get_feature_context() -> Optional[pd.DataFrame]:
@@ -65,6 +67,7 @@ def predict_demand(
         raise ValueError(f"Product not found: {request.product_id}")
 
     model, feature_names = get_model()
+    model_meta = get_model_metadata()
     features_df = get_feature_context()
 
     # Build feature row
@@ -76,10 +79,9 @@ def predict_demand(
             feature_row = sku_features.tail(1).copy()
 
     if feature_row is None:
-        # Construct fallback dictionary
         feature_row = pd.DataFrame([{f: 0.0 for f in feature_names}])
 
-    # Override price and relevant features
+    # Override price and market parameters
     if "price" in feature_row.columns:
         feature_row["price"] = request.price
     if request.is_promotion is not None and "is_promotion" in feature_row.columns:
@@ -89,7 +91,7 @@ def predict_demand(
     if request.inventory_level is not None and "inventory_level" in feature_row.columns:
         feature_row["inventory_level"] = request.inventory_level
 
-    # Ensure all model features exist
+    # Ensure all features exist
     for col in feature_names:
         if col not in feature_row.columns:
             feature_row[col] = 0.0
@@ -99,8 +101,8 @@ def predict_demand(
     predicted_demand = max(0.0, round(raw_pred, 2))
 
     pred_date = request.prediction_date or date.today()
-    model_name = type(model).__name__
-    model_version = "v1"
+    model_name = model_meta["model_name"]
+    model_version = model_meta["model_version"]
 
     pred_record = None
     if request.persist:

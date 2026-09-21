@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+backend/venv/
+
+# Database & Tracking
+*.db
+*.sqlite
+*.sqlite3
+mlruns/
+notebooks/mlruns/
 
 # Environment variables
 .env
