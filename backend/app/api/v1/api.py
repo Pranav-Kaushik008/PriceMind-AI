@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     simulations,
     assistant,
     models,
+    rag,
 )
 
 api_router = APIRouter()
@@ -33,6 +34,7 @@ api_router.include_router(forecasts.router, prefix="/forecasts", tags=["Demand F
 api_router.include_router(elasticity.router, prefix="/elasticity", tags=["Price Elasticity"])
 api_router.include_router(pricing.router, prefix="/pricing", tags=["Dynamic Pricing & Optimization"])
 api_router.include_router(explanations.router, prefix="/explanations", tags=["SHAP Explainability"])
+api_router.include_router(rag.router, prefix="/rag", tags=["RAG Knowledge System (Module 11)"])
 
 # Frontend backwards-compatibility endpoints
 api_router.include_router(executive.router, prefix="/executive", tags=["Executive Telemetry (UI)"])

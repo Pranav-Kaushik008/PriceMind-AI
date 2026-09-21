@@ -284,5 +284,31 @@ export const apiClient = {
         'Compare competitor price variance over last 14 days',
       ],
     };
-  }
+  },
+
+  // ── 12. RAG Knowledge System (Module 11) ──────────────────────────────────
+  async queryRAG(query, categoryFilter = null, topK = 4) {
+    return await fetchJson('/rag/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, category_filter: categoryFilter, top_k: topK }),
+    });
+  },
+
+  async retrieveKnowledge(query, categoryFilter = null, topK = 5) {
+    return await fetchJson('/rag/retrieve', {
+      method: 'POST',
+      body: JSON.stringify({ query, category_filter: categoryFilter, top_k: topK }),
+    });
+  },
+
+  async getKnowledgeStatus() {
+    return await fetchJson('/rag/status');
+  },
+
+  async reindexKnowledge() {
+    return await fetchJson('/rag/reindex', {
+      method: 'POST',
+    });
+  },
 };
+
