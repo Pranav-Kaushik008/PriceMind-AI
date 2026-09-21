@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Sparkles, Zap, Terminal, CornerDownLeft, RefreshCw,
   TrendingUp, ShieldAlert, Cpu, ArrowUpRight, BarChart2
@@ -8,12 +8,13 @@ import { Button } from '../components/ui/Button';
 import { useAppStore } from '../store/useAppStore';
 import { formatCurrency } from '../lib/utils';
 import { mockAssistantMessages } from '../mock/mockData';
+import { apiClient } from '../api/client';
 
 const promptStarters = [
   'Explain why SKU-8921-PRO was recommended a +11.8% price increase',
-  'What is our highest-risk category for competitor undercutting?',
-  'Simulate the net revenue impact of a 5% margin expansion on Software licenses',
-  'Show all SKUs with less than 15 days of inventory buffer'
+  'What is the corporate margin floor policy for hardware?',
+  'Explain the difference between elastic and inelastic demand',
+  'How does SHAP explain dynamic pricing recommendations?'
 ];
 
 export function AIAssistant() {
@@ -46,26 +47,30 @@ export function AIAssistant() {
     if (!textToSend) setInput('');
     setIsThinking(true);
 
-    setTimeout(() => {
-      let replyContent = `I have analyzed the real-time pricing and elasticity telemetry across your catalog.\n\nKey Insights for "${text}":\n• SKU-8921-PRO maintains an empirical elasticity coefficient of -1.34 with competitor Apex pricing at $435.00 (+11.8% headroom).\n• Risk mitigation guardrails confirm inventory runway of 42 days with 0% stockout probability.\n• Expected gross margin accretion: +$24,500/mo.`;
-      
-      if (text.toLowerCase().includes('undercut')) {
-        replyContent = `Competitor Radar Analysis:\n• 2 SKUs currently facing undercutting: SKU-3320-SENS (-3.7% gap by SensorTech) and SKU-1090-CAB (-8.8% gap by CableWorld).\n• Recommendation: Do not match CableWorld on SKU-1090-CAB as elasticity is highly inelastic (-0.45) and will needlessly sacrifice 220 bps of gross margin.`;
-      } else if (text.toLowerCase().includes('inventory')) {
-        replyContent = `Inventory Risk Alert:\n• SKU-3320-SENS has only 12 days of stock remaining.\n• Recommended dynamic pricing action: +4.2% scarcity surcharge to throttle daily velocity from 24/day to 18/day while replenishment clears transit.`;
-      }
-
+    try {
+      const response = await apiClient.queryAIAssistant(text);
       setMessages((prev) => [
         ...prev,
         {
-          id: `bot-${Date.now()}`,
+          id: response?.id || `bot-${Date.now()}`,
           sender: 'assistant',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: replyContent,
+          timestamp: response?.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          content: response?.content || "No response received from RAG agent.",
         },
       ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `bot-err-${Date.now()}`,
+          sender: 'assistant',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          content: "Unable to reach the pricing intelligence backend. Telemetry operating in offline mode.",
+        },
+      ]);
+    } finally {
       setIsThinking(false);
-    }, 900);
+    }
   };
 
   const clearChat = () => {
