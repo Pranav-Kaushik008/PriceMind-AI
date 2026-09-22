@@ -16,6 +16,7 @@ for _p in [str(_PROJECT_ROOT), str(_BACKEND_ROOT)]:
 
 import time
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,9 +24,23 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.v1.api import api_router
+from app.db.session import engine, Base
+import app.models  # ensure all models registered
 
 setup_logging()
 logger = logging.getLogger("pricemind.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager to auto-initialize database tables on startup."""
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized successfully.")
+    except Exception as exc:
+        logger.warning(f"Database table initialization warning: {exc}")
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -34,6 +49,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Middleware
