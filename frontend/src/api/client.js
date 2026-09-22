@@ -370,5 +370,17 @@ export const apiClient = {
   async getMe() {
     return await fetchJson('/auth/me');
   },
+
+  // ── 15. Full Platform Integration (Module 14) ────────────────────────────
+  async getConsolidatedRecommendation(productId, objective = 'PROFIT_MAX') {
+    return await fetchJson('/pricing/recommend', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId, objective }),
+    });
+  },
+
+  async getProductAnalytics(productId) {
+    return await fetchJson(`/products/${productId}/analytics`);
+  },
 };
 

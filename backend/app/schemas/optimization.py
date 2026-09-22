@@ -101,3 +101,24 @@ class PricingCurveResponse(BaseModel):
     current_price: float
     elasticity: float
     curve_points: List[SimulationPoint]
+
+
+class ConsolidatedRecommendationRequest(BaseModel):
+    product_id: str = Field(description="Product UUID or external SKU ID (e.g. SKU-8921-PRO)")
+    objective: Optional[str] = Field(default="PROFIT_MAX", description="Optimization objective: 'PROFIT_MAX' | 'REVENUE_MAX' | 'BALANCED'")
+
+
+class ConsolidatedRecommendationResponse(BaseModel):
+    product: Dict[str, Any]
+    current_price: float
+    recommended_price: float
+    price_change_pct: float
+    predicted_demand: float
+    expected_revenue: float
+    expected_profit: float
+    elasticity: float
+    elasticity_category: str
+    constraints: Dict[str, Any]
+    explanation: Dict[str, Any]
+    model: Dict[str, Any]
+    sources: List[Dict[str, Any]] = []

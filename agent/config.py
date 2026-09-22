@@ -29,7 +29,7 @@ class AgentConfig:
 
     # Google Gemini
     google_api_key: str = field(
-        default_factory=lambda: os.getenv("GOOGLE_API_KEY", "")
+        default_factory=lambda: os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
     )
     google_model: str = field(
         default_factory=lambda: os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
@@ -58,9 +58,11 @@ class AgentConfig:
 
     def effective_provider(self) -> str:
         """Return the provider that has a valid API key, else 'stub'."""
+        if (self.llm_provider in ("google", "gemini") or not self.openai_api_key) and self.google_api_key:
+            return "google"
         if self.llm_provider == "openai" and self.openai_api_key:
             return "openai"
-        if self.llm_provider == "google" and self.google_api_key:
+        if self.google_api_key:
             return "google"
         return "stub"
 
