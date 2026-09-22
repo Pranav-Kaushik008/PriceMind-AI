@@ -4,6 +4,16 @@ backend/app/main.py
 Main FastAPI application entry point for PriceMind AI.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is available in sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+for _p in [str(_PROJECT_ROOT), str(_BACKEND_ROOT)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import time
 import logging
 from fastapi import FastAPI, Request
