@@ -310,5 +310,14 @@ export const apiClient = {
       method: 'POST',
     });
   },
+
+  // ── 13. AI Pricing Agent (Module 12) ──────────────────────────────────────
+  async queryAgent(message, sessionId = null) {
+    const data = await fetchJson('/agent/query', {
+      method: 'POST',
+      body: JSON.stringify({ message, session_id: sessionId }),
+    });
+    return data; // null if backend offline — caller handles fallback
+  },
 };
 

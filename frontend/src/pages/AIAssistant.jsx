@@ -48,14 +48,32 @@ export function AIAssistant() {
     setIsThinking(true);
 
     try {
-      const response = await apiClient.queryAIAssistant(text);
+      // Module 12: try the AI Agent endpoint first
+      let content = null;
+      let toolsBadge = '';
+
+      const agentResponse = await apiClient.queryAgent(text);
+      if (agentResponse && agentResponse.answer) {
+        content = agentResponse.answer;
+        const toolsUsed = agentResponse.tools_used || [];
+        if (toolsUsed.length > 0) {
+          toolsBadge = `\n\n_Tools used: ${toolsUsed.join(', ')}_`;
+        }
+      }
+
+      // Fallback to Module 11 RAG assistant if agent is unavailable
+      if (!content) {
+        const ragResponse = await apiClient.queryAIAssistant(text);
+        content = ragResponse?.content || 'No response received from the pricing intelligence backend.';
+      }
+
       setMessages((prev) => [
         ...prev,
         {
-          id: response?.id || `bot-${Date.now()}`,
+          id: `bot-${Date.now()}`,
           sender: 'assistant',
-          timestamp: response?.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: response?.content || "No response received from RAG agent.",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          content: content + toolsBadge,
         },
       ]);
     } catch (err) {
@@ -65,7 +83,7 @@ export function AIAssistant() {
           id: `bot-err-${Date.now()}`,
           sender: 'assistant',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: "Unable to reach the pricing intelligence backend. Telemetry operating in offline mode.",
+          content: 'Unable to reach the pricing intelligence backend. Telemetry operating in offline mode.',
         },
       ]);
     } finally {

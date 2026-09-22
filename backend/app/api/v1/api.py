@@ -1,7 +1,7 @@
 """
 backend/app/api/v1/api.py
 -------------------------
-API Router registering all endpoints for Module 9.
+API Router registering all endpoints for Modules 9–12.
 """
 
 from fastapi import APIRouter
@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     assistant,
     models,
     rag,
+    agent,
 )
 
 api_router = APIRouter()
@@ -35,6 +36,9 @@ api_router.include_router(elasticity.router, prefix="/elasticity", tags=["Price 
 api_router.include_router(pricing.router, prefix="/pricing", tags=["Dynamic Pricing & Optimization"])
 api_router.include_router(explanations.router, prefix="/explanations", tags=["SHAP Explainability"])
 api_router.include_router(rag.router, prefix="/rag", tags=["RAG Knowledge System (Module 11)"])
+
+# Module 12 — LangChain Tool-Calling AI Agent
+api_router.include_router(agent.router, prefix="/agent", tags=["AI Pricing Agent (Module 12)"])
 
 # Frontend backwards-compatibility endpoints
 api_router.include_router(executive.router, prefix="/executive", tags=["Executive Telemetry (UI)"])
