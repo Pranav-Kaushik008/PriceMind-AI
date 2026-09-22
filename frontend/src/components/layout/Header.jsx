@@ -34,6 +34,8 @@ export function Header() {
     setActiveWorkspace,
     workspaces,
     user,
+    authUser,
+    logout,
     notifications,
     notificationsCount,
     markAllNotificationsRead,
@@ -274,6 +276,11 @@ export function Header() {
               <div className="px-3.5 py-2.5 border-b border-pm-border bg-pm-subtle">
                 <div className="font-semibold text-xs text-pm-text truncate">{user.name}</div>
                 <div className="text-[10px] text-pm-textDim font-mono truncate">{user.email}</div>
+                {authUser?.organization_name && (
+                  <div className="text-[10px] text-pm-accent font-medium truncate mt-0.5">
+                    {authUser.organization_name}
+                  </div>
+                )}
                 <div className="mt-1 flex items-center gap-1.5">
                   <StatusDot status="active" size="xs" />
                   <span className="text-[10px] text-pm-textMuted">{user.role}</span>
@@ -308,7 +315,10 @@ export function Header() {
               <div className="border-t border-pm-borderSubtle pt-1 mt-1">
                 <button
                   type="button"
-                  onClick={() => setIsUserMenuOpen(false)}
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout();
+                  }}
                   className="flex items-center gap-2 w-full px-3.5 py-1.5 text-xs text-pm-negativeText hover:bg-pm-negativeBg transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />

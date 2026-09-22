@@ -2,6 +2,9 @@ import React from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { ToastProvider } from './components/ui/ToastProvider';
 import { ErrorState } from './components/ui/ErrorState';
+import { useAppStore } from './store/useAppStore';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -38,10 +41,22 @@ class ErrorBoundary extends React.Component {
 }
 
 export function App() {
+  const { isAuthenticated, authPage } = useAppStore();
+
+  const renderContent = () => {
+    if (!isAuthenticated) {
+      if (authPage === 'signup') {
+        return <Signup />;
+      }
+      return <Login />;
+    }
+    return <AppShell />;
+  };
+
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <AppShell />
+        {renderContent()}
       </ToastProvider>
     </ErrorBoundary>
   );

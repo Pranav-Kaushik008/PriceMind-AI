@@ -22,9 +22,13 @@ from app.api.v1.endpoints import (
     models,
     rag,
     agent,
+    auth,
 )
 
 api_router = APIRouter()
+
+# Authentication & User Management (Module 13)
+api_router.include_router(auth.router, prefix="/auth", tags=["Authentication & User Management"])
 
 # Core Module 9 REST endpoints
 api_router.include_router(health.router, prefix="/health", tags=["Health & Status"])

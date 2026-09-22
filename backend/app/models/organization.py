@@ -14,6 +14,7 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "organizations"
 
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    slug: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
 
     # Relationships
     users: Mapped[list] = relationship("User", back_populates="organization", lazy="select")

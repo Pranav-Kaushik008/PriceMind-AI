@@ -1,6 +1,67 @@
 import { create } from 'zustand';
 
+const getInitialToken = () => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('pricemind_token') || null;
+};
+
+const getInitialUser = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem('pricemind_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const initialToken = getInitialToken();
+const initialUser = getInitialUser();
+
 export const useAppStore = create((set) => ({
+  // Authentication State (Module 13)
+  isAuthenticated: !!initialToken,
+  authToken: initialToken,
+  authUser: initialUser,
+  isAuthLoading: false,
+  authPage: 'login', // 'login' | 'signup'
+  setAuthPage: (page) => set({ authPage: page }),
+  setAuthLoading: (loading) => set({ isAuthLoading: loading }),
+
+  login: (token, user) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pricemind_token', token);
+      if (user) sessionStorage.setItem('pricemind_user', JSON.stringify(user));
+    }
+    const displayName = user?.full_name || (user?.email ? user.email.split('@')[0] : 'Alex Chen');
+    const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'AC';
+    set({
+      authToken: token,
+      authUser: user,
+      isAuthenticated: true,
+      user: {
+        name: displayName,
+        email: user?.email || 'user@pricemind.ai',
+        role: user?.role === 'admin' ? 'Administrator' : 'Pricing Analyst',
+        initials,
+        avatar: null,
+      },
+    });
+  },
+
+  logout: () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('pricemind_token');
+      sessionStorage.removeItem('pricemind_user');
+    }
+    set({
+      authToken: null,
+      authUser: null,
+      isAuthenticated: false,
+      authPage: 'login',
+    });
+  },
+
   activePage: 'overview',
   setActivePage: (page) => set({ activePage: page, isMobileSidebarOpen: false }),
 
@@ -21,13 +82,21 @@ export const useAppStore = create((set) => ({
   ],
 
   // User Profile
-  user: {
-    name: 'Alex Chen',
-    email: 'alex.chen@pricemind.ai',
-    role: 'Principal Pricing Architect',
-    initials: 'AC',
-    avatar: null,
-  },
+  user: initialUser
+    ? {
+        name: initialUser.full_name || initialUser.email.split('@')[0],
+        email: initialUser.email,
+        role: initialUser.role === 'admin' ? 'Administrator' : 'Pricing Analyst',
+        initials: (initialUser.full_name || initialUser.email).slice(0, 2).toUpperCase(),
+        avatar: null,
+      }
+    : {
+        name: 'Alex Chen',
+        email: 'alex.chen@pricemind.ai',
+        role: 'Principal Pricing Architect',
+        initials: 'AC',
+        avatar: null,
+      },
 
   viewMode: 'command', // 'command' | 'analytics'
   setViewMode: (mode) => set({ viewMode: mode }),

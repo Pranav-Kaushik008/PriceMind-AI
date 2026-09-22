@@ -12,13 +12,43 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_U
 
 async function fetchJson(endpoint, options = {}) {
   try {
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('pricemind_token') : null;
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
     const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+        ...options.headers,
+      },
       ...options,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+    if (res.status === 401 && !endpoint.startsWith('/auth/login')) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('pricemind_token');
+        sessionStorage.removeItem('pricemind_user');
+      }
+    }
+
+    if (!res.ok) {
+      let errData;
+      try {
+        errData = await res.json();
+      } catch {
+        errData = null;
+      }
+      const message = errData?.detail || `HTTP ${res.status}: ${res.statusText}`;
+      const err = new Error(message);
+      err.status = res.status;
+      err.data = errData;
+      throw err;
+    }
     return await res.json();
   } catch (err) {
+    if (options.throwOnError || endpoint.startsWith('/auth/')) {
+      throw err;
+    }
     return null; // Signals to use fallback when backend is offline
   }
 }
@@ -318,6 +348,27 @@ export const apiClient = {
       body: JSON.stringify({ message, session_id: sessionId }),
     });
     return data; // null if backend offline — caller handles fallback
+  },
+
+  // ── 14. Authentication & User Management (Module 13) ─────────────────────
+  async login(email, password) {
+    return await fetchJson('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      throwOnError: true,
+    });
+  },
+
+  async register(payload) {
+    return await fetchJson('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      throwOnError: true,
+    });
+  },
+
+  async getMe() {
+    return await fetchJson('/auth/me');
   },
 };
 

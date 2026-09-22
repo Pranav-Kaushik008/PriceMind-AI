@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
+from app.core.deps import get_current_active_user
+from app.models.user import User
 from app.schemas.agent import AgentQueryRequest, AgentQueryResponse, AgentSource
 from agent.agent import get_agent
 
@@ -23,7 +25,10 @@ router = APIRouter()
 
 
 @router.post("/query", response_model=AgentQueryResponse, summary="Query the PriceMind AI pricing agent")
-def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
+def query_agent(
+    payload: AgentQueryRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> AgentQueryResponse:
     """
     Send a natural language question to the PriceMind AI pricing agent.
 

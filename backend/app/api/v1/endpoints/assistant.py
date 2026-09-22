@@ -1,13 +1,19 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from typing import Optional
 from app.schemas.pricing import AssistantQuery, AssistantResponse
 from app.api.v1.endpoints.recommendations import MOCK_RECOMMENDATIONS
+from app.core.deps import get_optional_current_user
+from app.models.user import User
 from rag.service import rag_service
 from datetime import datetime, UTC
 
 router = APIRouter()
 
 @router.post("/query", response_model=AssistantResponse)
-def query_assistant(payload: AssistantQuery):
+def query_assistant(
+    payload: AssistantQuery,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """Query the natural language AI pricing assistant with RAG grounding."""
     p = payload.prompt.lower()
     attached = None

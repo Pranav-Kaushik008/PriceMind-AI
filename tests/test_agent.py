@@ -384,8 +384,16 @@ class TestAgentEndpoint(unittest.TestCase):
         from fastapi.testclient import TestClient
         from fastapi import FastAPI
         from app.api.v1.endpoints.agent import router
+        from app.core.deps import get_current_active_user
+        from app.models.user import User
 
         app = FastAPI()
+        app.dependency_overrides[get_current_active_user] = lambda: User(
+            id="test-user-uuid",
+            email="agent.test@pricemind.ai",
+            is_active=True,
+            role="analyst",
+        )
         app.include_router(router, prefix="/agent")
         return TestClient(app)
 

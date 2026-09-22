@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # ── Security ───────────────────────────────────────────────────────────
     SECRET_KEY: str = "change-this-to-a-random-secret-in-production"
 
+    # ── JWT Authentication (Module 13) ─────────────────────────────────────
+    JWT_SECRET_KEY: str = "change-this-jwt-secret-to-a-random-value-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours default
+
     # ── Frontend ───────────────────────────────────────────────────────────
     VITE_API_URL: str = "http://localhost:8000/api/v1"
 
