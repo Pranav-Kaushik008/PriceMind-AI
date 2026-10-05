@@ -62,11 +62,11 @@ export function PriceOptimization() {
           apiClient.getRecommendations(),
         ]);
         if (mounted) {
-          if (skuList && skuList.length > 0) {
+          if (Array.isArray(skuList)) {
             setSkus(skuList);
-            setSelectedSkuCode(skuList[0].skuCode);
+            if (skuList.length > 0) setSelectedSkuCode(skuList[0].skuCode);
           }
-          if (recList && recList.length > 0) setRecs(recList);
+          if (Array.isArray(recList)) setRecs(recList);
         }
       } catch (err) {
         console.error('PriceOptimization: failed to fetch catalog', err);

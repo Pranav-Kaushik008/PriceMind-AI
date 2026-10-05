@@ -104,8 +104,8 @@ export function ProductIntelligence() {
           apiClient.getRecommendations(),
         ]);
         if (isMounted) {
-          if (skuList && skuList.length > 0) setRawSKUs(skuList);
-          if (recList && recList.length > 0) setRecs(recList);
+          if (Array.isArray(skuList)) setRawSKUs(skuList);
+          if (Array.isArray(recList)) setRecs(recList);
         }
       } catch (err) {
         console.error('Error fetching dynamic catalog:', err);
@@ -526,7 +526,7 @@ export function ProductIntelligence() {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-pm-textDim">
           <span>Click any product row to open the complete Analyst Workspace</span>
-          <span className="font-mono">Showing {filteredData.length} of {mockSKUs.length} SKUs</span>
+          <span className="font-mono">Showing {filteredData.length} of {rawSKUs.length} SKUs</span>
         </div>
 
         <DataTable

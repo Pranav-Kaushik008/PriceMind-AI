@@ -109,21 +109,21 @@ export const apiClient = {
   // ── 2. Executive KPIs ───────────────────────────────────────────────────────
   async getExecutiveKPIs() {
     const data = await fetchJson('/executive/kpis');
-    if (data && Array.isArray(data) && data.length > 0) return data;
+    if (data && Array.isArray(data)) return data;
     return [...mockExecutiveKPIs];
   },
 
   async getAnalyticsOverview() {
     const data = await fetchJson('/analytics/overview');
     return data || {
-      total_products: 5,
-      total_categories: 4,
-      total_sales_records: 5475,
-      total_revenue: 48920400,
-      average_price: 388.0,
-      average_demand_units: 34.2,
-      total_recommendations: 5,
-      total_optimizations_run: 5,
+      total_products: 0,
+      total_categories: 0,
+      total_sales_records: 0,
+      total_revenue: 0,
+      average_price: 0.0,
+      average_demand_units: 0.0,
+      total_recommendations: 0,
+      total_optimizations_run: 0,
       model_status: 'active',
     };
   },
@@ -137,9 +137,9 @@ export const apiClient = {
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const data = await fetchJson(`/products${queryString}`);
-    if (data && Array.isArray(data) && data.length > 0) return data.map(normalizeSKU);
+    if (data && Array.isArray(data)) return data.map(normalizeSKU);
 
-    // Fallback filter
+    // Fallback filter ONLY when offline (data === null)
     let list = [...mockSKUs];
     if (categoryFilter && categoryFilter !== 'all') {
       list = list.filter((s) => s.category.toLowerCase() === categoryFilter.toLowerCase());
@@ -184,7 +184,7 @@ export const apiClient = {
   async getRecommendations(statusFilter) {
     const param = statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : '';
     const data = await fetchJson(`/recommendations${param}`);
-    if (data && Array.isArray(data) && data.length > 0) return data.map(normalizeRec);
+    if (data && Array.isArray(data)) return data.map(normalizeRec);
 
     let list = [...mockRecommendations];
     if (statusFilter && statusFilter !== 'all') {

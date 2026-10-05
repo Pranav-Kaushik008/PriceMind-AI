@@ -83,10 +83,10 @@ export function ExecutiveOverview() {
         apiClient.getSKUs(selectedCategory),
       ]);
 
-      if (kpis) setExecutiveKPIs(kpis);
+      if (Array.isArray(kpis)) setExecutiveKPIs(kpis);
       if (overview) setAnalyticsOverview(overview);
-      if (recs && recs.length > 0) setRecommendations(recs);
-      if (skuList && skuList.length > 0) setSkus(skuList);
+      if (Array.isArray(recs)) setRecommendations(recs);
+      if (Array.isArray(skuList)) setSkus(skuList);
 
       if (isManualRefresh) {
         toast.success('Live Data Synchronized', 'Real-time telemetry and pricing opportunities refreshed from backend.');

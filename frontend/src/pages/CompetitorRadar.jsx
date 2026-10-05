@@ -155,7 +155,7 @@ export function CompetitorRadar() {
           apiClient.getSKUs(),
         ]);
         if (mounted) {
-          if (skuList && skuList.length > 0) setSkus(skuList);
+          if (Array.isArray(skuList)) setSkus(skuList);
         }
       } catch (err) {
         console.error('CompetitorRadar: error fetching telemetry', err);

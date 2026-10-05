@@ -70,7 +70,7 @@ export function DemandElasticity() {
       setIsLoading(true);
       try {
         const data = await apiClient.getSKUs(selectedCategory);
-        if (isMounted && data && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           setSkus(data);
         }
       } catch (err) {
