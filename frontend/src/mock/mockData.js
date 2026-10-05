@@ -434,11 +434,46 @@ export const mockCompetitorTelemetry = [
 ];
 
 export const mockCrossElasticityMatrix = [
-  { targetSkuCode: 'SKU-8921-PRO', triggerSkuCode: 'SKU-8921-STD', crossElasticityCoeff: 0.42, impactType: 'cannibalization' },
-  { targetSkuCode: 'SKU-8921-PRO', triggerSkuCode: 'SKU-8921-CBL', crossElasticityCoeff: -0.28, impactType: 'halo_effect' },
-  { targetSkuCode: 'SKU-3320-SENS', triggerSkuCode: 'SKU-3320-HUB', crossElasticityCoeff: -0.55, impactType: 'halo_effect' },
-  { targetSkuCode: 'SKU-4402-AIR', triggerSkuCode: 'SKU-4402-FIL', crossElasticityCoeff: -0.34, impactType: 'halo_effect' },
-  { targetSkuCode: 'SKU-9901-SER', triggerSkuCode: 'SKU-9901-PSU', crossElasticityCoeff: -0.62, impactType: 'halo_effect' },
+  {
+    sourceSKU: 'SKU-8921-STD',
+    targetSKU: 'SKU-8921-PRO',
+    crossElasticity: 0.42,
+    impactType: 'cannibalization',
+    projectedCannibalizationRevenue: -18400,
+    netPortfolioImpact: 'Net +$19.4K (Price premium outweighs volume shift)',
+  },
+  {
+    sourceSKU: 'SKU-8921-CBL',
+    targetSKU: 'SKU-8921-PRO',
+    crossElasticity: -0.28,
+    impactType: 'halo_effect',
+    projectedCannibalizationRevenue: -4200,
+    netPortfolioImpact: 'Complementary — accessory attach rate positive',
+  },
+  {
+    sourceSKU: 'SKU-3320-HUB',
+    targetSKU: 'SKU-3320-SENS',
+    crossElasticity: -0.55,
+    impactType: 'halo_effect',
+    projectedCannibalizationRevenue: -8700,
+    netPortfolioImpact: 'Complementary — hub drives sensor bundle sales',
+  },
+  {
+    sourceSKU: 'SKU-4402-FIL',
+    targetSKU: 'SKU-4402-AIR',
+    crossElasticity: -0.34,
+    impactType: 'halo_effect',
+    projectedCannibalizationRevenue: -5100,
+    netPortfolioImpact: 'Complementary — filter consumable boosts base unit LTV',
+  },
+  {
+    sourceSKU: 'SKU-9901-PSU',
+    targetSKU: 'SKU-9901-SER',
+    crossElasticity: -0.62,
+    impactType: 'halo_effect',
+    projectedCannibalizationRevenue: -11300,
+    netPortfolioImpact: 'Complementary — PSU co-purchase rate 78% with server SKU',
+  },
 ];
 
 export const mockSimulations = [

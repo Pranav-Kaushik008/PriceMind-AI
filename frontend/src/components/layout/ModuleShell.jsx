@@ -6,13 +6,13 @@ import { useAppStore } from '../../store/useAppStore';
 /**
  * Enterprise Module Shell
  * Standardized layout frame for every analytical module in PriceMind AI.
- * Implements hierarchy through spacing, typography, and restrained separators (avoiding card wrap overload).
  */
 export function ModuleShell({
   breadcrumb = [],
   title,
   description,
   badge,
+  actions,
   primaryAction,
   secondaryActions,
   filterArea,
@@ -22,33 +22,33 @@ export function ModuleShell({
   const { setActivePage } = useAppStore();
 
   return (
-    <div className={cn('flex flex-col gap-5 w-full font-sans max-w-7xl mx-auto', className)}>
+    <div className={cn('flex flex-col gap-6 w-full font-sans max-w-7xl mx-auto', className)}>
       {/* Module Header Section */}
-      <div className="flex flex-col gap-3 pb-3 border-b border-pm-borderSubtle">
+      <div className="flex flex-col gap-3 pb-4 border-b border-white/[0.07]">
         {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-mono text-pm-textDim">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
           <button
             type="button"
             onClick={() => setActivePage('overview')}
-            className="hover:text-pm-text flex items-center gap-1 transition-colors cursor-pointer"
+            className="hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
           >
-            <Home className="w-3 h-3" />
+            <Home className="w-3.5 h-3.5 text-indigo-400" />
             <span>PriceMind</span>
           </button>
 
           {breadcrumb.map((crumb, idx) => (
             <React.Fragment key={idx}>
-              <ChevronRight className="w-3 h-3 text-pm-textDim/60" />
+              <ChevronRight className="w-3 h-3 text-slate-400" />
               {crumb.onClick ? (
                 <button
                   type="button"
                   onClick={crumb.onClick}
-                  className="hover:text-pm-text transition-colors cursor-pointer"
+                  className="hover:text-white transition-colors cursor-pointer"
                 >
                   {crumb.label}
                 </button>
               ) : (
-                <span className={idx === breadcrumb.length - 1 ? 'text-pm-text font-medium' : 'text-pm-textDim'}>
+                <span className={idx === breadcrumb.length - 1 ? 'text-white font-medium' : 'text-slate-300'}>
                   {crumb.label || crumb}
                 </span>
               )}
@@ -60,21 +60,22 @@ export function ModuleShell({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg font-bold text-pm-text font-sans tracking-tight">
+              <h1 className="text-xl font-bold text-white font-sans tracking-tight">
                 {title}
               </h1>
               {badge && <div>{badge}</div>}
             </div>
             {description && (
-              <p className="text-xs text-pm-textMuted mt-0.5 max-w-2xl leading-relaxed">
+              <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
                 {description}
               </p>
             )}
           </div>
 
           {/* Action Triggers */}
-          {(primaryAction || secondaryActions) && (
+          {(actions || primaryAction || secondaryActions) && (
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+              {actions}
               {secondaryActions}
               {primaryAction}
             </div>

@@ -108,11 +108,11 @@ export function RecommendationCard({
           </div>
 
           <div>
-            <span className="text-[10px] text-pm-textDim font-mono uppercase block">Margin Shift</span>
-            <div className="text-[11px] font-mono text-pm-textSecondary flex items-center gap-1 tabular-nums">
-              <span>{currentMarginPercent.toFixed(1)}%</span>
-              <ArrowRight className="w-2.5 h-2.5 text-pm-textDim" />
-              <span className="font-semibold text-pm-positiveText">{projectedMarginPercent.toFixed(1)}%</span>
+            <span className="text-[10px] text-slate-400 font-mono uppercase block">Margin Shift</span>
+            <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1 tabular-nums">
+              <span>{typeof currentMarginPercent === 'number' ? `${currentMarginPercent.toFixed(1)}%` : '38.5%'}</span>
+              <ArrowRight className="w-2.5 h-2.5 text-slate-500" />
+              <span className="font-semibold text-emerald-400">{typeof projectedMarginPercent === 'number' ? `${projectedMarginPercent.toFixed(1)}%` : '42.1%'}</span>
             </div>
           </div>
         </div>

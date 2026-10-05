@@ -5,7 +5,7 @@ Service layer for analytics and executive telemetry.
 Calculates real metrics from database tables and historical records.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
@@ -18,25 +18,37 @@ from app.schemas.analytics import AnalyticsOverviewResponse
 from app.schemas.pricing import KPIResponse
 
 
-def get_analytics_overview(db: Session) -> AnalyticsOverviewResponse:
-    """Calculate aggregate overview metrics from database records."""
-    total_products = db.scalar(select(func.count(Product.id))) or 0
-    total_categories = db.scalar(select(func.count(Category.id))) or 0
-    total_sales = db.scalar(select(func.count(SalesRecord.id))) or 0
+def get_analytics_overview(db: Session, organization_id: Optional[str] = None) -> AnalyticsOverviewResponse:
+    """Calculate aggregate overview metrics from database records, optionally scoped by organization."""
+    prod_q = select(func.count(Product.id))
+    if organization_id:
+        prod_q = prod_q.where(Product.organization_id == organization_id)
+    total_products = db.scalar(prod_q) or 0
 
-    sales_aggregates = db.execute(
-        select(
-            func.sum(SalesRecord.revenue),
-            func.avg(SalesRecord.price),
-            func.avg(SalesRecord.units_sold),
-        )
-    ).first()
+    cat_q = select(func.count(Category.id))
+    total_categories = db.scalar(cat_q) or 0
+
+    sales_count_q = select(func.count(SalesRecord.id))
+    sales_agg_q = select(
+        func.sum(SalesRecord.revenue),
+        func.avg(SalesRecord.price),
+        func.avg(SalesRecord.units_sold),
+    )
+    if organization_id:
+        sales_count_q = sales_count_q.join(SalesRecord.product).where(Product.organization_id == organization_id)
+        sales_agg_q = sales_agg_q.join(SalesRecord.product).where(Product.organization_id == organization_id)
+
+    total_sales = db.scalar(sales_count_q) or 0
+    sales_aggregates = db.execute(sales_agg_q).first()
 
     total_revenue = float(sales_aggregates[0]) if sales_aggregates and sales_aggregates[0] else 0.0
     avg_price = float(sales_aggregates[1]) if sales_aggregates and sales_aggregates[1] else 0.0
     avg_demand = float(sales_aggregates[2]) if sales_aggregates and sales_aggregates[2] else 0.0
 
-    total_recs = db.scalar(select(func.count(PricingRecommendation.id))) or 0
+    recs_q = select(func.count(PricingRecommendation.id))
+    if organization_id:
+        recs_q = recs_q.join(PricingRecommendation.product).where(Product.organization_id == organization_id)
+    total_recs = db.scalar(recs_q) or 0
     total_opts = db.scalar(select(func.count(OptimizationRun.id))) or 0
 
     return AnalyticsOverviewResponse(
@@ -53,9 +65,9 @@ def get_analytics_overview(db: Session) -> AnalyticsOverviewResponse:
     )
 
 
-def get_executive_kpis(db: Session) -> List[KPIResponse]:
+def get_executive_kpis(db: Session, organization_id: Optional[str] = None) -> List[KPIResponse]:
     """Provide executive KPIs for the React dashboard with real aggregations."""
-    overview = get_analytics_overview(db)
+    overview = get_analytics_overview(db, organization_id=organization_id)
 
     return [
         KPIResponse(

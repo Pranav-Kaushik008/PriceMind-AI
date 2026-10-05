@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -40,8 +40,10 @@ import {
   ChevronRight,
   Info,
   X,
+  Upload,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { apiClient } from '../api/client';
 import { mockSKUs, mockRecommendations, mockCompetitorTelemetry, mockElasticityCurves } from '../mock/mockData';
 import { formatCurrency, formatPercent, formatNumber } from '../lib/utils';
 
@@ -58,6 +60,7 @@ import { Modal } from '../components/ui/Modal';
 import { SHAPWaterfall } from '../components/ui/SHAPWaterfall';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useToast } from '../components/ui/ToastProvider';
+import { DataImportModal } from '../components/ui/DataImportModal';
 
 export function ProductIntelligence() {
   const {
@@ -69,6 +72,13 @@ export function ProductIntelligence() {
   } = useAppStore();
 
   const toast = useToast();
+
+  // Dynamic API state
+  const [rawSKUs, setRawSKUs] = useState(mockSKUs);
+  const [recs, setRecs] = useState(mockRecommendations);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Search & Filtering State
   const [search, setSearch] = useState('');
@@ -82,6 +92,30 @@ export function ProductIntelligence() {
 
   // Row Selection for Batch Operations
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+  // Fetch dynamic products from backend
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchCatalog() {
+      setIsLoading(true);
+      try {
+        const [skuList, recList] = await Promise.all([
+          apiClient.getSKUs(selectedCategory, search),
+          apiClient.getRecommendations(),
+        ]);
+        if (isMounted) {
+          if (skuList && skuList.length > 0) setRawSKUs(skuList);
+          if (recList && recList.length > 0) setRecs(recList);
+        }
+      } catch (err) {
+        console.error('Error fetching dynamic catalog:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    fetchCatalog();
+    return () => { isMounted = false; };
+  }, [selectedCategory, search, refreshKey]);
 
   // Column Visibility State
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
@@ -104,14 +138,14 @@ export function ProductIntelligence() {
 
   // Enriched SKU dataset
   const enrichedSKUs = useMemo(() => {
-    return mockSKUs.map((sku) => {
-      const rec = mockRecommendations.find((r) => r.skuCode === sku.skuCode || r.skuId === sku.id);
+    return rawSKUs.map((sku) => {
+      const rec = recs.find((r) => r.skuCode === sku.skuCode || r.skuId === sku.id);
       const isPriceUp = (sku.recommendedPrice || sku.currentPrice) > sku.currentPrice;
       const priceDeltaPct = sku.recommendedPrice
         ? ((sku.recommendedPrice - sku.currentPrice) / sku.currentPrice) * 100
         : 0;
 
-      const monthlyDemand = sku.currentVelocity * 30;
+      const monthlyDemand = (sku.currentVelocity || 35) * 30;
       const forecastMonthlyDemand = Math.round(monthlyDemand * (1 + (rec?.projectedVolumeDeltaPercent || -2.5) / 100));
       const expectedRevenue = (sku.recommendedPrice || sku.currentPrice) * forecastMonthlyDemand;
       const expectedProfit = ((sku.recommendedPrice || sku.currentPrice) - sku.costPrice) * forecastMonthlyDemand;
@@ -132,7 +166,7 @@ export function ProductIntelligence() {
         isQueued: queuedRecommendations.includes(rec?.id || sku.id),
       };
     });
-  }, [queuedRecommendations]);
+  }, [rawSKUs, recs, queuedRecommendations]);
 
   // Filtered dataset
   const filteredData = useMemo(() => {
@@ -330,18 +364,18 @@ export function ProductIntelligence() {
       {/* =========================================================================
           1. HEADER & SLICERS
           ========================================================================= */}
-      <div className="flex flex-col gap-3 pb-3 border-b border-pm-borderSubtle">
+      <div className="flex flex-col gap-3 pb-4 border-b border-white/[0.07]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg font-bold text-pm-text font-sans tracking-tight">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-bold text-white font-sans tracking-tight">
                 Product Intelligence Matrix
               </h1>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-pm-accentBg text-pm-accentText border border-pm-accentBorder font-semibold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-bold uppercase tracking-wider">
                 {enrichedSKUs.length} Active Catalog SKUs
               </span>
             </div>
-            <p className="text-xs text-pm-textMuted mt-0.5">
+            <p className="text-xs text-slate-400 mt-1">
               Comprehensive SKU-level elasticity diagnostics, competitor benchmark spreads, and profit opportunities.
             </p>
           </div>
@@ -364,8 +398,19 @@ export function ProductIntelligence() {
             <Button
               variant="outline"
               size="sm"
+              icon={Upload}
+              onClick={() => setIsImportModalOpen(true)}
+              className="text-xs border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
+            >
+              Upload CSV
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               icon={Sliders}
               onClick={() => setActivePage('simulator')}
+              className="text-xs"
             >
               What-If Sandbox
             </Button>
@@ -373,7 +418,7 @@ export function ProductIntelligence() {
         </div>
 
         {/* Filter Bar with Search, Category, Channel, Elasticity & Column Visibility */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-pm-surface border border-pm-border rounded-md shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 pm-card-glass">
           <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[300px]">
             {/* Search Input */}
             <div className="w-64 max-w-full">
@@ -382,7 +427,7 @@ export function ProductIntelligence() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search SKU code, name, or category..."
-                className="w-full bg-pm-subtle border border-pm-border hover:border-pm-borderStrong focus:border-pm-accent focus:ring-1 focus:ring-pm-accent rounded text-xs text-pm-text placeholder:text-pm-textDim px-3 h-8 focus:outline-none transition-all"
+                className="w-full bg-white/[0.05] border border-white/[0.10] hover:border-white/[0.16] focus:border-indigo-500/60 focus:bg-white/[0.07] rounded-lg text-xs text-white placeholder:text-slate-500 px-3 h-8.5 focus:outline-none transition-all"
               />
             </div>
 
@@ -550,11 +595,11 @@ export function ProductIntelligence() {
             {/* =================================================================
                 A. DECISION PANEL (Prominently Featured at Top of Workspace)
                 ================================================================= */}
-            <div className="bg-pm-subtle border border-pm-borderStrong rounded-md p-4 shadow-sm">
-              <div className="flex items-center justify-between pb-2 mb-3 border-b border-pm-borderSubtle">
+            <div className="pm-card-glass p-4">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-pm-accent" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-pm-text">
+                  <Zap className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white">
                     Pricing Decision & Impact Projection
                   </h3>
                 </div>
@@ -567,67 +612,67 @@ export function ProductIntelligence() {
 
               {/* 6 Key Decision Metrics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-textDim uppercase block">Current Price</span>
-                  <span className="text-sm font-bold text-pm-text mt-0.5 block">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase block">Current Price</span>
+                  <span className="text-sm font-bold text-white mt-1 block">
                     {formatCurrency(selectedSku.currentPrice, currency)}
                   </span>
-                  <span className="text-[10px] text-pm-textDim mt-0.5 block">COGS: {formatCurrency(selectedSku.costPrice, currency)}</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">COGS: {formatCurrency(selectedSku.costPrice, currency)}</span>
                 </div>
 
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-accentText uppercase block">Recommended</span>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-sm font-bold text-pm-text">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-indigo-400 uppercase block font-semibold">Recommended</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-sm font-bold text-white">
                       {formatCurrency(selectedSku.recommendedPrice, currency)}
                     </span>
                     <Badge variant={selectedSku.priceDeltaPercent > 0 ? 'success' : 'danger'} size="sm" className="text-[10px] px-1 py-0">
                       {formatPercent(selectedSku.priceDeltaPercent, true)}
                     </Badge>
                   </div>
-                  <span className="text-[10px] text-pm-positiveText mt-0.5 block">+{(selectedSku.recommendedPrice - selectedSku.currentPrice).toFixed(2)} delta</span>
+                  <span className="text-[10px] text-emerald-400 mt-0.5 block">+{(selectedSku.recommendedPrice - selectedSku.currentPrice).toFixed(2)} delta</span>
                 </div>
 
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-textDim uppercase block">Expected Demand</span>
-                  <span className="text-sm font-bold text-pm-text mt-0.5 block">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase block">Expected Demand</span>
+                  <span className="text-sm font-bold text-white mt-1 block">
                     {formatNumber(selectedSku.forecastMonthlyDemand)} /mo
                   </span>
-                  <span className="text-[10px] text-pm-textDim mt-0.5 block">
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
                     {formatPercent(selectedSku.priceDeltaPercent > 0 ? -2.8 : 14.5, true)} vs base
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-textDim uppercase block">Expected Revenue</span>
-                  <span className="text-sm font-bold text-pm-text mt-0.5 block">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase block">Expected Revenue</span>
+                  <span className="text-sm font-bold text-white mt-1 block">
                     {formatCurrency(selectedSku.expectedRevenue, currency, true)}
                   </span>
-                  <span className="text-[10px] text-pm-positiveText mt-0.5 block">+4.8% net rev</span>
+                  <span className="text-[10px] text-emerald-400 mt-0.5 block">+4.8% net rev</span>
                 </div>
 
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-textDim uppercase block">Expected Profit</span>
-                  <span className="text-sm font-bold text-pm-positiveText mt-0.5 block">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase block">Expected Profit</span>
+                  <span className="text-sm font-bold text-emerald-400 mt-1 block">
                     {formatCurrency(selectedSku.expectedProfit, currency, true)}
                   </span>
-                  <span className="text-[10px] font-semibold text-pm-positiveText mt-0.5 block">
+                  <span className="text-[10px] font-semibold text-emerald-400 mt-0.5 block">
                     +{formatCurrency(selectedSku.profitLift, currency, true)}/mo
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-pm-surface border border-pm-border rounded">
-                  <span className="text-[10px] text-pm-textDim uppercase block">Expected Margin</span>
-                  <span className="text-sm font-bold text-pm-positiveText mt-0.5 block">
+                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase block">Expected Margin</span>
+                  <span className="text-sm font-bold text-indigo-400 mt-1 block">
                     {(selectedSku.marginPercent + 3.8).toFixed(1)}%
                   </span>
-                  <span className="text-[10px] text-pm-positiveText mt-0.5 block">+380 bps yield</span>
+                  <span className="text-[10px] text-indigo-400 mt-0.5 block">+380 bps yield</span>
                 </div>
               </div>
 
               {/* Action Buttons Toolbar */}
-              <div className="mt-3 pt-3 border-t border-pm-borderSubtle flex items-center justify-between flex-wrap gap-2">
-                <span className="text-[11px] text-pm-textDim">
+              <div className="mt-3.5 pt-3 border-t border-white/[0.08] flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[11px] text-slate-400">
                   Driver: {selectedSku.recommendation?.primaryDriver || 'Inelastic Demand Zone & Competitor Parity Deficit'}
                 </span>
 
@@ -666,7 +711,7 @@ export function ProductIntelligence() {
             </div>
 
             {/* Workspace Sub-Tabs */}
-            <div className="flex items-center border-b border-pm-border gap-4 text-xs font-medium">
+            <div className="flex items-center border-b border-white/[0.08] gap-4 text-xs font-medium">
               {[
                 { id: 'overview', label: 'Price & Demand History' },
                 { id: 'elasticity', label: 'Elasticity & Sensitivity' },
@@ -677,10 +722,10 @@ export function ProductIntelligence() {
                   key={tab.id}
                   type="button"
                   onClick={() => setDetailTab(tab.id)}
-                  className={`pb-2 transition-all cursor-pointer ${
+                  className={`pb-2.5 transition-all cursor-pointer ${
                     detailTab === tab.id
-                      ? 'border-b-2 border-pm-accent text-pm-text font-semibold'
-                      : 'text-pm-textDim hover:text-pm-text'
+                      ? 'border-b-2 border-indigo-400 text-white font-bold'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {tab.label}
@@ -691,13 +736,13 @@ export function ProductIntelligence() {
             {/* TAB 1: Price & Demand History Time-Series */}
             {detailTab === 'overview' && (
               <div className="space-y-4">
-                <div className="bg-pm-surface border border-pm-border rounded-md p-4 shadow-sm">
+                <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-4 shadow-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-pm-text flex items-center gap-1.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-pm-accent" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
                       Historical Price & Demand Trajectory (6 Months + Forecast)
                     </h4>
-                    <span className="font-mono text-[11px] text-pm-textDim">Solid: Price ($) • Shaded: Revenue ($)</span>
+                    <span className="font-mono text-[11px] text-slate-400">Solid: Price ($) • Shaded: Revenue ($)</span>
                   </div>
 
                   <div className="h-56 w-full">
@@ -709,12 +754,12 @@ export function ProductIntelligence() {
                             <stop offset="95%" stopColor="#6366F1" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                         <XAxis dataKey="month" stroke="#64748B" tick={{ fontSize: 10, fill: '#94A3B8' }} />
                         <YAxis yAxisId="left" stroke="#64748B" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(val) => `$${val}`} />
                         <YAxis yAxisId="right" orientation="right" stroke="#64748B" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(val) => `${val}u`} />
                         <RechartsTooltip
-                          contentStyle={{ backgroundColor: 'var(--pm-bg-elevated)', borderColor: 'var(--pm-border-strong)', borderRadius: '4px', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
                           formatter={(val, name) => [name === 'price' ? formatCurrency(val, currency) : `${val} units`, name === 'price' ? 'List Price' : 'Monthly Demand']}
                         />
                         <ReferenceLine yAxisId="left" x="Mar (Current)" stroke="#94A3B8" strokeDasharray="3 3" label={{ value: 'Current', fill: '#94A3B8', fontSize: 10 }} />
@@ -728,24 +773,24 @@ export function ProductIntelligence() {
 
                 {/* SKU Financial Anatomy */}
                 <div className="grid grid-cols-3 gap-3 font-mono text-xs">
-                  <div className="p-3 bg-pm-surface border border-pm-border rounded">
-                    <span className="text-[10px] text-pm-textDim uppercase block">Cost Structure</span>
-                    <span className="text-xs font-semibold text-pm-text block mt-1">COGS: {formatCurrency(selectedSku.costPrice, currency)}</span>
-                    <span className="text-[10px] text-pm-textDim block mt-0.5">Direct Margin: {(selectedSku.currentPrice - selectedSku.costPrice).toFixed(2)}/u</span>
+                  <div className="p-3 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase block">Cost Structure</span>
+                    <span className="text-xs font-semibold text-white block mt-1">COGS: {formatCurrency(selectedSku.costPrice, currency)}</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Direct Margin: {(selectedSku.currentPrice - selectedSku.costPrice).toFixed(2)}/u</span>
                   </div>
-                  <div className="p-3 bg-pm-surface border border-pm-border rounded">
-                    <span className="text-[10px] text-pm-textDim uppercase block">Current Run-Rate</span>
-                    <span className="text-xs font-semibold text-pm-text block mt-1">
+                  <div className="p-3 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase block">Current Run-Rate</span>
+                    <span className="text-xs font-semibold text-white block mt-1">
                       {formatCurrency(selectedSku.currentPrice * selectedSku.monthlyDemand, currency, true)}/mo
                     </span>
-                    <span className="text-[10px] text-pm-textDim block mt-0.5">{selectedSku.currentVelocity} units/day</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">{selectedSku.currentVelocity} units/day</span>
                   </div>
-                  <div className="p-3 bg-pm-surface border border-pm-border rounded">
-                    <span className="text-[10px] text-pm-textDim uppercase block">Elasticity Index</span>
-                    <span className="text-xs font-semibold text-pm-positiveText block mt-1">
+                  <div className="p-3 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase block">Elasticity Index</span>
+                    <span className="text-xs font-semibold text-emerald-400 block mt-1">
                       Ed = {selectedSku.elasticityScore.toFixed(2)}
                     </span>
-                    <span className="text-[10px] text-pm-textDim block mt-0.5">{selectedSku.elasticityCategory.toUpperCase()}</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">{selectedSku.elasticityCategory.toUpperCase()}</span>
                   </div>
                 </div>
               </div>
@@ -754,16 +799,16 @@ export function ProductIntelligence() {
             {/* TAB 2: Elasticity Curve */}
             {detailTab === 'elasticity' && (
               <div className="space-y-4">
-                <div className="bg-pm-surface border border-pm-border rounded-md p-4 shadow-sm">
+                <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-4 shadow-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-pm-text">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-white">
                       Neural Spline Elasticity Demand Curve (Q = f(P))
                     </h4>
-                    <span className="font-mono text-xs text-pm-accentText">
+                    <span className="font-mono text-xs text-indigo-400">
                       Point Elasticity: {selectedSku.elasticityScore.toFixed(2)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-pm-textDim mb-3">
+                  <p className="text-[11px] text-slate-400 mb-3">
                     Shows projected monthly gross revenue across price points. Peak indicates the profit-maximizing optimal price step.
                   </p>
 
@@ -779,11 +824,11 @@ export function ProductIntelligence() {
                           { price: selectedSku.currentPrice * 1.25, revenue: 39000 },
                         ]}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                         <XAxis dataKey="price" stroke="#64748B" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(val) => `$${val}`} />
                         <YAxis dataKey="revenue" stroke="#64748B" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
                         <RechartsTooltip
-                          contentStyle={{ backgroundColor: 'var(--pm-bg-elevated)', borderColor: 'var(--pm-border-strong)', borderRadius: '4px', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
                           formatter={(val) => [formatCurrency(val, currency), 'Gross Revenue']}
                         />
                         <ReferenceLine x={selectedSku.currentPrice} stroke="#EF4444" strokeDasharray="3 3" label={{ value: 'Current', fill: '#EF4444', fontSize: 10 }} />
@@ -810,23 +855,23 @@ export function ProductIntelligence() {
             {/* TAB 3: Competitor Comparison */}
             {detailTab === 'competitors' && (
               <div className="space-y-4">
-                <div className="bg-pm-surface border border-pm-border rounded-md p-4 shadow-sm">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-pm-text mb-3">
+                <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-4 shadow-lg">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-white mb-3">
                     Competitor Market Benchmark Price Spread
                   </h4>
 
                   <div className="space-y-3 font-mono text-xs">
-                    <div className="flex justify-between text-pm-textDim text-[11px]">
+                    <div className="flex justify-between text-slate-400 text-[11px]">
                       <span>Min: {formatCurrency(selectedSku.competitorMinPrice, currency)}</span>
                       <span>Avg: {formatCurrency(selectedSku.competitorAvgPrice, currency)}</span>
                       <span>Max: {formatCurrency(selectedSku.competitorMaxPrice, currency)}</span>
                     </div>
 
                     {/* Spread Slider */}
-                    <div className="w-full bg-pm-subtle h-2.5 rounded-full relative overflow-hidden border border-pm-borderSubtle">
-                      <div className="absolute inset-y-0 bg-pm-borderStrong left-[15%] right-[15%] rounded" />
+                    <div className="w-full bg-slate-800/80 h-2.5 rounded-full relative overflow-hidden border border-white/[0.06]">
+                      <div className="absolute inset-y-0 bg-white/10 left-[15%] right-[15%] rounded" />
                       <div
-                        className="absolute top-0 bottom-0 w-3 bg-pm-accent rounded-full -translate-x-1/2 shadow-sm"
+                        className="absolute top-0 bottom-0 w-3 bg-indigo-500 rounded-full -translate-x-1/2 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
                         style={{
                           left: `${Math.max(5, Math.min(95, ((selectedSku.currentPrice - selectedSku.competitorMinPrice) / (selectedSku.competitorMaxPrice - selectedSku.competitorMinPrice || 1)) * 100))}%`,
                         }}
@@ -834,29 +879,29 @@ export function ProductIntelligence() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] pt-1 text-pm-textDim">
-                      <span>Position: <strong className="text-pm-text uppercase">{selectedSku.pricePosition}</strong></span>
+                    <div className="flex items-center justify-between text-[11px] pt-1 text-slate-400">
+                      <span>Position: <strong className="text-white uppercase">{selectedSku.pricePosition}</strong></span>
                       <span>
-                        Spread vs Avg: <strong className="text-pm-text">{formatPercent(((selectedSku.currentPrice - selectedSku.competitorAvgPrice) / selectedSku.competitorAvgPrice) * 100, true)}</strong>
+                        Spread vs Avg: <strong className="text-white">{formatPercent(((selectedSku.currentPrice - selectedSku.competitorAvgPrice) / selectedSku.competitorAvgPrice) * 100, true)}</strong>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Scraped Competitor List Table */}
-                <div className="bg-pm-surface border border-pm-border rounded-md p-3 shadow-sm font-sans text-xs">
-                  <span className="text-xs font-semibold text-pm-text block mb-2">
+                <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-4 shadow-lg font-sans text-xs">
+                  <span className="text-xs font-semibold text-white block mb-3">
                     Scraped Competitor Price Feeds
                   </span>
-                  <div className="divide-y divide-pm-borderSubtle">
+                  <div className="divide-y divide-white/[0.04]">
                     {mockCompetitorTelemetry.map((comp) => (
-                      <div key={comp.competitorId} className="py-2 flex items-center justify-between text-xs">
+                      <div key={comp.competitorId} className="py-2.5 flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-semibold text-pm-text block">{comp.competitorName}</span>
-                          <span className="text-[10px] font-mono text-pm-textDim">Updated: {comp.lastUpdated}</span>
+                          <span className="font-semibold text-white block">{comp.competitorName}</span>
+                          <span className="text-[10px] font-mono text-slate-400">Updated: {comp.lastUpdated}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-pm-text">{formatCurrency(comp.price, currency)}</span>
+                          <span className="font-mono font-bold text-white">{formatCurrency(comp.price, currency)}</span>
                           <Badge variant={comp.inStock ? 'success' : 'danger'} size="sm">
                             {comp.inStock ? 'In Stock' : 'Out of Stock'}
                           </Badge>
@@ -872,20 +917,20 @@ export function ProductIntelligence() {
             {detailTab === 'inventory' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-                  <div className="p-3 bg-pm-surface border border-pm-border rounded">
-                    <span className="text-[10px] text-pm-textDim uppercase block">Stock on Hand</span>
-                    <span className="text-sm font-bold text-pm-text block mt-1">{formatNumber(selectedSku.inventoryStock)} units</span>
-                    <span className="text-[10px] text-pm-textDim block mt-0.5">Burn Rate: {selectedSku.currentVelocity} units/day</span>
+                  <div className="p-3.5 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase block">Stock on Hand</span>
+                    <span className="text-sm font-bold text-white block mt-1">{formatNumber(selectedSku.inventoryStock)} units</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Burn Rate: {selectedSku.currentVelocity} units/day</span>
                   </div>
-                  <div className="p-3 bg-pm-surface border border-pm-border rounded">
-                    <span className="text-[10px] text-pm-textDim uppercase block">Runway Safety</span>
-                    <span className="text-sm font-bold text-pm-positiveText block mt-1">{selectedSku.daysOfInventory} Days Supply</span>
-                    <span className="text-[10px] text-pm-textDim block mt-0.5">Reorder Point: 14 Days</span>
+                  <div className="p-3.5 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase block">Runway Safety</span>
+                    <span className="text-sm font-bold text-emerald-400 block mt-1">{selectedSku.daysOfInventory} Days Supply</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Reorder Point: 14 Days</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-pm-surface border border-pm-border rounded text-xs text-pm-textSecondary leading-relaxed">
-                  <h5 className="font-semibold text-pm-text mb-1">Inventory Runway Analysis:</h5>
+                <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl text-xs text-slate-300 leading-relaxed">
+                  <h5 className="font-semibold text-white mb-1.5">Inventory Runway Analysis:</h5>
                   <p>
                     Current inventory is well within the safe buffer zone (29 days). The recommended +7.7% price elevation will slightly reduce daily burn rate from 42 to 40 units/day, extending runway by +2.5 days while maximizing margin extraction.
                   </p>
@@ -895,6 +940,16 @@ export function ProductIntelligence() {
           </div>
         </Drawer>
       )}
+
+      {/* Data Ingestion Modal */}
+      <DataImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          // Trigger dynamic catalog refetch
+          setRefreshKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }

@@ -11,10 +11,10 @@ import { mockAssistantMessages } from '../mock/mockData';
 import { apiClient } from '../api/client';
 
 const promptStarters = [
-  'Explain why SKU-8921-PRO was recommended a +11.8% price increase',
-  'What is the corporate margin floor policy for hardware?',
-  'Explain the difference between elastic and inelastic demand',
-  'How does SHAP explain dynamic pricing recommendations?'
+  'Which products have the biggest pricing opportunities?',
+  'Why has demand decreased for this product?',
+  'What happens if I increase this product price by 5%?',
+  'Summarize this month revenue and profit performance'
 ];
 
 export function AIAssistant() {
@@ -106,36 +106,38 @@ export function AIAssistant() {
         </Button>
       }
     >
-      <div className="flex flex-col h-[calc(100vh-210px)] border border-pm-borderSubtle rounded-sm bg-pm-surface overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-210px)] border border-white/[0.08] rounded-2xl bg-[#0D1524]/60 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Terminal Status Bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-pm-borderSubtle bg-pm-subtle text-[11px] font-mono">
-          <div className="flex items-center gap-2 text-pm-text">
-            <Terminal size={12} className="text-pm-accentText" />
-            <span>PriceMind RAG Agent v2.4</span>
-            <span className="text-pm-textDim">• GPT-4o / Claude 3.5 Sonnet Ensemble • Connected to Live ERP & MLflow</span>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.08] bg-white/[0.02] text-xs font-sans">
+          <div className="flex items-center gap-2.5 text-white">
+            <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <Sparkles size={13} />
+            </div>
+            <span className="font-semibold">PriceMind RAG Agent v2.4</span>
+            <span className="text-slate-400 hidden sm:inline">• Live ERP & MLflow Connected</span>
           </div>
-          <div className="flex items-center gap-1.5 text-pm-positiveText">
-            <span className="w-1.5 h-1.5 rounded-full bg-pm-positiveText animate-pulse" />
-            <span>Telemetry Online</span>
+          <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+            <span className="font-medium">Telemetry Online</span>
           </div>
         </div>
 
         {/* Message Log */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
           {messages.map((m) => {
             const isUser = m.sender === 'user';
             return (
               <div key={m.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                <div className="flex items-center gap-2 mb-1 text-[10px] font-mono text-pm-textDim">
-                  <span>{isUser ? 'Revenue Manager' : 'PriceMind AI Copilot'}</span>
+                <div className="flex items-center gap-2 mb-1.5 text-[11px] font-mono text-slate-400">
+                  <span className="font-medium text-slate-300">{isUser ? 'You (Revenue Manager)' : 'PriceMind AI Copilot'}</span>
                   <span>•</span>
                   <span>{m.timestamp}</span>
                 </div>
                 <div
-                  className={`max-w-2xl px-4 py-3 rounded-sm text-xs leading-relaxed font-mono whitespace-pre-line ${
+                  className={`max-w-2xl px-5 py-3.5 rounded-2xl text-xs leading-relaxed font-sans whitespace-pre-line shadow-md transition-all ${
                     isUser
-                      ? 'bg-pm-elevated text-pm-text border border-pm-borderStrong'
-                      : 'bg-pm-subtle text-pm-text border border-pm-borderSubtle'
+                      ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-tr-none border border-indigo-400/30 shadow-[0_4px_16px_rgba(99,102,241,0.25)]'
+                      : 'bg-[#131D31]/80 backdrop-blur-md text-slate-200 rounded-tl-none border border-white/[0.08]'
                   }`}
                 >
                   {m.content}
@@ -146,10 +148,13 @@ export function AIAssistant() {
 
           {isThinking && (
             <div className="flex flex-col items-start">
-              <div className="text-[10px] font-mono text-pm-textDim mb-1">PriceMind AI Copilot</div>
-              <div className="px-4 py-2.5 rounded-sm bg-pm-subtle border border-pm-borderSubtle text-xs font-mono text-pm-accentText flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-pm-accentText animate-ping" />
-                Querying TreeSHAP attributions & elasticity tensors...
+              <div className="text-[11px] font-mono text-slate-400 mb-1.5">PriceMind AI Copilot</div>
+              <div className="px-5 py-3.5 rounded-2xl rounded-tl-none bg-[#131D31]/80 backdrop-blur-md border border-indigo-500/30 text-xs font-sans text-indigo-300 flex items-center gap-3 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                </span>
+                <span>Querying TreeSHAP attributions & elasticity tensors...</span>
               </div>
             </div>
           )}
@@ -157,41 +162,41 @@ export function AIAssistant() {
         </div>
 
         {/* Prompt Starters */}
-        <div className="px-4 py-2 border-t border-pm-borderSubtle bg-pm-subtle/50 flex flex-wrap gap-2">
+        <div className="px-5 py-3 border-t border-white/[0.06] bg-white/[0.01] flex flex-wrap gap-2">
           {promptStarters.map((starter, idx) => (
             <button
               key={idx}
               onClick={() => handleSend(starter)}
-              className="text-[10px] font-mono px-2 py-1 rounded-sm bg-pm-surface hover:bg-pm-hover border border-pm-borderSubtle text-pm-textMuted hover:text-pm-text transition-colors cursor-pointer text-left truncate max-w-[320px]"
+              className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-indigo-500/15 border border-white/[0.08] hover:border-indigo-500/30 text-slate-300 hover:text-white transition-all cursor-pointer text-left truncate max-w-[340px] shadow-sm"
             >
-              &gt; {starter}
+              💡 {starter}
             </button>
           ))}
         </div>
 
         {/* Chat Input */}
-        <div className="p-3 border-t border-pm-borderSubtle bg-pm-surface">
+        <div className="p-4 border-t border-white/[0.08] bg-[#0A101D]/80 backdrop-blur-md">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
             }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
           >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask PriceMind AI about pricing rationale, elasticity, competitor actions, or simulation scenarios..."
-              className="flex-1 bg-pm-subtle border border-pm-borderSubtle rounded-sm px-3 py-2 text-xs text-pm-text font-mono placeholder:text-pm-textDim focus:outline-none focus:border-pm-borderStrong"
+              className="flex-1 bg-[#131D31]/90 border border-white/[0.08] focus:border-indigo-500/60 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 transition-all font-sans shadow-inner"
             />
             <Button
               type="submit"
-              size="sm"
+              size="md"
               variant="primary"
               disabled={!input.trim() || isThinking}
               icon={Send}
-              className="text-xs"
+              className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium shadow-[0_0_15px_rgba(99,102,241,0.3)] cursor-pointer"
             >
               Submit Query
             </Button>

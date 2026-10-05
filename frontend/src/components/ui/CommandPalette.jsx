@@ -69,37 +69,37 @@ export function CommandPalette() {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/70 animate-in fade-in duration-150">
-      <div className="w-full max-w-xl bg-pm-elevated border border-pm-borderStrong rounded-md shadow-lg overflow-hidden flex flex-col font-sans">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="w-full max-w-xl bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col font-sans">
         {/* Input box */}
-        <div className="flex items-center px-4 py-3 border-b border-pm-border bg-pm-surface">
-          <Search className="w-4 h-4 text-pm-textDim mr-3 flex-shrink-0" />
+        <div className="flex items-center px-5 py-3.5 border-b border-white/[0.08] bg-white/[0.02]">
+          <Search className="w-4 h-4 text-indigo-400 mr-3 flex-shrink-0" />
           <input
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search modules, run commands, or find SKUs..."
-            className="w-full bg-transparent text-xs text-pm-text placeholder:text-pm-textDim focus:outline-none"
+            className="w-full bg-transparent text-xs text-white placeholder:text-slate-500 focus:outline-none font-sans"
           />
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(false)}
-            className="p-1 text-pm-textDim hover:text-pm-text rounded cursor-pointer"
+            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Results List */}
-        <div className="max-h-80 overflow-y-auto p-2 space-y-3">
+        <div className="max-h-80 overflow-y-auto p-3 space-y-3 custom-scrollbar">
           {/* Navigation Section */}
           {filteredNav.length > 0 && (
             <div>
-              <span className="px-2 text-[10px] font-mono uppercase tracking-wider text-pm-textDim block mb-1">
+              <span className="px-2 text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1.5">
                 Navigation Modules
               </span>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {filteredNav.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -110,13 +110,15 @@ export function CommandPalette() {
                         setActivePage(item.page);
                         setCommandPaletteOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-pm-textSecondary hover:text-pm-text rounded hover:bg-pm-hover transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-300 hover:text-white rounded-xl hover:bg-white/[0.05] transition-colors cursor-pointer text-left border border-transparent hover:border-white/[0.06]"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className="w-3.5 h-3.5 text-pm-accent flex-shrink-0" />
+                        <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
                         <span>{item.label}</span>
                       </div>
-                      <ArrowRight className="w-3 h-3 text-pm-textDim" />
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                     </button>
                   );
                 })}
@@ -127,10 +129,10 @@ export function CommandPalette() {
           {/* SKU Jump Section */}
           {filteredSKUs.length > 0 && (
             <div>
-              <span className="px-2 text-[10px] font-mono uppercase tracking-wider text-pm-textDim block mb-1">
+              <span className="px-2 text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1.5">
                 SKU Fast Drilldown
               </span>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {filteredSKUs.map((sku) => (
                   <button
                     key={sku.id}
@@ -140,14 +142,14 @@ export function CommandPalette() {
                       setSelectedSkuForDrawer(sku);
                       setCommandPaletteOpen(false);
                     }}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-pm-textSecondary hover:text-pm-text rounded hover:bg-pm-hover transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-300 hover:text-white rounded-xl hover:bg-white/[0.05] transition-colors cursor-pointer text-left border border-transparent hover:border-white/[0.06]"
                   >
-                    <div className="flex items-center gap-2 truncate pr-2">
-                      <span className="font-mono font-bold text-pm-accentText text-[11px]">{sku.skuCode}</span>
-                      <span className="truncate text-[11px] text-pm-textMuted">{sku.name}</span>
+                    <div className="flex items-center gap-2.5 truncate pr-2">
+                      <span className="font-mono font-bold text-indigo-400 text-xs">{sku.skuCode}</span>
+                      <span className="truncate text-xs text-slate-400">{sku.name}</span>
                     </div>
-                    <span className="font-mono text-[11px] text-pm-textDim tabular-nums flex-shrink-0">
-                      ${sku.currentPrice.toFixed(2)}
+                    <span className="font-mono text-xs text-white tabular-nums flex-shrink-0 font-semibold">
+                      ${Number(sku.currentPrice || 0).toFixed(2)}
                     </span>
                   </button>
                 ))}
@@ -157,7 +159,7 @@ export function CommandPalette() {
         </div>
 
         {/* Footer shortcuts */}
-        <div className="px-3.5 py-1.5 bg-pm-subtle border-t border-pm-borderSubtle flex items-center justify-between text-[10px] font-mono text-pm-textDim">
+        <div className="px-5 py-2.5 bg-white/[0.02] border-t border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-slate-400">
           <span>Use ⌘K / Ctrl K to open</span>
           <span>ESC to dismiss</span>
         </div>

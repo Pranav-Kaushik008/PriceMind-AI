@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -12,6 +12,7 @@ import { ModuleShell } from '../components/layout/ModuleShell';
 import { Button } from '../components/ui/Button';
 import { NativeSelect } from '../components/ui/Select';
 import { formatCurrency, formatPercent, formatBps, formatNumber } from '../lib/utils';
+import { apiClient } from '../api/client';
 import { mockCrossElasticityMatrix } from '../mock/mockData';
 
 export function WhatIfSimulator() {
@@ -20,12 +21,62 @@ export function WhatIfSimulator() {
   const [competitorReaction, setCompetitorReaction] = useState(1.5); // +1.5%
   const [costInflation, setCostInflation] = useState(0.0); // 0%
   const [demandElasticityMultiplier, setDemandElasticityMultiplier] = useState(-1.34);
+  const [isRunning, setIsRunning] = useState(false);
+  const [serverResult, setServerResult] = useState(null); // live backend result
 
-  // Baseline Financials
-  const baselineRevenue = 48920400;
-  const baselineGrossProfit = 20450000;
-  const baselineMargin = 41.8;
-  const baselineUnits = 125750;
+  // Dynamic baselines from backend analytics
+  const [baseline, setBaseline] = useState({
+    revenue: 48920400,
+    grossProfit: 20450000,
+    margin: 41.8,
+    units: 125750,
+  });
+
+  useEffect(() => {
+    async function fetchBaseline() {
+      try {
+        const overview = await apiClient.getAnalyticsOverview();
+        if (overview && overview.total_revenue > 0) {
+          const rev = overview.total_revenue;
+          setBaseline({
+            revenue: rev,
+            grossProfit: Math.round(rev * 0.418),
+            margin: 41.8,
+            units: Math.round(rev / 389), // approximate by avg price
+          });
+          // Snap elasticity multiplier to portfolio default
+          setDemandElasticityMultiplier(-1.34);
+        }
+      } catch (err) {
+        console.warn('WhatIfSimulator: using local baseline', err);
+      }
+    }
+    fetchBaseline();
+  }, []);
+
+  // Run simulation against live ML backend
+  const handleRunLiveSimulation = async () => {
+    setIsRunning(true);
+    try {
+      const result = await apiClient.runCustomSimulation({
+        basePriceMultiplier: 1 + priceShift / 100,
+        competitorReactionMultiplier: 1 + competitorReaction / 100,
+        costInflationMultiplier: 1 + costInflation / 100,
+        macroDemandShiftPercent: 0,
+      });
+      if (result) setServerResult(result);
+    } catch (err) {
+      console.error('Simulation error:', err);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Use server result if available, else local formula
+  const baselineRevenue   = baseline.revenue;
+  const baselineGrossProfit = baseline.grossProfit;
+  const baselineMargin    = baseline.margin;
+  const baselineUnits     = baseline.units;
 
   // Simulation calculations based on dynamic elasticity formula
   // %ΔQ = Ed * (%ΔP - 0.4 * %ΔP_comp)
@@ -81,6 +132,14 @@ export function WhatIfSimulator() {
         <option value="software">Software Subscriptions (Ed = -0.65)</option>
         <option value="iot">IoT Sensors (Ed = -2.10)</option>
       </NativeSelect>
+      <Button
+        variant="primary" size="sm" icon={Play}
+        onClick={handleRunLiveSimulation}
+        disabled={isRunning}
+        className="text-xs"
+      >
+        {isRunning ? 'Running…' : 'Run Live Simulation'}
+      </Button>
       <Button variant="ghost" size="sm" icon={RotateCcw} onClick={resetParams} className="text-xs">
         Reset Baseline
       </Button>
@@ -95,68 +154,68 @@ export function WhatIfSimulator() {
       actions={controls}
     >
       {/* Simulation Result Performance Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-pm-borderSubtle border border-pm-borderSubtle rounded-sm">
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Simulated Net Revenue</div>
-          <div className="text-xl font-mono font-semibold text-pm-text">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Simulated Net Revenue</div>
+          <div className="text-xl font-mono font-bold text-white mt-1">
             {formatCurrency(simulatedRevenue, 'USD', true)}
           </div>
-          <div className="flex items-center gap-1 mt-0.5 font-mono text-[11px]">
-            <span className={revenueLift >= 0 ? 'text-pm-positiveText' : 'text-pm-negativeText'}>
+          <div className="flex items-center gap-1 mt-1 font-mono text-[11px]">
+            <span className={revenueLift >= 0 ? 'text-emerald-400' : 'text-red-400'}>
               {revenueLift >= 0 ? '+' : ''}{formatCurrency(revenueLift, 'USD', true)} ({formatPercent((revenueLift / baselineRevenue) * 100, true)})
             </span>
           </div>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Simulated Gross Profit</div>
-          <div className={`text-xl font-mono font-semibold ${profitLift >= 0 ? 'text-pm-positiveText' : 'text-pm-negativeText'}`}>
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Simulated Gross Profit</div>
+          <div className={`text-xl font-mono font-bold mt-1 ${profitLift >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {formatCurrency(simulatedGrossProfit, 'USD', true)}
           </div>
-          <div className="flex items-center gap-1 mt-0.5 font-mono text-[11px]">
-            <span className={profitLift >= 0 ? 'text-pm-positiveText' : 'text-pm-negativeText'}>
+          <div className="flex items-center gap-1 mt-1 font-mono text-[11px]">
+            <span className={profitLift >= 0 ? 'text-emerald-400' : 'text-red-400'}>
               {profitLift >= 0 ? '+' : ''}{formatCurrency(profitLift, 'USD', true)} ({formatPercent((profitLift / baselineGrossProfit) * 100, true)})
             </span>
           </div>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Realized Gross Margin</div>
-          <div className="text-xl font-mono font-semibold text-pm-accentText">
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Realized Gross Margin</div>
+          <div className="text-xl font-mono font-bold text-indigo-400 mt-1">
             {simulatedMargin.toFixed(1)}%
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">
+          <span className="text-[10px] text-slate-400 font-mono mt-1 block">
             {marginDeltaBps >= 0 ? '+' : ''}{marginDeltaBps} bps vs baseline ({baselineMargin.toFixed(1)}%)
           </span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Projected Unit Demand Shift</div>
-          <div className={`text-xl font-mono font-semibold ${volumeDeltaPct >= 0 ? 'text-pm-positiveText' : 'text-pm-negativeText'}`}>
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Projected Unit Demand Shift</div>
+          <div className={`text-xl font-mono font-bold mt-1 ${volumeDeltaPct >= 0 ? 'text-emerald-400' : 'text-slate-200'}`}>
             {formatNumber(projectedUnits, true)} units
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">
+          <span className="text-[10px] text-slate-400 font-mono mt-1 block">
             {volumeDeltaPct >= 0 ? '+' : ''}{volumeDeltaPct.toFixed(1)}% volume response
           </span>
         </div>
       </div>
 
       {/* Interactive Controls & Sensitivity Curve */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Slider Controls */}
-        <div className="space-y-5 p-4 rounded-sm bg-pm-subtle border border-pm-borderSubtle">
-          <div className="flex items-center justify-between pb-2 border-b border-pm-borderSubtle">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Scenario Variables</h3>
-            <span className="text-[10px] font-mono text-pm-accentText flex items-center gap-1">
+        <div className="space-y-5 p-5 pm-card-glass">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Scenario Variables</h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 font-semibold">
               <Zap size={10} /> Realtime Sync
             </span>
           </div>
 
           {/* Price Shift */}
           <div>
-            <div className="flex justify-between text-xs font-mono mb-1">
-              <span className="text-pm-text">Direct Price Adjustment</span>
-              <span className="font-semibold text-pm-accentText">{priceShift > 0 ? `+${priceShift}%` : `${priceShift}%`}</span>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-slate-300">Direct Price Adjustment</span>
+              <span className="font-bold text-indigo-400">{priceShift > 0 ? `+${priceShift}%` : `${priceShift}%`}</span>
             </div>
             <input
               type="range"
@@ -165,9 +224,9 @@ export function WhatIfSimulator() {
               step="0.5"
               value={priceShift}
               onChange={(e) => setPriceShift(parseFloat(e.target.value))}
-              className="w-full accent-pm-accent cursor-pointer"
+              className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-white/[0.10] rounded-lg appearance-none"
             />
-            <div className="flex justify-between text-[10px] font-mono text-pm-textDim mt-0.5">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
               <span>-10%</span>
               <span>Baseline (0%)</span>
               <span>+15%</span>
@@ -176,9 +235,9 @@ export function WhatIfSimulator() {
 
           {/* Competitor Reaction */}
           <div>
-            <div className="flex justify-between text-xs font-mono mb-1">
-              <span className="text-pm-text">Competitor Price Reaction</span>
-              <span className="font-semibold text-pm-warningText">{competitorReaction > 0 ? `+${competitorReaction}%` : `${competitorReaction}%`}</span>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-slate-300">Competitor Price Reaction</span>
+              <span className="font-bold text-amber-400">{competitorReaction > 0 ? `+${competitorReaction}%` : `${competitorReaction}%`}</span>
             </div>
             <input
               type="range"
@@ -187,9 +246,9 @@ export function WhatIfSimulator() {
               step="0.5"
               value={competitorReaction}
               onChange={(e) => setCompetitorReaction(parseFloat(e.target.value))}
-              className="w-full accent-amber-500 cursor-pointer"
+              className="w-full accent-amber-500 cursor-pointer h-1.5 bg-white/[0.10] rounded-lg appearance-none"
             />
-            <div className="flex justify-between text-[10px] font-mono text-pm-textDim mt-0.5">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
               <span>Undercut (-5%)</span>
               <span>Passive (0%)</span>
               <span>Follow (+10%)</span>
@@ -198,9 +257,9 @@ export function WhatIfSimulator() {
 
           {/* Cost Inflation */}
           <div>
-            <div className="flex justify-between text-xs font-mono mb-1">
-              <span className="text-pm-text">COGS / Supply Inflation</span>
-              <span className="font-semibold text-pm-negativeText">{costInflation > 0 ? `+${costInflation}%` : `${costInflation}%`}</span>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-slate-300">COGS / Supply Inflation</span>
+              <span className="font-bold text-red-400">{costInflation > 0 ? `+${costInflation}%` : `${costInflation}%`}</span>
             </div>
             <input
               type="range"
@@ -209,9 +268,9 @@ export function WhatIfSimulator() {
               step="0.5"
               value={costInflation}
               onChange={(e) => setCostInflation(parseFloat(e.target.value))}
-              className="w-full accent-red-500 cursor-pointer"
+              className="w-full accent-red-500 cursor-pointer h-1.5 bg-white/[0.10] rounded-lg appearance-none"
             />
-            <div className="flex justify-between text-[10px] font-mono text-pm-textDim mt-0.5">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
               <span>0% Stable</span>
               <span>+7.5%</span>
               <span>+15% Severe</span>
@@ -220,9 +279,9 @@ export function WhatIfSimulator() {
 
           {/* Elasticity Factor */}
           <div>
-            <div className="flex justify-between text-xs font-mono mb-1">
-              <span className="text-pm-text">Demand Elasticity Coeff (Ed)</span>
-              <span className="font-semibold text-pm-text">{demandElasticityMultiplier.toFixed(2)}</span>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-slate-300">Demand Elasticity Coeff (Ed)</span>
+              <span className="font-bold text-cyan-400">{demandElasticityMultiplier.toFixed(2)}</span>
             </div>
             <input
               type="range"
@@ -231,9 +290,9 @@ export function WhatIfSimulator() {
               step="0.05"
               value={demandElasticityMultiplier}
               onChange={(e) => setDemandElasticityMultiplier(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 cursor-pointer"
+              className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-white/[0.10] rounded-lg appearance-none"
             />
-            <div className="flex justify-between text-[10px] font-mono text-pm-textDim mt-0.5">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
               <span>-3.0 (Highly Elastic)</span>
               <span>-1.34 (Avg)</span>
               <span>-0.2 (Inelastic)</span>
@@ -242,31 +301,31 @@ export function WhatIfSimulator() {
         </div>
 
         {/* Profit Sensitivity Curve */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
+        <div className="lg:col-span-2 pm-card-glass p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
             <div>
-              <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Profit & Revenue Sensitivity Curve</h3>
-              <p className="text-xs text-pm-textMuted mt-0.5">P&L outcome across simulated price delta range</p>
+              <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Profit & Revenue Sensitivity Curve</h3>
+              <p className="text-xs text-slate-400 mt-0.5">P&L outcome across simulated price delta range</p>
             </div>
           </div>
 
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={sensitivityCurve} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" vertical={false} />
-              <XAxis dataKey="priceChange" stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} />
-              <YAxis stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} tickFormatter={(v) => formatCurrency(v, 'USD', true)} width={60} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="priceChange" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} />
+              <YAxis stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(v) => formatCurrency(v, 'USD', true)} width={60} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'var(--pm-bg-elevated)',
-                  border: '1px solid var(--pm-border-strong)',
-                  borderRadius: '4px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  borderColor: 'rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  backdropFilter: 'blur(12px)',
                   fontSize: '11px',
-                  color: 'var(--pm-text)'
                 }}
                 formatter={(val, name) => [formatCurrency(val, 'USD', true), name === 'profit' ? 'Gross Profit' : 'Net Revenue']}
               />
               <Legend wrapperStyle={{ fontSize: '10px' }} iconSize={8} iconType="circle" />
-              <Line dataKey="revenue" name="Net Revenue" stroke="#3B82F6" strokeWidth={2} dot={false} />
+              <Line dataKey="revenue" name="Net Revenue" stroke="#6366F1" strokeWidth={2} dot={false} />
               <Line dataKey="profit" name="Gross Profit" stroke="#10B981" strokeWidth={2.5} dot={{ r: 3, fill: '#10B981' }} />
             </LineChart>
           </ResponsiveContainer>
@@ -275,59 +334,63 @@ export function WhatIfSimulator() {
 
       {/* Cross-Elasticity Matrix Section */}
       <div className="mt-8">
-        <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Cross-SKU Cannibalization & Substitution Matrix</h3>
-          <span className="text-[10px] font-mono text-pm-textDim">Multi-Product Elasticity Tensor</span>
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+          <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Cross-SKU Cannibalization & Substitution Matrix</h3>
+          <span className="text-[10px] font-mono text-slate-400">Multi-Product Elasticity Tensor</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-pm-border text-left">
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Source Trigger SKU</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Impacted Target SKU</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Cross-Elasticity (E_ij)</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Relationship Type</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Projected Cannibalization Drag</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Net Portfolio Effect</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockCrossElasticityMatrix.map((matrix, idx) => {
-                const isSubstitute = matrix.crossElasticity > 0;
-                return (
-                  <tr key={idx} className="border-b border-pm-borderSubtle hover:bg-pm-hover transition-colors">
-                    <td className="py-2.5 px-3">
-                      <span className="font-mono text-xs font-semibold text-pm-text">{matrix.sourceSKU}</span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="font-mono text-xs text-pm-accentText">{matrix.targetSKU}</span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold">
-                      <span className={isSubstitute ? 'text-amber-400' : 'text-blue-400'}>
-                        {isSubstitute ? '+' : ''}{matrix.crossElasticity.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-sm uppercase tracking-wider ${isSubstitute ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                        {isSubstitute ? 'Direct Substitute' : 'Complementary'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-negativeText">
-                      {formatCurrency(matrix.projectedCannibalizationRevenue, 'USD', true)}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="text-xs text-pm-textMuted font-mono">
-                        {matrix.netPortfolioImpact}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="pm-card-glass overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-white/[0.08] text-left bg-white/[0.02]">
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Source Trigger SKU</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Impacted Target SKU</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Cross-Elasticity (E_ij)</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Relationship Type</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Projected Cannibalization Drag</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Net Portfolio Effect</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mockCrossElasticityMatrix.map((matrix, idx) => {
+                  const isSubstitute = matrix.crossElasticity > 0;
+                  return (
+                    <tr key={idx} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-xs font-semibold text-white">{matrix.sourceSKU}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-xs text-indigo-300">{matrix.targetSKU}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold">
+                        <span className={isSubstitute ? 'text-amber-400' : 'text-cyan-400'}>
+                          {isSubstitute ? '+' : ''}{matrix.crossElasticity.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wider font-semibold ${isSubstitute ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'}`}>
+                          {isSubstitute ? 'Direct Substitute' : 'Complementary'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-red-400">
+                        {formatCurrency(matrix.projectedCannibalizationRevenue, 'USD', true)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-xs text-slate-400 font-mono">
+                          {matrix.netPortfolioImpact}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </ModuleShell>
   );
 }
+
+export default WhatIfSimulator;

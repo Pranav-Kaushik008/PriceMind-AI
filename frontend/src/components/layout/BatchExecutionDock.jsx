@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Zap, CheckCircle2, RefreshCw, X, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { Zap, CheckCircle2, RefreshCw, ArrowUpRight } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { mockRecommendations } from '../../mock/mockData';
 import { formatCurrency } from '../../lib/utils';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 
 export function BatchExecutionDock() {
   const { queuedRecommendations, clearQueuedRecommendations, setActivePage } = useAppStore();
@@ -27,23 +26,23 @@ export function BatchExecutionDock() {
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-4xl animate-in slide-in-from-bottom-5 duration-200">
-      <div className="bg-pm-card/95 border border-pm-accent/50 rounded-xl p-3.5 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-4xl animate-in slide-in-from-bottom-5 duration-200">
+      <div className="bg-[#0D1526]/90 border border-indigo-500/40 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.7),0_0_30px_rgba(99,102,241,0.25)] backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Left Status */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-pm-accent/20 border border-pm-accent/50 flex items-center justify-center text-pm-accentLight flex-shrink-0">
-            {executionSuccess ? <CheckCircle2 className="w-5 h-5 text-pm-lift" /> : <Zap className="w-5 h-5 text-pm-accent" />}
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600/30 to-cyan-500/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+            {executionSuccess ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Zap className="w-5 h-5 text-indigo-400" />}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
                 {executionSuccess ? 'Batch Sync Dispatched to SAP / POS' : `${queuedRecommendations.length} Recommendations Staged for Dispatch`}
               </span>
-              <Badge variant="lift">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
                 +{formatCurrency(totalLift, 'USD', true)}/mo Net Lift
-              </Badge>
+              </span>
             </div>
-            <p className="text-[11px] text-pm-textMuted">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               {executionSuccess
                 ? 'Price vectors synchronized across ERP and marketplace channels with verified cryptographic audit signature.'
                 : 'Validated against margin floors (min 35%) and competitor index guardrails.'}
@@ -54,38 +53,38 @@ export function BatchExecutionDock() {
         {/* Right Action Trigger */}
         {!executionSuccess ? (
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <Button
-              variant="ghost"
-              size="xs"
+            <button
+              type="button"
               onClick={clearQueuedRecommendations}
-              className="text-xs text-pm-textDim hover:text-white"
+              className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
             >
               Clear
-            </Button>
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => setActivePage('revenue-optimization')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePage('pricing')}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.10] text-slate-200 transition-all cursor-pointer"
             >
               Inspect Queue
-            </Button>
-            <Button
-              variant="lift"
-              size="sm"
+            </button>
+            <button
+              type="button"
               disabled={isExecuting}
               onClick={handleExecute}
-              icon={isExecuting ? RefreshCw : ArrowUpRight}
-              className="font-mono font-bold"
+              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             >
-              {isExecuting ? 'Dispatching...' : 'Execute Batch ERP Sync'}
-            </Button>
+              {isExecuting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+              <span>{isExecuting ? 'Dispatching...' : 'Execute Batch ERP Sync'}</span>
+            </button>
           </div>
         ) : (
-          <Badge variant="lift" className="px-3 py-1 text-xs">
+          <span className="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
             STATUS: ACTIVE IN ERP
-          </Badge>
+          </span>
         )}
       </div>
     </div>
   );
 }
+
+export default BatchExecutionDock;

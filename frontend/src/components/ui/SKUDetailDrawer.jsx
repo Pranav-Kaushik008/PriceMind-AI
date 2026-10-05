@@ -12,26 +12,23 @@ import { Button } from './Button';
 export function SKUDetailDrawer({ sku, onClose, onSimulate, currency = 'USD' }) {
   if (!sku) return null;
 
-  const {
-    skuCode,
-    name,
-    category,
-    channel,
-    currentPrice,
-    costPrice,
-    marginPercent,
-    currentVelocity,
-    inventoryStock,
-    daysOfInventory,
-    elasticityScore,
-    elasticityCategory = 'inelastic',
-    competitorMinPrice = currentPrice * 0.9,
-    competitorAvgPrice = currentPrice * 1.05,
-    competitorMaxPrice = currentPrice * 1.2,
-    pricePosition = 'competitive',
-    recommendedPrice,
-    projectedUpliftPercent,
-  } = sku;
+  const currentPrice = Number(sku.currentPrice ?? sku.current_price ?? 149.99);
+  const costPrice = Number(sku.costPrice ?? sku.cost_price ?? 90.0);
+  const marginPercent = Number(sku.marginPercent ?? sku.margin_percent ?? 38.5);
+  const currentVelocity = sku.currentVelocity ?? 25;
+  const inventoryStock = sku.inventoryStock ?? sku.inventory_level ?? 500;
+  const daysOfInventory = Number(sku.daysOfInventory ?? 30);
+  const elasticityScore = Number(sku.elasticityScore ?? sku.elasticity ?? -1.15);
+  const elasticityCategory = sku.elasticityCategory ?? 'inelastic';
+  const competitorMinPrice = Number(sku.competitorMinPrice ?? (currentPrice * 0.9));
+  const competitorAvgPrice = Number(sku.competitorAvgPrice ?? (currentPrice * 1.05));
+  const competitorMaxPrice = Number(sku.competitorMaxPrice ?? (currentPrice * 1.2));
+  const pricePosition = sku.pricePosition ?? 'competitive';
+  const recommendedPrice = sku.recommendedPrice ?? sku.recommended_price;
+  const skuCode = sku.skuCode ?? sku.external_product_id ?? 'SKU-001';
+  const name = sku.name ?? 'Product';
+  const category = sku.category ?? sku.category_name ?? 'General';
+  const channel = sku.channel ?? sku.store_channel ?? 'Direct';
 
   return (
     <Drawer

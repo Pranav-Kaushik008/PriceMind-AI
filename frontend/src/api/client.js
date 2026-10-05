@@ -53,6 +53,52 @@ async function fetchJson(endpoint, options = {}) {
   }
 }
 
+// ── Data Normalizers ──────────────────────────────────────────────────────────
+// Ensure every SKU object has a stable, predictable set of field names
+// regardless of whether it came from the live API or the mock fallback.
+function normalizeSKU(sku) {
+  if (!sku) return sku;
+  const elasticity = sku.elasticity ?? sku.elasticityScore ?? -1.15;
+  const competitorPrice = sku.competitorPrice ?? sku.competitorAvgPrice ?? sku.currentPrice ?? 0;
+  const recommendedPrice = sku.recommendedPrice ?? (sku.currentPrice ? sku.currentPrice * 1.05 : 0);
+  const costPrice = sku.costPrice ?? (sku.currentPrice ? sku.currentPrice * 0.55 : 0);
+  return {
+    ...sku,
+    // Elasticity — both aliases always present
+    elasticity,
+    elasticityScore: elasticity,
+    // Competitor price — both aliases always present
+    competitorPrice,
+    competitorAvgPrice: competitorPrice,
+    // Ensure pricing fields never crash with undefined
+    recommendedPrice,
+    costPrice,
+    currentVelocity: sku.currentVelocity ?? 35,
+    daysOfInventory: sku.daysOfInventory ?? 25,
+    inventoryStock: sku.inventoryStock ?? sku.currentVelocity ?? 500,
+    projectedUpliftPercent: sku.projectedUpliftPercent ?? 5.0,
+  };
+}
+
+// Ensure every Recommendation object has a stable field set.
+function normalizeRec(rec) {
+  if (!rec) return rec;
+  // confidenceScore may be 0–100 (mock) or 0–1 (API); normalise both ways
+  const rawCS = rec.confidenceScore ?? rec.confidence ?? 94;
+  const confidenceScore = rawCS > 1 ? rawCS : rawCS * 100;          // always 0–100
+  const confidence = rawCS > 1 ? rawCS / 100 : rawCS;               // always 0–1
+  return {
+    ...rec,
+    confidence,
+    confidenceScore,
+    // Profit-lift aliases
+    projectedProfitDelta: rec.projectedProfitDelta ?? rec.projectedRevenueDelta * 0.42,
+    expectedProfitLiftPercent: rec.expectedProfitLiftPercent ?? (rec.priceDeltaPercent ?? 5) * 1.8,
+    // SHAP field aliases
+    shapContributions: rec.shapContributions ?? rec.shapAttribution ?? [],
+  };
+}
+
 export const apiClient = {
   // ── 1. System Health ────────────────────────────────────────────────────────
   async getHealth() {
@@ -91,7 +137,7 @@ export const apiClient = {
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const data = await fetchJson(`/products${queryString}`);
-    if (data && Array.isArray(data) && data.length > 0) return data;
+    if (data && Array.isArray(data) && data.length > 0) return data.map(normalizeSKU);
 
     // Fallback filter
     let list = [...mockSKUs];
@@ -102,7 +148,7 @@ export const apiClient = {
       const q = search.toLowerCase();
       list = list.filter((s) => s.skuCode.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
     }
-    return list;
+    return list.map(normalizeSKU);
   },
 
   async getSKUById(id) {
@@ -127,17 +173,24 @@ export const apiClient = {
     return mockSKUs.find((s) => s.id === id || s.skuCode === id);
   },
 
+  async bulkImportSKUs(items) {
+    return await fetchJson('/products/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify(items),
+    });
+  },
+
   // ── 4. Pricing Recommendations ─────────────────────────────────────────────
   async getRecommendations(statusFilter) {
     const param = statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : '';
     const data = await fetchJson(`/recommendations${param}`);
-    if (data && Array.isArray(data) && data.length > 0) return data;
+    if (data && Array.isArray(data) && data.length > 0) return data.map(normalizeRec);
 
     let list = [...mockRecommendations];
     if (statusFilter && statusFilter !== 'all') {
       list = list.filter((r) => r.status === statusFilter);
     }
-    return list;
+    return list.map(normalizeRec);
   },
 
   async updateRecommendationStatus(recId, status) {

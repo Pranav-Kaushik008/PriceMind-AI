@@ -79,6 +79,11 @@ export default {
           cyan: 'var(--pm-cyan)',
           cyanBg: 'var(--pm-cyan-subtle)',
           cyanBorder: 'var(--pm-cyan-border)',
+
+          // Glass & Glow
+          glass: 'var(--pm-glass-bg)',
+          glassBorder: 'var(--pm-glass-border)',
+          glassElevated: 'var(--pm-glass-elevated)',
         }
       },
       fontFamily: {
@@ -90,15 +95,18 @@ export default {
         'md': 'var(--pm-shadow-md)',
         'lg': 'var(--pm-shadow-lg)',
         'drawer': 'var(--pm-shadow-drawer)',
+        'glow': 'var(--pm-shadow-glow)',
         'subtle': 'var(--pm-shadow-sm)',
         'elevated': 'var(--pm-shadow-md)',
         'panel': '0 0 0 1px var(--pm-border-subtle), var(--pm-shadow-sm)',
       },
       borderRadius: {
-        'sm': '3px',
-        'DEFAULT': '5px',
-        'md': '6px',
-        'lg': '8px',
+        'sm': '4px',
+        'DEFAULT': '6px',
+        'md': '8px',
+        'lg': '12px',
+        'xl': '16px',
+        '2xl': '20px',
       }
     },
   },

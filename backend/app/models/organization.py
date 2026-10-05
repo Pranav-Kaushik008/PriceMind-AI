@@ -18,6 +18,7 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     # Relationships
     users: Mapped[list] = relationship("User", back_populates="organization", lazy="select")
+    products: Mapped[list] = relationship("Product", back_populates="organization", lazy="select")
 
     def __repr__(self) -> str:
         return f"<Organization id={self.id} name={self.name}>"

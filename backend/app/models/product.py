@@ -19,6 +19,9 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     external_product_id: Mapped[str] = mapped_column(
         String(100), nullable=False, unique=True, index=True
     )
+    organization_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
@@ -38,6 +41,7 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="products")
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     sales_records: Mapped[list] = relationship("SalesRecord", back_populates="product", lazy="select")
     elasticity_results: Mapped[list] = relationship("ElasticityResult", back_populates="product", lazy="select")

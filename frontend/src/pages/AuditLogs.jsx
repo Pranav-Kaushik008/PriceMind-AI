@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   FileCheck2, ShieldCheck, CheckCircle2, RefreshCw, Download,
   Lock, Search, Filter, AlertCircle, Terminal, Key
@@ -114,57 +114,57 @@ export function AuditLogs() {
       actions={controls}
     >
       {/* Telemetry Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-pm-borderSubtle border border-pm-borderSubtle rounded-sm">
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Ledger Integrity</div>
-          <div className="text-xl font-mono font-semibold text-pm-positiveText flex items-center gap-2">
-            <Lock size={14} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Ledger Integrity</div>
+          <div className="text-xl font-mono font-bold text-emerald-400 flex items-center gap-2">
+            <Lock size={16} />
             100% Verified
           </div>
-          <span className="text-[10px] text-pm-textMuted font-mono">Zero unhashed mutations</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">Zero unhashed mutations</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Total Logged Events (30d)</div>
-          <div className="text-xl font-mono font-semibold text-pm-text">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Total Logged Events (30d)</div>
+          <div className="text-xl font-mono font-bold text-white">
             14,892 Events
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">Retained for 7 years (SOC-2 Type II)</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">Retained for 7 years (SOC-2 Type II)</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Guardrail Interventions</div>
-          <div className="text-xl font-mono font-semibold text-pm-warningText">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Guardrail Interventions</div>
+          <div className="text-xl font-mono font-bold text-amber-400">
             38 Blocked
           </div>
-          <span className="text-[10px] text-pm-warningText font-mono">Prevented sub-floor price updates</span>
+          <span className="text-[11px] text-amber-400 font-mono mt-1 block">Prevented sub-floor price updates</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Regulatory Standard</div>
-          <div className="text-xl font-mono font-semibold text-pm-accentText">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Regulatory Standard</div>
+          <div className="text-xl font-mono font-bold text-cyan-400">
             ISO / SOC-2 / FTC
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">Anti-collusion compliance enabled</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">Anti-collusion compliance enabled</span>
         </div>
       </div>
 
       {/* Audit Log Table */}
-      <div className="mt-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-pm-borderSubtle mb-4">
+      <div className="mt-6 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-5 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/[0.08] mb-4">
           <div className="flex items-center gap-3">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Cryptographic Event Trail</h3>
-            <span className="text-xs font-mono text-pm-textDim">({filteredLogs.length} events matching filter)</span>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Cryptographic Event Trail</h3>
+            <span className="text-xs font-mono text-slate-400">({filteredLogs.length} events matching filter)</span>
           </div>
 
           <div className="relative">
-            <Search size={12} className="absolute left-2.5 top-2.5 text-pm-textDim" />
+            <Search size={13} className="absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search actor, SKU, or hash..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-7 pr-3 py-1 bg-pm-surface border border-pm-borderSubtle rounded-sm text-xs text-pm-text font-mono placeholder:text-pm-textDim focus:outline-none focus:border-pm-borderStrong"
+              className="pl-8 pr-3 py-2 bg-[#131D31]/90 border border-white/[0.08] focus:border-indigo-500/60 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 font-mono transition-all"
             />
           </div>
         </div>
@@ -172,51 +172,51 @@ export function AuditLogs() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-pm-border text-left">
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Timestamp & Block Hash</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Actor / System</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Action Category</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Target Entity</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Event Details & State Change</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Guardrail Validation</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Status</th>
+              <tr className="border-b border-white/[0.08] text-left">
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Timestamp & Block Hash</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Actor / System</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Action Category</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Target Entity</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Event Details & State Change</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Guardrail Validation</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-white/[0.04]">
               {filteredLogs.map((log) => {
                 const isBlocked = log.status === 'GUARDRAIL_BLOCKED';
                 return (
-                  <tr key={log.id} className="border-b border-pm-borderSubtle hover:bg-pm-hover transition-colors">
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <div className="text-xs font-mono text-pm-text">{log.timestamp}</div>
-                      <div className="text-[10px] text-pm-textDim font-mono mt-0.5 flex items-center gap-1">
-                        <Key size={9} className="text-pm-accentText" /> {log.hash}
+                  <tr key={log.id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="text-xs font-mono text-white">{log.timestamp}</div>
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
+                        <Key size={10} className="text-indigo-400" /> {log.hash}
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="text-xs font-medium text-pm-text">{log.actor}</span>
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className="text-xs font-semibold text-slate-200">{log.actor}</span>
                     </td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-pm-subtle border border-pm-borderSubtle text-pm-textMuted">
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-slate-300">
                         {log.actionType}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="text-xs font-mono font-semibold text-pm-accentText">{log.target}</span>
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className="text-xs font-mono font-semibold text-indigo-400">{log.target}</span>
                     </td>
-                    <td className="py-2.5 px-3 max-w-md">
-                      <p className="text-xs text-pm-text font-mono leading-relaxed">{log.details}</p>
+                    <td className="py-3 px-3 max-w-md">
+                      <p className="text-xs text-slate-300 font-mono leading-relaxed">{log.details}</p>
                     </td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-sm ${isBlocked ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className={`text-[11px] font-mono px-2.5 py-1 rounded-full ${isBlocked ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'}`}>
                         {log.guardrailCheck}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-sm uppercase tracking-wider font-semibold ${
-                        isBlocked ? 'bg-red-500/10 text-red-400' :
-                        log.status === 'VERIFIED' ? 'bg-emerald-500/10 text-emerald-400' :
-                        'bg-blue-500/10 text-blue-400'
+                    <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <span className={`text-[11px] font-mono px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold ${
+                        isBlocked ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                        log.status === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                        'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                       }`}>
                         {log.status}
                       </span>

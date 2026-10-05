@@ -43,17 +43,19 @@ export function Settings() {
         </Button>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Section 1: Financial & Margin Guardrails */}
-        <div className="bg-pm-surface border border-pm-border rounded-md p-5 shadow-sm space-y-4 font-sans">
-          <div className="flex items-center gap-2 pb-2 border-b border-pm-borderSubtle">
-            <Shield className="w-4 h-4 text-pm-accent" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-pm-text">
+        <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-6 shadow-lg space-y-5 font-sans">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-white/[0.08]">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <Shield className="w-4 h-4" />
+            </div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
               Margin & Guardrail Limits
             </h3>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <NumberInput
               label="Hard Minimum Gross Margin Floor (%)"
               value={marginFloor}
@@ -81,15 +83,17 @@ export function Settings() {
         </div>
 
         {/* Section 2: Automation & ERP Integration */}
-        <div className="bg-pm-surface border border-pm-border rounded-md p-5 shadow-sm space-y-4 font-sans">
-          <div className="flex items-center gap-2 pb-2 border-b border-pm-borderSubtle">
-            <Database className="w-4 h-4 text-pm-info" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-pm-text">
+        <div className="bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-6 shadow-lg space-y-5 font-sans">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-white/[0.08]">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Database className="w-4 h-4" />
+            </div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
               Automation & ERP Connectors
             </h3>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <NumberInput
               label="Autonomous Dispatch Confidence Threshold (%)"
               value={autoApproveConfidenceThreshold}
@@ -112,13 +116,13 @@ export function Settings() {
             />
 
             <div className="pt-2">
-              <span className="text-xs font-medium text-pm-textSecondary block mb-1">
+              <span className="text-xs font-medium text-slate-300 block mb-2">
                 Active ERP Connector Health
               </span>
-              <div className="flex items-center justify-between p-2.5 rounded bg-pm-subtle border border-pm-borderSubtle text-xs">
-                <span className="font-mono text-pm-text">SAP S/4HANA REST Gateway</span>
-                <span className="flex items-center gap-1 font-mono text-pm-positiveText text-[11px]">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.08] text-xs">
+                <span className="font-mono text-white">SAP S/4HANA REST Gateway</span>
+                <span className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs font-medium">
+                  <CheckCircle2 className="w-4 h-4" />
                   Connected (200 OK)
                 </span>
               </div>

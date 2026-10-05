@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell
@@ -49,137 +49,137 @@ export function ExplainableAI() {
       actions={controls}
     >
       {/* Telemetry Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-pm-borderSubtle border border-pm-borderSubtle rounded-sm">
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Production Models</div>
-          <div className="text-xl font-mono font-semibold text-pm-text flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-pm-positiveText" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Production Models</div>
+          <div className="text-xl font-mono font-bold text-white flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse" />
             3 Active Ensembles
           </div>
-          <span className="text-[10px] text-pm-textMuted font-mono">XGBoost + Spline + Prophet</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">XGBoost + Spline + Prophet</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Global SHAP Attribution</div>
-          <div className="text-xl font-mono font-semibold text-pm-accentText">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Global SHAP Attribution</div>
+          <div className="text-xl font-mono font-bold text-cyan-400">
             100% Explainable
           </div>
-          <span className="text-[10px] text-pm-positiveText font-mono">Additive Shapley Values verified</span>
+          <span className="text-[11px] text-emerald-400 font-mono mt-1 block">Additive Shapley Values verified</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">PSI Concept Drift</div>
-          <div className="text-xl font-mono font-semibold text-pm-text">
-            0.042 <span className="text-xs font-normal text-pm-positiveText">(&lt;0.10 Optimal)</span>
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">PSI Concept Drift</div>
+          <div className="text-xl font-mono font-bold text-white">
+            0.042 <span className="text-xs font-normal text-emerald-400">(&lt;0.10 Optimal)</span>
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">No data distribution shift detected</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">No data distribution shift detected</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Decision Audit Readiness</div>
-          <div className="text-xl font-mono font-semibold text-pm-positiveText">
+        <div className="p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300">
+          <div className="text-[11px] uppercase tracking-wider font-mono text-slate-400 mb-1">Decision Audit Readiness</div>
+          <div className="text-xl font-mono font-bold text-emerald-400">
             SOC-2 / ISO Validated
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">Cryptographic audit log enabled</span>
+          <span className="text-[11px] text-slate-400 font-mono mt-1 block">Cryptographic audit log enabled</span>
         </div>
       </div>
 
       {/* Global Feature Importance vs SKU SHAP Waterfall */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Global Feature Weights */}
-        <div>
-          <div className="pb-3 border-b border-pm-borderSubtle mb-4">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Global Model Feature Importance (|SHAP|)</h3>
-            <p className="text-xs text-pm-textMuted mt-0.5">Average absolute impact on price recommendation decisions across all categories</p>
+        <div className="p-5 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl shadow-lg">
+          <div className="pb-3 border-b border-white/[0.08] mb-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Global Model Feature Importance (|SHAP|)</h3>
+            <p className="text-xs text-slate-400 mt-1">Average absolute impact on price recommendation decisions across all categories</p>
           </div>
 
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={globalFeatureWeights} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" horizontal={false} />
-              <XAxis type="number" stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} tickFormatter={(v) => `${v}%`} />
-              <YAxis type="category" dataKey="feature" width={160} stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-muted)' }} />
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={globalFeatureWeights} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+              <XAxis type="number" stroke="transparent" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `${v}%`} />
+              <YAxis type="category" dataKey="feature" width={160} stroke="transparent" tick={{ fontSize: 10, fill: '#cbd5e1' }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'var(--pm-bg-elevated)',
-                  border: '1px solid var(--pm-border-strong)',
-                  borderRadius: '4px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
                   fontSize: '11px',
-                  color: 'var(--pm-text)'
+                  color: '#fff'
                 }}
                 formatter={(val) => [`${val}%`, 'Relative Importance']}
               />
-              <Bar dataKey="impactPercent" fill="#3B82F6" radius={[0, 2, 2, 0]} maxBarSize={16} label={{ position: 'right', formatter: (v) => `${v}%`, fontSize: 10, fill: 'var(--pm-text-dim)' }} />
+              <Bar dataKey="impactPercent" fill="#6366F1" radius={[0, 4, 4, 0]} maxBarSize={16} label={{ position: 'right', formatter: (v) => `${v}%`, fontSize: 10, fill: '#94a3b8' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Local SKU Decision SHAP Waterfall */}
-        <div>
-          <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
+        <div className="p-5 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl shadow-lg">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
             <div>
-              <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Local SHAP Attribution: {currentRec.skuCode}</h3>
-              <p className="text-xs text-pm-textMuted mt-0.5">Price bridge: Base Price ${currentRec.currentPrice.toFixed(2)} → Recommended ${currentRec.recommendedPrice.toFixed(2)}</p>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Local SHAP Attribution: {currentRec.skuCode}</h3>
+              <p className="text-xs text-slate-400 mt-1">Price bridge: Base Price ${currentRec.currentPrice?.toFixed(2) || '0.00'} → Recommended ${currentRec.recommendedPrice?.toFixed(2) || '0.00'}</p>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-pm-positiveBg text-pm-positiveText border border-pm-positiveBorder">
-              +{((currentRec.recommendedPrice / currentRec.currentPrice - 1) * 100).toFixed(1)}% Adjustment
+            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              +{currentRec.currentPrice ? ((currentRec.recommendedPrice / currentRec.currentPrice - 1) * 100).toFixed(1) : 0}% Adjustment
             </span>
           </div>
 
-          <div className="p-4 rounded-sm bg-pm-subtle border border-pm-borderSubtle">
-            <SHAPWaterfall
-              basePrice={currentRec.currentPrice}
-              recommendedPrice={currentRec.recommendedPrice}
-              shapContributions={currentRec.shapContributions}
-            />
-          </div>
+          <SHAPWaterfall
+            basePrice={currentRec.currentPrice}
+            recommendedPrice={currentRec.recommendedPrice}
+            shapContributions={currentRec.shapContributions}
+            className="p-0 border-0 bg-transparent shadow-none"
+          />
         </div>
       </div>
 
       {/* Production Ensembles Table */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Production ML Models & Telemetry</h3>
-          <span className="text-[10px] font-mono text-pm-textDim">Continuous Automated Evaluation</span>
+      <div className="mt-6 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-5 shadow-lg">
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Production ML Models & Telemetry</h3>
+          <span className="text-[11px] font-mono text-slate-400">Continuous Automated Evaluation</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-pm-border text-left">
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Model Architecture</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Version & Commit</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">R² Score</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">MAPE</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">RMSE</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Drift Status</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Last Trained</th>
+              <tr className="border-b border-white/[0.08] text-left">
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Model Architecture</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Version & Commit</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">R² Score</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">MAPE</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">RMSE</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Drift Status</th>
+                <th className="py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Last Trained</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-white/[0.04]">
               {mockModelTelemetry.map((model, idx) => (
-                <tr key={idx} className="border-b border-pm-borderSubtle hover:bg-pm-hover transition-colors">
-                  <td className="py-2.5 px-3">
-                    <div className="text-xs font-medium text-pm-text font-mono">{model.modelName}</div>
-                    <div className="text-[10px] text-pm-textDim">{model.targetTask || 'Demand & Elasticity Modeling'}</div>
+                <tr key={idx} className="hover:bg-white/[0.03] transition-colors">
+                  <td className="py-3 px-3">
+                    <div className="text-xs font-semibold text-white font-mono">{model.modelName}</div>
+                    <div className="text-[11px] text-slate-400">{model.targetTask || 'Demand & Elasticity Modeling'}</div>
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-xs text-pm-textMuted">
+                  <td className="py-3 px-3 font-mono text-xs text-slate-400">
                     {model.modelVersion}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-positiveText">
+                  <td className="py-3 px-3 text-right font-mono tabular-nums text-xs font-bold text-emerald-400">
                     {model.r2}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-text">
+                  <td className="py-3 px-3 text-right font-mono tabular-nums text-xs text-white">
                     {model.mape}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-textMuted">
+                  <td className="py-3 px-3 text-right font-mono tabular-nums text-xs text-slate-400">
                     {model.rmse}
                   </td>
-                  <td className="py-2.5 px-3">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                  <td className="py-3 px-3">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
                       {model.driftStatus}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-[10px] font-mono text-pm-textDim">
+                  <td className="py-3 px-3 text-[11px] font-mono text-slate-400">
                     {model.trainingDate}
                   </td>
                 </tr>

@@ -38,25 +38,28 @@ export function KPIDisplay({
   return (
     <div
       className={cn(
-        'flex flex-col p-4 bg-pm-surface border border-pm-border rounded-md shadow-sm transition-all duration-150 font-sans hover:border-pm-borderStrong',
+        'relative group flex flex-col p-4 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] hover:border-indigo-500/40 rounded-xl shadow-lg transition-all duration-300 font-sans overflow-hidden',
         className
       )}
     >
+      {/* Subtle top glow highlight */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
       {/* Metric Header */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs font-medium text-pm-textMuted truncate">
+          <span className="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors truncate">
             {title}
           </span>
           {tooltip && (
             <Tooltip content={tooltip} position="top">
-              <Info className="w-3 h-3 text-pm-textDim hover:text-pm-textSecondary cursor-help flex-shrink-0" />
+              <Info className="w-3 h-3 text-slate-500 hover:text-slate-300 cursor-help flex-shrink-0" />
             </Tooltip>
           )}
         </div>
 
         {Icon && (
-          <div className="w-6 h-6 rounded bg-pm-subtle border border-pm-borderSubtle flex items-center justify-center text-pm-textDim flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:text-indigo-300 group-hover:border-indigo-500/40 transition-all flex-shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.15)]">
             <Icon className="w-3.5 h-3.5" />
           </div>
         )}
@@ -64,7 +67,7 @@ export function KPIDisplay({
 
       {/* Main Tabular Value */}
       <div className="flex items-baseline gap-2.5 mb-2">
-        <span className="text-xl sm:text-2xl font-bold font-mono text-pm-text tabular-nums tracking-tight">
+        <span className="text-xl sm:text-2xl font-bold font-mono text-white tabular-nums tracking-tight">
           {formattedValue}
         </span>
 
@@ -79,11 +82,11 @@ export function KPIDisplay({
       </div>
 
       {/* Benchmark or Progress or Sparkline */}
-      <div className="mt-auto pt-1 flex items-center justify-between text-[11px] text-pm-textDim">
+      <div className="mt-auto pt-1 flex items-center justify-between text-[11px] text-slate-500">
         {benchmarkLabel && (
-          <div className="flex items-center gap-1 truncate font-mono">
-            <span>{benchmarkLabel}:</span>
-            <span className="font-semibold text-pm-textSecondary">
+          <div className="flex items-center gap-1.5 truncate font-mono">
+            <span className="text-slate-500">{benchmarkLabel}:</span>
+            <span className="font-semibold text-slate-300">
               {benchmarkValue}
             </span>
           </div>
@@ -91,17 +94,17 @@ export function KPIDisplay({
 
         {/* Micro progress bar */}
         {progress !== undefined && (
-          <div className="w-full flex flex-col gap-1 mt-1">
-            <div className="w-full h-1 bg-pm-subtle rounded-full overflow-hidden border border-pm-borderSubtle">
+          <div className="w-full flex flex-col gap-1.5 mt-1">
+            <div className="w-full h-1.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/[0.06]">
               <div
                 className={cn(
-                  'h-full rounded-full transition-all duration-300',
-                  progress > 90 ? 'bg-pm-warning' : 'bg-pm-accent'
+                  'h-full rounded-full transition-all duration-500 shadow-sm',
+                  progress > 90 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-indigo-500 to-cyan-400'
                 )}
                 style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] font-mono text-pm-textDim">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400">
               <span>Target: {progress}%</span>
             </div>
           </div>

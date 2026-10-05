@@ -24,7 +24,7 @@ export function DecisionSummary({
   return (
     <div
       className={cn(
-        'bg-pm-surface border border-pm-border rounded-md p-5 shadow-sm font-sans flex flex-col md:flex-row items-start md:items-center justify-between gap-5',
+        'bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-5 shadow-lg font-sans flex flex-col md:flex-row items-start md:items-center justify-between gap-5',
         className
       )}
     >
@@ -32,11 +32,11 @@ export function DecisionSummary({
       <div className="flex flex-wrap items-center gap-6">
         {/* Total Projected Revenue Lift */}
         <div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-pm-textMuted block mb-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
             Projected Portfolio Lift
           </span>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-pm-positiveText tabular-nums">
+            <span className="text-2xl font-bold font-mono text-emerald-400 tabular-nums">
               +{formatCurrency(totalProjectedLift, currency, true)}
             </span>
             <Badge variant="success" size="sm" className="font-mono">
@@ -45,35 +45,35 @@ export function DecisionSummary({
           </div>
         </div>
 
-        <div className="hidden sm:block h-10 w-px bg-pm-borderSubtle" />
+        <div className="hidden sm:block h-10 w-px bg-white/[0.08]" />
 
         {/* Action Status Counts */}
         <div className="flex items-center gap-4">
           <div className="flex flex-col">
-            <span className="text-[10px] text-pm-textDim uppercase tracking-wider">Pending</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Pending</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <Clock className="w-3.5 h-3.5 text-pm-warning" />
-              <span className="text-sm font-bold font-mono text-pm-text tabular-nums">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-sm font-bold font-mono text-white tabular-nums">
                 {pendingCount}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col">
-            <span className="text-[10px] text-pm-textDim uppercase tracking-wider">Approved</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Approved</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-pm-positive" />
-              <span className="text-sm font-bold font-mono text-pm-text tabular-nums">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-sm font-bold font-mono text-white tabular-nums">
                 {approvedCount}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col">
-            <span className="text-[10px] text-pm-textDim uppercase tracking-wider">Rejected</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Rejected</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-pm-negative" />
-              <span className="text-sm font-bold font-mono text-pm-text tabular-nums">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              <span className="text-sm font-bold font-mono text-white tabular-nums">
                 {rejectedCount}
               </span>
             </div>

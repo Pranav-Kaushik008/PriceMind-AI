@@ -13,27 +13,31 @@ from app.models.category import Category
 from app.schemas.product import ProductResponse, ProductListResponse, CategoryResponse
 
 
-def get_product_by_id_or_sku(db: Session, identifier: str) -> Optional[Product]:
-    """Find a product by its UUID or external SKU ID (e.g. 'SKU-8921-PRO')."""
-    product = db.get(Product, identifier)
-    if product is None:
-        product = db.scalar(select(Product).where(Product.external_product_id == identifier))
-    return product
+def get_product_by_id_or_sku(db: Session, identifier: str, organization_id: Optional[str] = None) -> Optional[Product]:
+    """Find a product by its UUID or external SKU ID, optionally scoped by organization."""
+    q = select(Product).where((Product.id == identifier) | (Product.external_product_id == identifier))
+    if organization_id:
+        q = q.where(Product.organization_id == organization_id)
+    return db.scalar(q)
 
 
 def list_products(
     db: Session,
+    organization_id: Optional[str] = None,
     category: Optional[str] = None,
     active_only: bool = True,
     search: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
 ) -> ProductListResponse:
-    """List products with optional category filter, text search, and pagination."""
+    """List products with optional tenant isolation, category filter, text search, and pagination."""
     page_size = max(1, min(page_size, 100))
     page = max(1, page)
 
     q = select(Product)
+    if organization_id:
+        q = q.where(Product.organization_id == organization_id)
+
     if active_only:
         q = q.where(Product.is_active == True)  # noqa: E712
 

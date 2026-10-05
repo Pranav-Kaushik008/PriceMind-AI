@@ -43,16 +43,16 @@ export function RecommendationPanel({
   return (
     <div className={cn('flex flex-col gap-4 w-full font-sans', className)}>
       {/* Panel Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-pm-surface border border-pm-border rounded-md p-3.5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl p-4 shadow-lg">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded bg-pm-accentBg border border-pm-accentBorder flex items-center justify-center text-pm-accent">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-pm-text">
+            <h3 className="text-xs font-semibold text-white">
               Active Optimization Recommendations
             </h3>
-            <p className="text-[11px] text-pm-textDim">
+            <p className="text-[11px] text-slate-400">
               Model-driven price elasticity opportunities awaiting analyst validation
             </p>
           </div>

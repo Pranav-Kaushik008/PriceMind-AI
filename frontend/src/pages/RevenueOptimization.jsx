@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -13,57 +13,56 @@ import { Button } from '../components/ui/Button';
 import { DateRangePicker } from '../components/ui/DatePicker';
 import { NativeSelect } from '../components/ui/Select';
 import { formatCurrency, formatNumber } from '../lib/utils';
+import { apiClient } from '../api/client';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
+// ─── Static chart trend data (generated from real product revenue on mount) ────
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const trendData = MONTHS.map((month, i) => ({
-  month,
-  revenue: 3200000 + i * 180000 + Math.sin(i * 0.7) * 120000,
-  revenueP: 2900000 + i * 160000 + Math.sin(i * 0.7) * 100000,
-  profit: 1260000 + i * 68000 + Math.sin(i * 0.6) * 50000,
-  profitP: 1100000 + i * 58000 + Math.sin(i * 0.6) * 42000,
-  margin: 39.4 + i * 0.22 + Math.sin(i * 0.5) * 0.4,
-  marginP: 37.9 + i * 0.20 + Math.sin(i * 0.5) * 0.35,
-}));
+function buildTrendData(totalRev) {
+  const base = totalRev / 12;
+  return MONTHS.map((month, i) => ({
+    month,
+    revenue: Math.round(base * (0.88 + i * 0.015 + Math.sin(i * 0.7) * 0.03)),
+    revenueP: Math.round(base * (0.80 + i * 0.013 + Math.sin(i * 0.7) * 0.025)),
+    profit: Math.round(base * 0.42 * (0.88 + i * 0.015 + Math.sin(i * 0.6) * 0.025)),
+    profitP: Math.round(base * 0.38 * (0.88 + i * 0.013 + Math.sin(i * 0.6) * 0.02)),
+    margin: 39.4 + i * 0.22 + Math.sin(i * 0.5) * 0.4,
+    marginP: 37.9 + i * 0.20 + Math.sin(i * 0.5) * 0.35,
+  }));
+}
 
-const productData = [
+// Static placeholder while loading (avoids null check in JSX)
+const FALLBACK_TREND = buildTrendData(48920400);
+
+const FALLBACK_PRODUCTS = [
   { id: 'p1', name: 'Precision Industrial Calibrator X1', category: 'Hardware & Tools', revenue: 4820000, profit: 2012000, margin: 41.7, units: 12380, avgPrice: 389, growth: 14.2 },
   { id: 'p2', name: 'SensorCore Analytics Suite', category: 'Software', revenue: 3940000, profit: 1931600, margin: 49.0, units: 3940, avgPrice: 1000, growth: 22.8 },
   { id: 'p3', name: 'ThermoGuard Pro Series', category: 'IoT Hardware', revenue: 3110000, profit: 1150700, margin: 37.0, units: 8914, avgPrice: 349, growth: 8.1 },
   { id: 'p4', name: 'FlexMount Enclosure Kit', category: 'Accessories', revenue: 2280000, profit: 684000, margin: 30.0, units: 22800, avgPrice: 100, growth: -3.4 },
   { id: 'p5', name: 'DataEdge Gateway M2', category: 'Networking', revenue: 1980000, profit: 831600, margin: 42.0, units: 3960, avgPrice: 500, growth: 6.7 },
-  { id: 'p6', name: 'PowerCell Industrial 48V', category: 'Energy', revenue: 1640000, profit: 557600, margin: 34.0, units: 4100, avgPrice: 400, growth: -1.2 },
-  { id: 'p7', name: 'CloudSync Enterprise License', category: 'Software', revenue: 1480000, profit: 1110000, margin: 75.0, units: 1480, avgPrice: 1000, growth: 31.4 },
-  { id: 'p8', name: 'CablePro Armored Series', category: 'Accessories', revenue: 920000, profit: 230000, margin: 25.0, units: 18400, avgPrice: 50, growth: 2.1 },
-];
-
-const categoryData = [
-  { category: 'Software', revenue: 5420000, profit: 3041200, margin: 56.1, growth: 26.2 },
-  { category: 'Hardware & Tools', revenue: 4820000, profit: 2012000, margin: 41.7, growth: 14.2 },
-  { category: 'IoT Hardware', revenue: 3110000, profit: 1150700, margin: 37.0, growth: 8.1 },
-  { category: 'Networking', revenue: 1980000, profit: 831600, margin: 42.0, growth: 6.7 },
-  { category: 'Energy', revenue: 1640000, profit: 557600, margin: 34.0, growth: -1.2 },
-  { category: 'Accessories', revenue: 3200000, profit: 914000, margin: 28.6, growth: -0.8 },
 ];
 
 const priceVolumeData = [
-  { price: 199, units: 9800, revenue: 1950200 },
-  { price: 249, units: 8200, revenue: 2041800 },
-  { price: 299, units: 6900, revenue: 2063100 },
-  { price: 349, units: 5600, revenue: 1954400 },
-  { price: 389, units: 4900, revenue: 1906100 },
-  { price: 429, units: 3800, revenue: 1630200 },
-  { price: 499, units: 2400, revenue: 1197600 },
-  { price: 599, units: 1200, revenue: 718800 },
+  { price: 149, units: 18500, revenue: 2756500 },
+  { price: 199, units: 15200, revenue: 3024800 },
+  { price: 249, units: 13100, revenue: 3261900 },
+  { price: 299, units: 11400, revenue: 3408600 },
+  { price: 349, units: 9800,  revenue: 3420200 },
+  { price: 389, units: 8200,  revenue: 3189800 },
+  { price: 429, units: 6500,  revenue: 2788500 },
+  { price: 499, units: 4800,  revenue: 2395200 },
 ];
 
-const TOTAL_REVENUE = productData.reduce((s, p) => s + p.revenue, 0);
-const TOTAL_PROFIT = productData.reduce((s, p) => s + p.profit, 0);
-const TOTAL_UNITS = productData.reduce((s, p) => s + p.units, 0);
+// Dynamic state store — populated by RevenueOptimization component on mount
+// and read by KPIStrip/ContributionBar/FinancialTable sub-components via module scope.
+let _productData  = FALLBACK_PRODUCTS;
+let _trendData    = FALLBACK_TREND;
+let _totalRevenue = 48920400;
+let _totalProfit  = FALLBACK_PRODUCTS.reduce((s, p) => s + p.profit, 0);
+let _totalUnits   = FALLBACK_PRODUCTS.reduce((s, p) => s + p.units, 0);
 
-// ─── Chart Style ──────────────────────────────────────────────────────────────
+// (Dynamic state is initialized inside RevenueOptimization component below)
+
 
 const CS = {
   grid: { strokeDasharray: '3 3', stroke: 'var(--pm-border-subtle)', vertical: false },
@@ -108,8 +107,8 @@ function SortIcon({ col, sortCol, sortDir }) {
 
 function SectionHeader({ title, children }) {
   return (
-    <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-      <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">{title}</h3>
+    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-white">{title}</h3>
       {children && <div className="flex items-center gap-2">{children}</div>}
     </div>
   );
@@ -117,15 +116,15 @@ function SectionHeader({ title, children }) {
 
 function MetricToggle({ value, onChange }) {
   return (
-    <div className="flex bg-pm-surface border border-pm-borderSubtle rounded-sm p-0.5 gap-0.5">
+    <div className="flex bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 gap-1">
       {Object.entries(METRIC_CONFIG).map(([key, cfg]) => (
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`px-2.5 py-1 text-[11px] font-mono rounded-sm transition-all cursor-pointer ${
+          className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
             value === key
-              ? 'bg-pm-elevated text-pm-text border border-pm-border shadow-sm'
-              : 'text-pm-textDim hover:text-pm-textMuted'
+              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold shadow-sm'
+              : 'text-slate-400 hover:text-white'
           }`}
         >
           {cfg.label}
@@ -139,21 +138,21 @@ function MetricToggle({ value, onChange }) {
 
 function KPIStrip() {
   const kpis = [
-    { label: 'Total Revenue', value: formatCurrency(TOTAL_REVENUE, 'USD', true), delta: 11.4, sub: 'vs prior period' },
-    { label: 'Gross Profit', value: formatCurrency(TOTAL_PROFIT, 'USD', true), delta: 14.8, sub: 'vs prior period' },
-    { label: 'Avg Gross Margin', value: `${((TOTAL_PROFIT / TOTAL_REVENUE) * 100).toFixed(1)}%`, delta: 1.6, sub: '+160 bps vs prior' },
-    { label: 'Units Sold', value: formatNumber(TOTAL_UNITS, true), delta: 6.3, sub: 'vs prior period' },
-    { label: 'Avg Selling Price', value: formatCurrency(TOTAL_REVENUE / TOTAL_UNITS, 'USD', false), delta: 4.8, sub: 'vs prior period' },
+    { label: 'Total Revenue', value: formatCurrency(_totalRevenue, 'USD', true), delta: 11.4, sub: 'vs prior period' },
+    { label: 'Gross Profit', value: formatCurrency(_totalProfit, 'USD', true), delta: 14.8, sub: 'vs prior period' },
+    { label: 'Avg Gross Margin', value: `${_totalRevenue > 0 ? ((_totalProfit / _totalRevenue) * 100).toFixed(1) : '0.0'}%`, delta: 1.6, sub: '+160 bps vs prior' },
+    { label: 'Units Sold', value: formatNumber(_totalUnits, true), delta: 6.3, sub: 'vs prior period' },
+    { label: 'Avg Selling Price', value: formatCurrency(_totalUnits > 0 ? _totalRevenue / _totalUnits : 0, 'USD', false), delta: 4.8, sub: 'vs prior period' },
   ];
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y sm:divide-y-0 divide-pm-borderSubtle border border-pm-borderSubtle rounded-sm">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {kpis.map((k, i) => (
-        <div key={i} className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">{k.label}</div>
-          <div className="text-xl font-mono tabular-nums font-semibold text-pm-text">{k.value}</div>
-          <div className="flex items-center gap-1.5 mt-0.5">
+        <div key={i} className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">{k.label}</div>
+          <div className="text-xl font-mono tabular-nums font-bold text-white mt-1">{k.value}</div>
+          <div className="flex items-center gap-1.5 mt-1.5">
             <Delta value={k.delta} />
-            <span className="text-[10px] text-pm-textMuted">{k.sub}</span>
+            <span className="text-[10px] text-slate-400">{k.sub}</span>
           </div>
         </div>
       ))}
@@ -166,19 +165,30 @@ function KPIStrip() {
 function TrendChart({ metric, showPrior }) {
   const cfg = METRIC_CONFIG[metric];
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={trendData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-        <CartesianGrid {...CS.grid} />
-        <XAxis dataKey="month" {...CS.xAxis} />
-        <YAxis {...CS.yAxis} tickFormatter={cfg.fmt} />
-        <Tooltip {...CS.tooltip} formatter={(val, name) => [cfg.fmt(val), name]} />
-        <Legend wrapperStyle={{ fontSize: '10px', color: 'var(--pm-text-muted)' }} iconSize={8} iconType="circle" />
-        {showPrior && (
-          <Line dataKey={cfg.pri} name="Prior Period" stroke={cfg.color} strokeOpacity={0.35} strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
-        )}
-        <Line dataKey={cfg.cur} name={`Current — ${cfg.label}`} stroke={cfg.color} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="pm-card-glass p-5">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={_trendData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <XAxis dataKey="month" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} />
+          <YAxis stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} width={72} tickFormatter={cfg.fmt} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              backdropFilter: 'blur(12px)',
+              fontSize: '11px',
+            }}
+            formatter={(val, name) => [cfg.fmt(val), name]}
+          />
+          <Legend wrapperStyle={{ fontSize: '10px', color: '#94A3B8' }} iconSize={8} iconType="circle" />
+          {showPrior && (
+            <Line dataKey={cfg.pri} name="Prior Period" stroke={cfg.color} strokeOpacity={0.35} strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+          )}
+          <Line dataKey={cfg.cur} name={`Current — ${cfg.label}`} stroke={cfg.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -188,17 +198,39 @@ function CategoryBar({ metric }) {
   const key = metric === 'margin' ? 'margin' : metric === 'profit' ? 'profit' : 'revenue';
   const fmt = metric === 'margin' ? (v) => `${v.toFixed(1)}%` : (v) => formatCurrency(v, 'USD', true);
   const color = METRIC_CONFIG[metric].color;
-  const sorted = [...categoryData].sort((a, b) => b[key] - a[key]);
+  // Build category aggregates dynamically from live _productData
+  const catMap = {};
+  _productData.forEach(p => {
+    if (!catMap[p.category]) catMap[p.category] = { category: p.category, revenue: 0, profit: 0, units: 0 };
+    catMap[p.category].revenue += p.revenue;
+    catMap[p.category].profit  += p.profit;
+    catMap[p.category].units   += p.units;
+  });
+  const dynamicCategoryData = Object.values(catMap).map(c => ({
+    ...c, margin: c.revenue > 0 ? parseFloat(((c.profit / c.revenue) * 100).toFixed(1)) : 0
+  }));
+  const sorted = [...dynamicCategoryData].sort((a, b) => b[key] - a[key]);
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={sorted} layout="vertical" margin={{ top: 0, right: 50, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" horizontal={false} />
-        <XAxis type="number" tickFormatter={fmt} stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} />
-        <YAxis type="category" dataKey="category" width={110} stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-muted)' }} />
-        <Tooltip {...CS.tooltip} formatter={(val) => [fmt(val), METRIC_CONFIG[metric].label]} />
-        <Bar dataKey={key} fill={color} radius={[0, 2, 2, 0]} maxBarSize={18} label={{ position: 'right', formatter: fmt, fontSize: 10, fill: 'var(--pm-text-dim)' }} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="pm-card-glass p-5">
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={sorted} layout="vertical" margin={{ top: 0, right: 50, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+          <XAxis type="number" tickFormatter={fmt} stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} />
+          <YAxis type="category" dataKey="category" width={110} stroke="transparent" tick={{ fontSize: 10, fill: '#CBD5E1' }} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              backdropFilter: 'blur(12px)',
+              fontSize: '11px',
+            }}
+            formatter={(val) => [fmt(val), METRIC_CONFIG[metric].label]}
+          />
+          <Bar dataKey={key} fill={color} radius={[0, 4, 4, 0]} maxBarSize={18} label={{ position: 'right', formatter: fmt, fontSize: 10, fill: '#94A3B8' }} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -206,39 +238,50 @@ function CategoryBar({ metric }) {
 
 function PriceVolumeChart() {
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <ComposedChart data={priceVolumeData} margin={{ top: 4, right: 16, bottom: 12, left: 0 }}>
-        <CartesianGrid {...CS.grid} />
-        <XAxis dataKey="price" {...CS.xAxis} tickFormatter={(v) => `$${v}`} label={{ value: 'Price Point', position: 'insideBottom', offset: -6, fontSize: 10, fill: 'var(--pm-text-dim)' }} />
-        <YAxis yAxisId="units" stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} tickFormatter={(v) => formatNumber(v, true)} width={55} />
-        <YAxis yAxisId="rev" orientation="right" stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} tickFormatter={(v) => formatCurrency(v, 'USD', true)} width={62} />
-        <Tooltip {...CS.tooltip} formatter={(val, name) => name === 'Units' ? [formatNumber(val), 'Units Sold'] : [formatCurrency(val, 'USD', true), 'Revenue']} />
-        <Legend wrapperStyle={{ fontSize: '10px' }} iconSize={8} iconType="circle" />
-        <Bar yAxisId="units" dataKey="units" name="Units" fill="#3B82F6" fillOpacity={0.55} radius={[2, 2, 0, 0]} maxBarSize={22} />
-        <Line yAxisId="rev" dataKey="revenue" name="Revenue" stroke="#F59E0B" strokeWidth={2} dot={false} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <div className="pm-card-glass p-5">
+      <ResponsiveContainer width="100%" height={220}>
+        <ComposedChart data={priceVolumeData} margin={{ top: 4, right: 16, bottom: 12, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <XAxis dataKey="price" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(v) => `$${v}`} label={{ value: 'Price Point', position: 'insideBottom', offset: -6, fontSize: 10, fill: '#94A3B8' }} />
+          <YAxis yAxisId="units" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(v) => formatNumber(v, true)} width={55} />
+          <YAxis yAxisId="rev" orientation="right" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(v) => formatCurrency(v, 'USD', true)} width={62} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              backdropFilter: 'blur(12px)',
+              fontSize: '11px',
+            }}
+            formatter={(val, name) => name === 'Units' ? [formatNumber(val), 'Units Sold'] : [formatCurrency(val, 'USD', true), 'Revenue']}
+          />
+          <Legend wrapperStyle={{ fontSize: '10px' }} iconSize={8} iconType="circle" />
+          <Bar yAxisId="units" dataKey="units" name="Units" fill="#6366F1" fillOpacity={0.65} radius={[3, 3, 0, 0]} maxBarSize={22} />
+          <Line yAxisId="rev" dataKey="revenue" name="Revenue" stroke="#10B981" strokeWidth={2.5} dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
 // ─── Contribution Bar ─────────────────────────────────────────────────────────
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
+const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
 
 function ContributionBar() {
   return (
-    <div className="space-y-3">
-      <div className="flex h-3 rounded-sm overflow-hidden gap-px">
-        {productData.map((p, i) => (
-          <div key={p.id} style={{ width: `${(p.revenue / TOTAL_REVENUE) * 100}%`, backgroundColor: COLORS[i % COLORS.length] }} title={`${p.name}: ${((p.revenue / TOTAL_REVENUE) * 100).toFixed(1)}%`} />
+    <div className="pm-card-glass p-5 space-y-4">
+      <div className="flex h-3.5 rounded-full overflow-hidden gap-0.5 p-0.5 bg-white/[0.04]">
+        {_productData.map((p, i) => (
+          <div key={p.id} style={{ width: `${_totalRevenue > 0 ? (p.revenue / _totalRevenue) * 100 : 0}%`, backgroundColor: COLORS[i % COLORS.length] }} title={`${p.name}: ${_totalRevenue > 0 ? ((p.revenue / _totalRevenue) * 100).toFixed(1) : 0}%`} className="first:rounded-l-full last:rounded-r-full transition-all hover:opacity-80" />
         ))}
       </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-        {productData.map((p, i) => (
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {_productData.map((p, i) => (
           <div key={p.id} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-            <span className="text-[10px] text-pm-textMuted">{p.name.split(' ').slice(0, 3).join(' ')}</span>
-            <span className="text-[10px] font-mono text-pm-textDim tabular-nums">{((p.revenue / TOTAL_REVENUE) * 100).toFixed(0)}%</span>
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_6px_rgba(255,255,255,0.2)]" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+            <span className="text-xs text-slate-300 font-medium">{p.name.split(' ').slice(0, 3).join(' ')}</span>
+            <span className="text-[11px] font-mono text-slate-400 tabular-nums">({_totalRevenue > 0 ? ((p.revenue / _totalRevenue) * 100).toFixed(0) : 0}%)</span>
           </div>
         ))}
       </div>
@@ -264,7 +307,7 @@ function FinancialTable() {
   const [sortDir, setSortDir] = useState('desc');
 
   const sorted = useMemo(() => {
-    return [...productData].sort((a, b) => {
+    return [..._productData].sort((a, b) => {
       const av = a[sortCol], bv = b[sortCol];
       if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return sortDir === 'asc' ? av - bv : bv - av;
@@ -277,63 +320,65 @@ function FinancialTable() {
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="border-b border-pm-border">
-            {TABLE_COLS.map(col => (
-              <th
-                key={col.id}
-                onClick={() => toggle(col.id)}
-                className={`py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim cursor-pointer select-none hover:text-pm-textMuted transition-colors whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'}`}
-              >
-                <span className="inline-flex items-center gap-1">
-                  {col.align === 'right' && <SortIcon col={col.id} sortCol={sortCol} sortDir={sortDir} />}
-                  {col.label}
-                  {col.align === 'left' && <SortIcon col={col.id} sortCol={sortCol} sortDir={sortDir} />}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => (
-            <tr key={row.id} className="border-b border-pm-borderSubtle hover:bg-pm-hover transition-colors">
-              <td className="py-2.5 px-3 max-w-[220px]">
-                <div className="text-xs font-medium text-pm-text leading-tight truncate">{row.name}</div>
-                <div className="text-[10px] text-pm-textDim mt-0.5 font-mono">{row.id.toUpperCase()}</div>
-              </td>
-              <td className="py-2.5 px-3">
-                <span className="text-[11px] text-pm-textMuted bg-pm-subtle px-1.5 py-0.5 rounded-sm border border-pm-borderSubtle whitespace-nowrap">{row.category}</span>
-              </td>
-              <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-text whitespace-nowrap">{formatCurrency(row.revenue, 'USD', true)}</td>
-              <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-positiveText whitespace-nowrap">{formatCurrency(row.profit, 'USD', true)}</td>
-              <td className="py-2.5 px-3 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <div className="w-12 bg-pm-subtle rounded-full h-1 overflow-hidden">
-                    <div className="h-1 rounded-full bg-pm-accentText" style={{ width: `${Math.min(row.margin, 100)}%` }} />
-                  </div>
-                  <span className="font-mono tabular-nums text-xs text-pm-text">{row.margin.toFixed(1)}%</span>
-                </div>
-              </td>
-              <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-textMuted whitespace-nowrap">{formatNumber(row.units, true)}</td>
-              <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-textMuted whitespace-nowrap">{formatCurrency(row.avgPrice, 'USD', false)}</td>
-              <td className="py-2.5 px-3 text-right"><Delta value={row.growth} /></td>
+    <div className="pm-card-glass overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+              {TABLE_COLS.map(col => (
+                <th
+                  key={col.id}
+                  onClick={() => toggle(col.id)}
+                  className={`py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-white transition-colors whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {col.align === 'right' && <SortIcon col={col.id} sortCol={sortCol} sortDir={sortDir} />}
+                    {col.label}
+                    {col.align === 'left' && <SortIcon col={col.id} sortCol={sortCol} sortDir={sortDir} />}
+                  </span>
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-pm-border bg-pm-subtle">
-            <td className="py-2.5 px-3 text-[11px] font-semibold text-pm-text font-mono" colSpan={2}>PORTFOLIO TOTAL</td>
-            <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-text whitespace-nowrap">{formatCurrency(TOTAL_REVENUE, 'USD', true)}</td>
-            <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-positiveText whitespace-nowrap">{formatCurrency(TOTAL_PROFIT, 'USD', true)}</td>
-            <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-text whitespace-nowrap">{((TOTAL_PROFIT / TOTAL_REVENUE) * 100).toFixed(1)}%</td>
-            <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-textMuted whitespace-nowrap">{formatNumber(TOTAL_UNITS, true)}</td>
-            <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-textMuted whitespace-nowrap">{formatCurrency(TOTAL_REVENUE / TOTAL_UNITS, 'USD', false)}</td>
-            <td className="py-2.5 px-3 text-right"><Delta value={11.4} /></td>
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((row) => (
+              <tr key={row.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                <td className="py-3 px-4 max-w-[220px]">
+                  <div className="text-xs font-semibold text-white leading-tight truncate">{row.name}</div>
+                  <div className="text-[10px] text-indigo-400 mt-0.5 font-mono">{row.id.toUpperCase()}</div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-[11px] text-slate-300 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.08] whitespace-nowrap">{row.category}</span>
+                </td>
+                <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-white whitespace-nowrap">{formatCurrency(row.revenue, 'USD', true)}</td>
+                <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-emerald-400 font-bold whitespace-nowrap">{formatCurrency(row.profit, 'USD', true)}</td>
+                <td className="py-3 px-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <div className="w-12 bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${Math.min(row.margin, 100)}%` }} />
+                    </div>
+                    <span className="font-mono tabular-nums text-xs text-white">{row.margin.toFixed(1)}%</span>
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-slate-400 whitespace-nowrap">{formatNumber(row.units, true)}</td>
+                <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-slate-400 whitespace-nowrap">{formatCurrency(row.avgPrice, 'USD', false)}</td>
+                <td className="py-3 px-4 text-right"><Delta value={row.growth} /></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-white/[0.12] bg-white/[0.04]">
+              <td className="py-3 px-4 text-[11px] font-bold text-white font-mono" colSpan={2}>PORTFOLIO TOTAL</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{formatCurrency(_totalRevenue, 'USD', true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-emerald-400 whitespace-nowrap">{formatCurrency(_totalProfit, 'USD', true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{_totalRevenue > 0 ? ((_totalProfit / _totalRevenue) * 100).toFixed(1) : '0.0'}%</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatNumber(_totalUnits, true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatCurrency(_totalUnits > 0 ? _totalRevenue / _totalUnits : 0, 'USD', false)}</td>
+              <td className="py-3 px-4 text-right"><Delta value={11.4} /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
@@ -345,6 +390,40 @@ export function RevenueOptimization() {
   const [showPrior, setShowPrior] = useState(true);
   const [dateRange, setDateRange] = useState('30d');
   const [category, setCategory] = useState('all');
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadData() {
+      try {
+        const [overview, skuList] = await Promise.all([
+          apiClient.getAnalyticsOverview(),
+          apiClient.getSKUs(),
+        ]);
+        if (!mounted) return;
+        if (overview && overview.total_revenue > 0) {
+          _trendData = buildTrendData(overview.total_revenue);
+          _totalRevenue = overview.total_revenue;
+        }
+        if (skuList && skuList.length > 0) {
+          _productData = skuList.map((sku, idx) => {
+            const units = (sku.currentVelocity || 35) * 30 * 12;
+            const revenue = sku.currentPrice * units;
+            const profit = (sku.currentPrice - sku.costPrice) * units;
+            const margin = sku.costPrice > 0 ? ((sku.currentPrice - sku.costPrice) / sku.currentPrice) * 100 : 0;
+            return { id: sku.id || `p${idx}`, name: sku.name, category: sku.category, revenue: Math.round(revenue), profit: Math.round(profit), margin: parseFloat(margin.toFixed(1)), units, avgPrice: sku.currentPrice, growth: sku.projectedUpliftPercent || 5.0 };
+          });
+          _totalProfit = _productData.reduce((s, p) => s + p.profit, 0);
+          _totalUnits = _productData.reduce((s, p) => s + p.units, 0);
+          _totalRevenue = _productData.reduce((s, p) => s + p.revenue, 0);
+          forceUpdate(n => n + 1);
+        }
+      } catch (err) { console.error('RevenueOptimization fetch error:', err); }
+    }
+    loadData();
+    return () => { mounted = false; };
+  }, []);
+
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
@@ -373,12 +452,12 @@ export function RevenueOptimization() {
 
       {/* Trend Chart */}
       <div className="mt-8">
-        <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Performance Trend</h3>
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+          <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Performance Trend</h3>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowPrior(p => !p)}
-              className={`text-[10px] font-mono px-2 py-1 rounded-sm border transition-colors cursor-pointer ${showPrior ? 'border-pm-border bg-pm-elevated text-pm-textMuted' : 'border-pm-borderSubtle text-pm-textDim hover:text-pm-textMuted'}`}
+              className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${showPrior ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300 font-semibold' : 'border-white/[0.10] text-slate-400 hover:text-white'}`}
             >
               {showPrior ? 'Prior: On' : 'Prior: Off'}
             </button>
@@ -389,36 +468,36 @@ export function RevenueOptimization() {
       </div>
 
       {/* Category + Price-Volume */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Revenue by Category</h3>
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Revenue by Category</h3>
             <MetricToggle value={metric} onChange={setMetric} />
           </div>
           <CategoryBar metric={metric} />
         </div>
         <div>
-          <div className="pb-3 border-b border-pm-borderSubtle mb-4">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Price–Volume Relationship</h3>
+          <div className="pb-3 border-b border-white/[0.08] mb-4">
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Price–Volume Relationship</h3>
           </div>
           <PriceVolumeChart />
-          <p className="text-[10px] text-pm-textDim mt-2 font-mono">Revenue peaks near $299–$349. Volume declines steeply above $429 with diminishing revenue returns.</p>
+          <p className="text-[11px] text-slate-400 mt-2 font-mono">Revenue peaks near $299–$349. Volume declines steeply above $429 with diminishing revenue returns.</p>
         </div>
       </div>
 
       {/* Contribution */}
       <div className="mt-8">
-        <div className="pb-3 border-b border-pm-borderSubtle mb-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Revenue Contribution — By Product</h3>
+        <div className="pb-3 border-b border-white/[0.08] mb-4">
+          <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Revenue Contribution — By Product</h3>
         </div>
         <ContributionBar />
       </div>
 
       {/* Financial Table */}
       <div className="mt-8">
-        <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
-          <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Financial Analysis</h3>
-          <span className="text-[10px] font-mono text-pm-textDim">Click column headers to sort</span>
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
+          <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Financial Analysis</h3>
+          <span className="text-[10px] font-mono text-slate-400">Click column headers to sort</span>
         </div>
         <FinancialTable />
       </div>

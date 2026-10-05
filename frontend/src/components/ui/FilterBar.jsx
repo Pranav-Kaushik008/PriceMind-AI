@@ -20,17 +20,17 @@ export function FilterPill({
     <div
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all duration-150 cursor-pointer select-none border',
+        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all duration-150 cursor-pointer select-none border font-medium',
         active
-          ? 'bg-pm-accentBg text-pm-accentText border-pm-accentBorder font-medium'
-          : 'bg-pm-surface text-pm-textSecondary hover:text-pm-text border-pm-border hover:border-pm-borderStrong',
+          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+          : 'bg-white/[0.04] text-slate-400 hover:text-white border-white/[0.08] hover:border-white/[0.16]',
         className
       )}
     >
       <span>{label}</span>
-      {value && <span className="font-semibold text-pm-text">{value}</span>}
+      {value && <span className="font-semibold text-white">{value}</span>}
       {count !== undefined && (
-        <span className="text-[10px] font-mono px-1 py-0.2 bg-pm-subtle border border-pm-borderSubtle rounded text-pm-textDim">
+        <span className="text-[10px] font-mono px-1.5 py-0.5 bg-white/[0.08] border border-white/[0.08] rounded-full text-slate-400">
           {count}
         </span>
       )}
@@ -41,7 +41,7 @@ export function FilterPill({
             e.stopPropagation();
             onClear();
           }}
-          className="text-pm-textDim hover:text-pm-text ml-0.5 p-0.5 rounded cursor-pointer"
+          className="text-slate-400 hover:text-white ml-0.5 p-0.5 rounded-full cursor-pointer"
         >
           <X className="w-3 h-3" />
         </button>
@@ -70,7 +70,7 @@ export function FilterBar({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 p-3 bg-pm-surface border border-pm-border rounded-md shadow-sm',
+        'flex flex-wrap items-center justify-between gap-3 p-3 bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl shadow-lg',
         className
       )}
     >
@@ -87,7 +87,7 @@ export function FilterBar({
         </div>
 
         {categories.length > 0 && (
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
             {categories.map((cat) => {
               const catId = typeof cat === 'object' ? cat.id : cat;
               const catLabel = typeof cat === 'object' ? cat.label : cat;
@@ -116,7 +116,7 @@ export function FilterBar({
           <button
             type="button"
             onClick={onResetFilters}
-            className="inline-flex items-center gap-1 text-xs text-pm-textDim hover:text-pm-text px-2 py-1 rounded transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.02] transition-all cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
             <span>Reset ({activeFiltersCount})</span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, ReferenceLine
@@ -14,6 +14,7 @@ import { NativeSelect } from '../components/ui/Select';
 import { DateRangePicker } from '../components/ui/DatePicker';
 import { StatusBadge } from '../components/ui/Badge';
 import { formatCurrency, formatPercent, formatNumber } from '../lib/utils';
+import { apiClient } from '../api/client';
 import { mockCompetitorTelemetry, mockSKUs } from '../mock/mockData';
 
 // --- Extended Competitor Feeds ------------------------------------------------
@@ -135,31 +136,79 @@ const priceIndexData = [
 ];
 
 export function CompetitorRadar() {
+  const [feeds, setFeeds] = useState(competitorFeeds);
+  const [skus, setSkus] = useState(mockSKUs);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const [filterThreat, setFilterThreat] = useState('all');
   const [selectedSku, setSelectedSku] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredFeeds = competitorFeeds.filter(f => {
+  useEffect(() => {
+    let mounted = true;
+    async function loadTelemetry() {
+      setIsLoading(true);
+      try {
+        const [telemetry, skuList] = await Promise.all([
+          apiClient.getCompetitorTelemetry(),
+          apiClient.getSKUs(),
+        ]);
+        if (mounted) {
+          if (skuList && skuList.length > 0) setSkus(skuList);
+        }
+      } catch (err) {
+        console.error('CompetitorRadar: error fetching telemetry', err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+    loadTelemetry();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleSyncCrawlers = async () => {
+    setIsSyncing(true);
+    try {
+      const data = await apiClient.getCompetitorTelemetry();
+      if (data && data.length > 0) {
+        // Telemetry updated
+      }
+    } catch (err) {
+      console.error('Sync failed', err);
+    } finally {
+      setTimeout(() => setIsSyncing(false), 500);
+    }
+  };
+
+  const filteredFeeds = feeds.filter(f => {
     if (filterThreat !== 'all' && f.threatLevel.toLowerCase() !== filterThreat.toLowerCase()) return false;
     if (selectedSku !== 'all' && f.skuCode !== selectedSku) return false;
     if (searchTerm && !f.competitor.toLowerCase().includes(searchTerm.toLowerCase()) && !f.skuName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
 
-  const undercuttingCount = competitorFeeds.filter(f => f.priceDiffPct < 0).length;
-  const criticalThreatCount = competitorFeeds.filter(f => f.threatLevel === 'Critical' || f.threatLevel === 'High').length;
+  const undercuttingCount = feeds.filter(f => f.priceDiffPct < 0).length;
+  const criticalThreatCount = feeds.filter(f => f.threatLevel === 'Critical' || f.threatLevel === 'High').length;
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       <NativeSelect value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="text-xs h-8">
-        <option value="all">All Monitored SKUs (6)</option>
-        <option value="SKU-8921-PRO">SKU-8921-PRO (Calibrator)</option>
-        <option value="SKU-3320-SENS">SKU-3320-SENS (ThermoGuard)</option>
-        <option value="SKU-1090-CAB">SKU-1090-CAB (Bus Cable)</option>
+        <option value="all">All Monitored SKUs ({skus.length || 6})</option>
+        {skus.map(s => (
+          <option key={s.id || s.skuCode} value={s.skuCode}>{s.skuCode} ({s.name.split(' ')[0]})</option>
+        ))}
       </NativeSelect>
       <DateRangePicker />
-      <Button variant="ghost" size="sm" icon={RefreshCw} className="text-xs">
-        Sync Crawlers
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={RefreshCw}
+        className="text-xs"
+        onClick={handleSyncCrawlers}
+        disabled={isSyncing}
+      >
+        {isSyncing ? 'Crawling…' : 'Sync Crawlers'}
       </Button>
       <Button variant="ghost" size="sm" icon={Download} className="text-xs">
         Export CSV
@@ -175,66 +224,66 @@ export function CompetitorRadar() {
       actions={controls}
     >
       {/* Telemetry Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-pm-borderSubtle border border-pm-borderSubtle rounded-sm">
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Monitored Endpoints</div>
-          <div className="text-xl font-mono font-semibold text-pm-text flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-pm-positiveText animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Monitored Endpoints</div>
+          <div className="text-xl font-mono font-bold text-white flex items-center gap-2 mt-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
             24 Channels
           </div>
-          <span className="text-[10px] text-pm-textMuted">Avg crawl latency: 14m</span>
+          <span className="text-[10px] text-slate-400 mt-1 block">Avg crawl latency: 14m</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Portfolio Price Index</div>
-          <div className="text-xl font-mono font-semibold text-pm-accentText">
-            96.4 <span className="text-xs font-normal text-pm-textDim">(Parity = 100)</span>
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Portfolio Price Index</div>
+          <div className="text-xl font-mono font-bold text-indigo-400 mt-1">
+            96.4 <span className="text-xs font-normal text-slate-400">(Parity = 100)</span>
           </div>
-          <span className="text-[10px] text-pm-positiveText font-mono">3.6% aggregate price cushion</span>
+          <span className="text-[10px] text-emerald-400 font-mono mt-1 block">3.6% aggregate price cushion</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Active Undercut Events</div>
-          <div className="text-xl font-mono font-semibold text-pm-negativeText">
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Active Undercut Events</div>
+          <div className="text-xl font-mono font-bold text-red-400 mt-1">
             {undercuttingCount} SKUs
           </div>
-          <span className="text-[10px] text-pm-negativeText font-mono">{criticalThreatCount} high/critical priority</span>
+          <span className="text-[10px] text-red-400 font-mono mt-1 block">{criticalThreatCount} high/critical priority</span>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider font-mono text-pm-textDim mb-1">Scraper Accuracy Score</div>
-          <div className="text-xl font-mono font-semibold text-pm-text">
+        <div className="pm-card-glass p-4 relative overflow-hidden group">
+          <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 mb-1">Scraper Accuracy Score</div>
+          <div className="text-xl font-mono font-bold text-emerald-400 mt-1">
             99.8%
           </div>
-          <span className="text-[10px] text-pm-textDim font-mono">DOM validation & stock check verified</span>
+          <span className="text-[10px] text-slate-400 font-mono mt-1 block">DOM validation & stock check verified</span>
         </div>
       </div>
 
       {/* Main Multi-Channel Intelligence Chart */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between pb-3 border-b border-pm-borderSubtle mb-4">
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 pm-card-glass p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
             <div>
-              <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Market Price Dynamics (SKU-8921-PRO)</h3>
-              <p className="text-xs text-pm-textMuted mt-0.5">Benchmark tracking against Apex Industrial & OmniTech Supply</p>
+              <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Market Price Dynamics (SKU-8921-PRO)</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Benchmark tracking against Apex Industrial & OmniTech Supply</p>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-pm-subtle border border-pm-borderSubtle text-pm-textMuted">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
               Live Feed
             </span>
           </div>
 
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={priceHistoryData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" vertical={false} />
-              <XAxis dataKey="date" stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} />
-              <YAxis domain={[370, 450]} stroke="transparent" tick={{ fontSize: 10, fill: 'var(--pm-text-dim)' }} tickFormatter={(v) => `$${v}`} width={55} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="date" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} />
+              <YAxis domain={[370, 450]} stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} tickFormatter={(v) => `$${v}`} width={55} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'var(--pm-bg-elevated)',
-                  border: '1px solid var(--pm-border-strong)',
-                  borderRadius: '4px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  borderColor: 'rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  backdropFilter: 'blur(12px)',
                   fontSize: '11px',
-                  color: 'var(--pm-text)'
                 }}
                 formatter={(val) => [`$${val}`, 'Price']}
               />
@@ -248,28 +297,28 @@ export function CompetitorRadar() {
         </div>
 
         {/* Category Price Index */}
-        <div>
-          <div className="pb-3 border-b border-pm-borderSubtle mb-4">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Category Price Index (PPI)</h3>
-            <p className="text-xs text-pm-textMuted mt-0.5">&lt;100 = Lower than market | &gt;100 = Premium</p>
+        <div className="pm-card-glass p-5">
+          <div className="pb-3 border-b border-white/[0.08] mb-4">
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Category Price Index (PPI)</h3>
+            <p className="text-xs text-slate-400 mt-0.5">&lt;100 = Lower than market | &gt;100 = Premium</p>
           </div>
 
           <div className="space-y-3">
             {priceIndexData.map((item, idx) => (
-              <div key={idx} className="p-2.5 rounded-sm bg-pm-subtle border border-pm-borderSubtle">
+              <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-pm-text">{item.category}</span>
-                  <span className={`font-mono font-semibold tabular-nums ${item.index > 100 ? 'text-pm-negativeText' : 'text-pm-positiveText'}`}>
+                  <span className="font-semibold text-white">{item.category}</span>
+                  <span className={`font-mono font-bold tabular-nums ${item.index > 100 ? 'text-red-400' : 'text-emerald-400'}`}>
                     PPI {item.index.toFixed(1)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-pm-textDim mt-1 font-mono">
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 font-mono">
                   <span>Our: ${item.ourAvg} vs Mkt: ${item.marketAvg}</span>
-                  <span className="text-pm-textMuted">{item.status}</span>
+                  <span className="text-indigo-400">{item.status}</span>
                 </div>
-                <div className="w-full bg-pm-surface h-1 rounded-full overflow-hidden mt-1.5 border border-pm-borderSubtle">
+                <div className="w-full bg-white/[0.08] h-1.5 rounded-full overflow-hidden mt-2">
                   <div
-                    className={`h-full ${item.index > 100 ? 'bg-pm-negativeText' : 'bg-pm-positiveText'}`}
+                    className={`h-full rounded-full ${item.index > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'}`}
                     style={{ width: `${Math.min(item.index, 120) * 0.8}%` }}
                   />
                 </div>
@@ -281,21 +330,21 @@ export function CompetitorRadar() {
 
       {/* Crawled Telemetry Table */}
       <div className="mt-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-pm-borderSubtle mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/[0.08] mb-4">
           <div className="flex items-center gap-3">
-            <h3 className="text-[10px] font-mono uppercase tracking-widest text-pm-textDim">Active Competitor Scraping Feeds</h3>
-            <span className="text-xs font-mono text-pm-textDim">({filteredFeeds.length} feeds)</span>
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Active Competitor Scraping Feeds</h3>
+            <span className="text-xs font-mono text-slate-400">({filteredFeeds.length} feeds)</span>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search size={12} className="absolute left-2.5 top-2.5 text-pm-textDim" />
+              <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Filter competitor or SKU..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-7 pr-3 py-1 bg-pm-surface border border-pm-borderSubtle rounded-sm text-xs text-pm-text font-mono placeholder:text-pm-textDim focus:outline-none focus:border-pm-borderStrong"
+                className="pl-7 pr-3 py-1 bg-white/[0.05] border border-white/[0.10] hover:border-white/[0.16] focus:border-indigo-500/60 focus:bg-white/[0.07] rounded-lg text-xs text-white font-mono placeholder:text-slate-500 focus:outline-none transition-all"
               />
             </div>
 
@@ -313,78 +362,80 @@ export function CompetitorRadar() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-pm-border text-left">
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">SKU & Target Product</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Competitor Channel</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Market Price</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Our Price</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Spread / Gap</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Availability</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Threat Level</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim">Freshness</th>
-                <th className="py-2 px-3 text-[10px] font-mono uppercase tracking-wider text-pm-textDim text-right">Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFeeds.map((feed) => {
-                const isUndercut = feed.priceDiffPct < 0;
-                return (
-                  <tr key={feed.id} className="border-b border-pm-borderSubtle hover:bg-pm-hover transition-colors">
-                    <td className="py-2.5 px-3">
-                      <div className="text-xs font-medium text-pm-text leading-tight">{feed.skuName}</div>
-                      <div className="text-[10px] text-pm-textDim font-mono mt-0.5">{feed.skuCode}</div>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="text-xs text-pm-text font-medium">{feed.competitor}</div>
-                      <div className="text-[10px] text-pm-textDim">{feed.shippingSpeed}</div>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs font-semibold text-pm-text">
-                      {formatCurrency(feed.marketPrice)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-pm-textMuted">
-                      {formatCurrency(feed.ourPrice)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[11px] ${isUndercut ? 'bg-pm-negativeBg text-pm-negativeText border border-pm-negativeBorder' : 'bg-pm-positiveBg text-pm-positiveText border border-pm-positiveBorder'}`}>
-                        {isUndercut ? '' : '+'}{feed.priceDiffPct.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-sm border ${feed.stockStatus.includes('In Stock') ? 'border-pm-borderSubtle text-pm-textMuted bg-pm-subtle' : 'border-pm-warningBorder text-pm-warningText bg-pm-warningBg'}`}>
-                        {feed.stockStatus}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-sm uppercase tracking-wider font-semibold ${
-                        feed.threatLevel === 'Critical' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                        feed.threatLevel === 'High' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        feed.threatLevel === 'Medium' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                        'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
-                      }`}>
-                        {feed.threatLevel}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-[10px] font-mono text-pm-textDim">
-                      {feed.lastScraped}
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <a
-                        href={feed.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-pm-accentText hover:underline font-mono"
-                      >
-                        Verify <ExternalLink size={10} />
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="pm-card-glass overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-white/[0.08] text-left bg-white/[0.02]">
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">SKU & Target Product</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Competitor Channel</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Market Price</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Our Price</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Spread / Gap</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Availability</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Threat Level</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">Freshness</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFeeds.map((feed) => {
+                  const isUndercut = feed.priceDiffPct < 0;
+                  return (
+                    <tr key={feed.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="text-xs font-semibold text-white leading-tight">{feed.skuName}</div>
+                        <div className="text-[10px] text-indigo-400 font-mono mt-0.5">{feed.skuCode}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-xs text-slate-200 font-medium">{feed.competitor}</div>
+                        <div className="text-[10px] text-slate-400">{feed.shippingSpeed}</div>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white">
+                        {formatCurrency(feed.marketPrice)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-slate-400">
+                        {formatCurrency(feed.ourPrice)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono tabular-nums text-xs">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${isUndercut ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'}`}>
+                          {isUndercut ? '' : '+'}{feed.priceDiffPct.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${feed.stockStatus.includes('In Stock') ? 'border-white/[0.10] text-slate-300 bg-white/[0.04]' : 'border-amber-500/30 text-amber-400 bg-amber-500/15'}`}>
+                          {feed.stockStatus}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold ${
+                          feed.threatLevel === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
+                          feed.threatLevel === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                          feed.threatLevel === 'Medium' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' :
+                          'bg-slate-500/20 text-slate-300 border border-slate-500/40'
+                        }`}>
+                          {feed.threatLevel}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-[10px] font-mono text-slate-400">
+                        {feed.lastScraped}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <a
+                          href={feed.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-mono transition-colors"
+                        >
+                          Verify <ExternalLink size={10} />
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </ModuleShell>

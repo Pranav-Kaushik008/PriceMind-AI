@@ -33,23 +33,26 @@ export function Sidebar() {
     queuedRecommendations,
   } = useAppStore();
 
-  const primaryNav = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'pricing', label: 'Pricing', icon: Tag, badge: queuedRecommendations.length > 0 ? `${queuedRecommendations.length}` : null },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'demand', label: 'Demand', icon: TrendingUp },
-    { id: 'revenue', label: 'Revenue', icon: DollarSign },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'inventory', label: 'Inventory', icon: Boxes },
-    { id: 'competitors', label: 'Competitors', icon: ShieldAlert },
-    { id: 'simulator', label: 'Simulator', icon: Sliders },
-    { id: 'assistant', label: 'AI Assistant', icon: Bot, badge: 'Agent' },
+  const workspaceNav = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard, tooltip: 'Executive performance, revenue trajectory & top actions' },
+    { id: 'pricing', label: 'Pricing', icon: Tag, badge: queuedRecommendations.length > 0 ? `${queuedRecommendations.length}` : null, tooltip: 'Suggested prices, elasticity & optimization' },
+    { id: 'products', label: 'Products', icon: Package, tooltip: 'Product catalog, margins & SKU performance' },
+    { id: 'demand', label: 'Demand', icon: TrendingUp, tooltip: 'Demand prediction & price sensitivity curves' },
+    { id: 'revenue', label: 'Revenue', icon: DollarSign, tooltip: 'Revenue, profit & category contributions' },
+    { id: 'customers', label: 'Customers', icon: Users, tooltip: 'Customer tiers & willingness-to-pay segments' },
+    { id: 'inventory', label: 'Inventory', icon: Boxes, tooltip: 'Stock runway, holding costs & markdown planning' },
+    { id: 'competitors', label: 'Competitors', icon: ShieldAlert, tooltip: 'Competitor price tracking & market position' },
   ];
 
-  const secondaryNav = [
-    { id: 'models', label: 'Models', icon: Cpu },
-    { id: 'experiments', label: 'Experiments', icon: FlaskConical },
-    { id: 'settings', label: 'Settings', icon: Settings },
+  const analysisNav = [
+    { id: 'simulator', label: 'Pricing Simulator', icon: Sliders, tooltip: 'Simulate scenario outcomes & what-if pricing tests' },
+    { id: 'assistant', label: 'AI Assistant', icon: Bot, badge: 'Copilot', tooltip: 'Ask natural-language pricing questions & get insights' },
+  ];
+
+  const systemNav = [
+    { id: 'models', label: 'Models', icon: Cpu, tooltip: 'ML models, versions & accuracy metrics' },
+    { id: 'experiments', label: 'Experiments', icon: FlaskConical, tooltip: 'A/B pricing tests & model evaluation' },
+    { id: 'settings', label: 'Settings', icon: Settings, tooltip: 'Pricing guardrails, policies & preferences' },
   ];
 
   const renderNavItem = (item) => {
@@ -61,32 +64,37 @@ export function Sidebar() {
         type="button"
         onClick={() => setActivePage(item.id)}
         className={cn(
-          'w-full flex items-center gap-2.5 rounded text-xs transition-colors group cursor-pointer text-left border focus:outline-none focus-visible:ring-1 focus-visible:ring-pm-accent',
-          isSidebarCollapsed ? 'justify-center p-2' : 'px-2.5 py-1.5 justify-between',
+          'w-full flex items-center gap-2.5 rounded-lg text-xs transition-all duration-150 group cursor-pointer text-left border relative overflow-hidden focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500',
+          isSidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2 justify-between',
           isActive
-            ? 'bg-pm-elevated text-pm-text font-semibold border-pm-borderStrong shadow-sm'
-            : 'text-pm-textSecondary hover:text-pm-text hover:bg-pm-hover border-transparent'
+            ? 'bg-gradient-to-r from-indigo-500/15 via-indigo-500/10 to-transparent text-white font-semibold border-indigo-500/30 shadow-sm'
+            : 'text-slate-300 hover:text-white hover:bg-white/[0.04] border-transparent'
         )}
       >
+        {isActive && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-indigo-500 rounded-r shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+        )}
         <div className="flex items-center gap-2.5 min-w-0">
           <Icon
             className={cn(
-              'w-4 h-4 flex-shrink-0 transition-colors',
-              isActive ? 'text-pm-accent' : 'text-pm-textDim group-hover:text-pm-textSecondary'
+              'w-4 h-4 flex-shrink-0 transition-all duration-150',
+              isActive ? 'text-indigo-400 drop-shadow-[0_0_6px_rgba(99,102,241,0.5)] scale-105' : 'text-slate-400 group-hover:text-slate-200'
             )}
           />
           {!isSidebarCollapsed && (
-            <span className="truncate text-xs font-medium">{item.label}</span>
+            <span className={cn('truncate text-xs tracking-wide', isActive ? 'text-white font-medium' : 'text-slate-300 font-normal')}>
+              {item.label}
+            </span>
           )}
         </div>
 
         {!isSidebarCollapsed && item.badge && (
           <span
             className={cn(
-              'text-[9px] font-mono px-1.5 py-0.2 rounded font-semibold flex-shrink-0',
+              'text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 uppercase tracking-wider',
               isActive
-                ? 'bg-pm-accentBg text-pm-accentText border border-pm-accentBorder'
-                : 'bg-pm-surface text-pm-textDim border border-pm-borderSubtle'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.2)]'
+                : 'bg-white/[0.06] text-slate-400 border border-white/[0.08]'
             )}
           >
             {item.badge}
@@ -95,9 +103,9 @@ export function Sidebar() {
       </button>
     );
 
-    if (isSidebarCollapsed) {
+    if (isSidebarCollapsed || item.tooltip) {
       return (
-        <Tooltip key={item.id} content={item.label} position="right" delay={100}>
+        <Tooltip key={item.id} content={isSidebarCollapsed ? item.label : item.tooltip} position="right" delay={200}>
           {buttonContent}
         </Tooltip>
       );
@@ -107,44 +115,61 @@ export function Sidebar() {
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-pm-subtle border-r border-pm-border font-sans select-none">
-      {/* Primary Navigation */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+    <div className="flex flex-col h-full bg-[#090D16]/95 backdrop-blur-xl border-r border-white/[0.07] font-sans select-none">
+      {/* Navigation Groups */}
+      <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 custom-scrollbar">
+        {/* Workspace */}
         <div>
           {!isSidebarCollapsed && (
-            <span className="px-2 text-[9px] font-mono font-bold uppercase tracking-wider text-pm-textDim block mb-1">
-              Primary
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+              Workspace
             </span>
           )}
-          <div className="space-y-0.5">
-            {primaryNav.map(renderNavItem)}
+          <div className="space-y-1">
+            {workspaceNav.map(renderNavItem)}
           </div>
         </div>
 
-        <div className="pt-2 border-t border-pm-borderSubtle">
+        {/* Analysis */}
+        <div className="pt-2.5 border-t border-white/[0.06]">
           {!isSidebarCollapsed && (
-            <span className="px-2 text-[9px] font-mono font-bold uppercase tracking-wider text-pm-textDim block mb-1">
-              System & Registry
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+              Analysis
             </span>
           )}
-          <div className="space-y-0.5">
-            {secondaryNav.map(renderNavItem)}
+          <div className="space-y-1">
+            {analysisNav.map(renderNavItem)}
+          </div>
+        </div>
+
+        {/* Models & System */}
+        <div className="pt-2.5 border-t border-white/[0.06]">
+          {!isSidebarCollapsed && (
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+              Models & System
+            </span>
+          )}
+          <div className="space-y-1">
+            {systemNav.map(renderNavItem)}
           </div>
         </div>
       </div>
 
       {/* Collapse & Status Footer */}
-      <div className="p-2 border-t border-pm-border bg-pm-surface flex items-center justify-between">
+      <div className="p-2.5 border-t border-white/[0.07] bg-[#0B101D]/80 flex items-center justify-between backdrop-blur-md">
         {!isSidebarCollapsed ? (
           <>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-pm-positive flex-shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <span className="absolute w-3.5 h-3.5 rounded-full bg-emerald-400/30 animate-ping" />
+              </div>
               <div className="min-w-0">
-                <span className="text-[11px] font-mono text-pm-textSecondary truncate block">
-                  Engine Online
+                <span className="text-[11px] font-medium text-slate-200 truncate block">
+                  Engine Active
                 </span>
-                <span className="text-[9px] font-mono text-pm-textDim truncate block">
-                  v1.4.2-prod
+                <span className="text-[9px] font-mono text-emerald-400/90 truncate block">
+                  v1.4.2 · Production
                 </span>
               </div>
             </div>
@@ -152,7 +177,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
-              className="p-1 rounded text-pm-textDim hover:text-pm-text hover:bg-pm-hover transition-colors cursor-pointer border border-transparent hover:border-pm-border"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer border border-transparent hover:border-white/[0.08]"
               title="Collapse sidebar"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -163,7 +188,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
-              className="p-1 rounded text-pm-textDim hover:text-pm-text hover:bg-pm-hover transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
               title="Expand sidebar"
             >
               <ChevronRight className="w-3.5 h-3.5" />

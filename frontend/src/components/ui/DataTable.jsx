@@ -97,20 +97,20 @@ export function DataTable({
   };
 
   return (
-    <div className={cn('flex flex-col w-full bg-pm-surface border border-pm-border rounded-md shadow-sm overflow-hidden font-sans', className)}>
+    <div className={cn('flex flex-col w-full bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] rounded-xl shadow-lg overflow-hidden font-sans', className)}>
       {/* Table Scroll Container */}
       <div className="w-full overflow-x-auto">
         <table className="w-full text-left border-collapse">
           {/* Table Header */}
-          <thead className={cn('bg-pm-subtle border-b border-pm-border', stickyHeader && 'sticky top-0 z-10')}>
+          <thead className={cn('bg-white/[0.02] border-b border-white/[0.08]', stickyHeader && 'sticky top-0 z-10 backdrop-blur-md')}>
             <tr>
               {selectable && (
-                <th className="w-10 px-3 py-2 text-center">
+                <th className="w-10 px-3 py-2.5 text-center">
                   <input
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={(e) => onSelectAll && onSelectAll(e.target.checked ? paginatedData.map((r) => r[keyField]) : [])}
-                    className="rounded border-pm-border bg-pm-surface text-pm-accent focus:ring-pm-accent cursor-pointer"
+                    className="rounded border-white/20 bg-slate-900 text-indigo-500 focus:ring-indigo-500/40 cursor-pointer"
                     aria-label="Select all rows on page"
                   />
                 </th>
@@ -130,7 +130,7 @@ export function DataTable({
                   <th
                     key={col.id || col.accessor}
                     className={cn(
-                      'px-3.5 py-2 text-[11px] font-semibold text-pm-textMuted uppercase tracking-wider select-none whitespace-nowrap',
+                      'px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider select-none whitespace-nowrap',
                       alignClass,
                       col.headerClassName
                     )}
@@ -141,19 +141,19 @@ export function DataTable({
                         type="button"
                         onClick={() => handleSort(col.accessor || col.id)}
                         className={cn(
-                          'inline-flex items-center gap-1 hover:text-pm-text transition-colors focus:outline-none cursor-pointer',
+                          'inline-flex items-center gap-1 hover:text-white transition-colors focus:outline-none cursor-pointer',
                           alignClass === 'text-right' && 'ml-auto'
                         )}
                       >
                         <span>{col.header}</span>
                         {isCurrentSort ? (
                           sortDirection === 'asc' ? (
-                            <ChevronUp className="w-3.5 h-3.5 text-pm-accent" />
+                            <ChevronUp className="w-3.5 h-3.5 text-indigo-400" />
                           ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-pm-accent" />
+                            <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
                           )
                         ) : (
-                          <ChevronsUpDown className="w-3 h-3 text-pm-textDim opacity-50" />
+                          <ChevronsUpDown className="w-3 h-3 text-slate-500 opacity-50" />
                         )}
                       </button>
                     ) : (
@@ -166,18 +166,18 @@ export function DataTable({
           </thead>
 
           {/* Table Body */}
-          <tbody className="divide-y divide-pm-borderSubtle">
+          <tbody className="divide-y divide-white/[0.04]">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   {selectable && (
                     <td className="px-3 py-3 text-center">
-                      <div className="w-3.5 h-3.5 bg-pm-borderSubtle rounded mx-auto" />
+                      <div className="w-3.5 h-3.5 bg-white/[0.05] rounded mx-auto" />
                     </td>
                   )}
                   {columns.map((col, idx) => (
-                    <td key={idx} className="px-3.5 py-3">
-                      <div className="h-3.5 bg-pm-borderSubtle rounded w-3/4" />
+                    <td key={idx} className="px-4 py-3.5">
+                      <div className="h-3.5 bg-white/[0.05] rounded w-3/4" />
                     </td>
                   ))}
                 </tr>
@@ -186,7 +186,7 @@ export function DataTable({
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
-                  className="py-10 text-center"
+                  className="py-12 text-center"
                 >
                   <EmptyState
                     title={emptyTitle}
@@ -205,8 +205,8 @@ export function DataTable({
                     key={rowKey}
                     onClick={() => onRowClick && onRowClick(row)}
                     className={cn(
-                      'transition-colors duration-100',
-                      isSelected ? 'bg-pm-selected/60' : 'hover:bg-pm-hover/60',
+                      'transition-colors duration-150',
+                      isSelected ? 'bg-indigo-500/10' : 'hover:bg-white/[0.03]',
                       onRowClick && 'cursor-pointer'
                     )}
                   >
@@ -219,7 +219,7 @@ export function DataTable({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => onSelectRow && onSelectRow(rowKey)}
-                          className="rounded border-pm-border bg-pm-surface text-pm-accent focus:ring-pm-accent cursor-pointer"
+                          className="rounded border-white/20 bg-slate-900 text-indigo-500 focus:ring-indigo-500/40 cursor-pointer"
                           aria-label={`Select row ${rowKey}`}
                         />
                       </td>
@@ -242,7 +242,7 @@ export function DataTable({
                           key={col.id || col.accessor}
                           className={cn(
                             densityPadding[density] || densityPadding.standard,
-                            'text-pm-textSecondary whitespace-nowrap',
+                            'text-slate-300 whitespace-nowrap',
                             alignClass,
                             isTabular && 'tabular-nums font-mono',
                             col.className
@@ -262,11 +262,11 @@ export function DataTable({
 
       {/* Pagination & Density Controls Footer */}
       {pagination && !loading && sortedData.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-pm-subtle border-t border-pm-border text-xs text-pm-textDim">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white/[0.02] border-t border-white/[0.08] text-xs text-slate-400">
           {/* Row selection summary & page size */}
           <div className="flex items-center gap-3">
             {selectable && (
-              <span className="font-mono text-pm-textSecondary">
+              <span className="font-mono text-slate-300">
                 {selectedRows.length} of {data.length} selected
               </span>
             )}
@@ -287,16 +287,16 @@ export function DataTable({
 
           {/* Page nav buttons */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-pm-textSecondary">
-              Page {currentPage} of {totalPages} ({sortedData.length} items)
+            <span className="font-mono text-slate-400">
+              Page <span className="text-white font-medium">{currentPage}</span> of <span className="text-white font-medium">{totalPages}</span> ({sortedData.length} items)
             </span>
 
-            <div className="inline-flex items-center gap-0.5 ml-2">
+            <div className="inline-flex items-center gap-1 ml-2">
               <button
                 type="button"
                 onClick={() => setCurrentPage(1)}
                 disabled={currentPage === 1}
-                className="p-1 rounded text-pm-textDim hover:text-pm-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pm-hover cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="First page"
               >
                 <ChevronsLeft className="w-4 h-4" />
@@ -305,7 +305,7 @@ export function DataTable({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-1 rounded text-pm-textDim hover:text-pm-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pm-hover cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -314,7 +314,7 @@ export function DataTable({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded text-pm-textDim hover:text-pm-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pm-hover cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Next page"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -323,7 +323,7 @@ export function DataTable({
                 type="button"
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded text-pm-textDim hover:text-pm-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pm-hover cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Last page"
               >
                 <ChevronsRight className="w-4 h-4" />

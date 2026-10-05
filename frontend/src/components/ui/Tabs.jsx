@@ -17,15 +17,15 @@ export function Tabs({
   className = '',
 }) {
   const containerVariants = {
-    segmented: 'inline-flex items-center bg-pm-subtle border border-pm-border rounded p-0.5 gap-0.5',
-    underline: 'flex items-center border-b border-pm-border gap-6 w-full',
-    pills: 'flex items-center gap-1.5 flex-wrap',
+    segmented: 'inline-flex items-center bg-white/[0.03] border border-white/[0.08] rounded-xl p-1 gap-1',
+    underline: 'flex items-center border-b border-white/[0.08] gap-6 w-full',
+    pills: 'flex items-center gap-2 flex-wrap',
   };
 
   const sizes = {
-    sm: 'text-xs py-1 px-2.5',
-    md: 'text-xs py-1.5 px-3 font-medium',
-    lg: 'text-sm py-2 px-4 font-semibold',
+    sm: 'text-xs py-1 px-3',
+    md: 'text-xs py-1.5 px-3.5 font-medium',
+    lg: 'text-sm py-2 px-4.5 font-semibold',
   };
 
   return (
@@ -48,8 +48,8 @@ export function Tabs({
               className={cn(
                 'relative py-2.5 text-xs font-medium transition-all duration-150 flex items-center gap-2 cursor-pointer select-none focus:outline-none -mb-px',
                 isActive
-                  ? 'text-pm-text font-semibold border-b-2 border-pm-accent'
-                  : 'text-pm-textMuted hover:text-pm-text border-b-2 border-transparent'
+                  ? 'text-white font-semibold border-b-2 border-indigo-400'
+                  : 'text-slate-400 hover:text-white border-b-2 border-transparent'
               )}
             >
               {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -57,8 +57,8 @@ export function Tabs({
               {tabBadge !== null && tabBadge !== undefined && (
                 <span
                   className={cn(
-                    'text-[10px] font-mono px-1.5 py-0.2 rounded-full',
-                    isActive ? 'bg-pm-accent text-white' : 'bg-pm-subtle text-pm-textDim border border-pm-borderSubtle'
+                    'text-[10px] font-mono px-2 py-0.5 rounded-full',
+                    isActive ? 'bg-indigo-500 text-white' : 'bg-white/[0.05] text-slate-400 border border-white/[0.08]'
                   )}
                 >
                   {tabBadge}
@@ -76,11 +76,11 @@ export function Tabs({
               aria-selected={isActive}
               onClick={() => onChange(tabId)}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded text-xs font-medium transition-all duration-150 cursor-pointer select-none border focus:outline-none',
+                'inline-flex items-center gap-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer select-none border focus:outline-none',
                 sizes[size] || sizes.md,
                 isActive
-                  ? 'bg-pm-accent text-white border-pm-accent shadow-sm'
-                  : 'bg-pm-surface text-pm-textSecondary hover:text-pm-text border-pm-border hover:border-pm-borderStrong'
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                  : 'bg-white/[0.04] text-slate-400 hover:text-white border-white/[0.08] hover:border-white/[0.16]'
               )}
             >
               {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -88,8 +88,8 @@ export function Tabs({
               {tabBadge !== null && tabBadge !== undefined && (
                 <span
                   className={cn(
-                    'text-[10px] font-mono px-1.5 py-0.2 rounded',
-                    isActive ? 'bg-white/20 text-white' : 'bg-pm-subtle text-pm-textDim'
+                    'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                    isActive ? 'bg-indigo-500/40 text-indigo-200' : 'bg-white/[0.08] text-slate-400'
                   )}
                 >
                   {tabBadge}
@@ -107,11 +107,11 @@ export function Tabs({
             aria-selected={isActive}
             onClick={() => onChange(tabId)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded text-xs font-medium transition-all duration-150 cursor-pointer select-none focus:outline-none',
+              'inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none focus:outline-none',
               sizes[size] || sizes.md,
               isActive
-                ? 'bg-pm-elevated text-pm-text font-semibold shadow-sm border border-pm-borderStrong'
-                : 'text-pm-textDim hover:text-pm-text border border-transparent'
+                ? 'bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-white border border-transparent'
             )}
           >
             {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -119,8 +119,8 @@ export function Tabs({
             {tabBadge !== null && tabBadge !== undefined && (
               <span
                 className={cn(
-                  'text-[10px] font-mono px-1.5 py-0.2 rounded',
-                  isActive ? 'bg-pm-accentBg text-pm-accentText' : 'text-pm-textDim'
+                  'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                  isActive ? 'bg-indigo-500/30 text-indigo-200' : 'text-slate-500'
                 )}
               >
                 {tabBadge}

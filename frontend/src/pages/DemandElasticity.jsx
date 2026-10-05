@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -35,6 +35,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { apiClient } from '../api/client';
 import { mockSKUs, mockElasticityCurves } from '../mock/mockData';
 import { formatNumber, formatPercent, formatCurrency } from '../lib/utils';
 
@@ -51,6 +52,10 @@ export function DemandElasticity() {
   const { setSelectedSkuForDrawer, setActivePage, currency } = useAppStore();
   const toast = useToast();
 
+  // Dynamic API state
+  const [skus, setSkus] = useState(mockSKUs);
+  const [isLoading, setIsLoading] = useState(false);
+
   // Control State
   const [selectedSkuCode, setSelectedSkuCode] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -59,10 +64,29 @@ export function DemandElasticity() {
   const [activeAnalysisTab, setActiveAnalysisTab] = useState('price_vs_demand'); // 'price_vs_demand' | 'seasonality' | 'distribution' | 'accuracy'
   const [rankingTab, setRankingTab] = useState('growth'); // 'growth' | 'decline' | 'volatility' | 'uncertainty'
 
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCatalog() {
+      setIsLoading(true);
+      try {
+        const data = await apiClient.getSKUs(selectedCategory);
+        if (isMounted && data && data.length > 0) {
+          setSkus(data);
+        }
+      } catch (err) {
+        console.error('DemandElasticity: failed to fetch SKUs', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadCatalog();
+    return () => { isMounted = false; };
+  }, [selectedCategory]);
+
   const activeSku = useMemo(() => {
     if (selectedSkuCode === 'ALL') return null;
-    return mockSKUs.find((s) => s.skuCode === selectedSkuCode) || null;
-  }, [selectedSkuCode]);
+    return skus.find((s) => s.skuCode === selectedSkuCode) || null;
+  }, [selectedSkuCode, skus]);
 
   // Large Analytical Time-Series Dataset (Actual, Forecast, Uncertainty Bounds)
   const forecastSeries = useMemo(() => {
@@ -301,7 +325,7 @@ export function DemandElasticity() {
                 size="sm"
                 options={[
                   { value: 'ALL', label: 'All Catalog (Aggregated)' },
-                  ...mockSKUs.map((s) => ({ value: s.skuCode, label: `${s.skuCode} — ${s.name}`, subtext: s.category })),
+                  ...skus.map((s) => ({ value: s.skuCode, label: `${s.skuCode} — ${s.name}`, subtext: s.category })),
                 ]}
               />
             </div>
@@ -351,70 +375,70 @@ export function DemandElasticity() {
       {/* =========================================================================
           2. MODEL METRICS STRIP (MAE, RMSE, MAPE, R²)
           ========================================================================= */}
-      <div className="bg-pm-surface border border-pm-border rounded-md p-3.5 shadow-sm font-sans">
-        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-pm-borderSubtle">
+      <div className="pm-card-glass p-4 font-sans">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/[0.08]">
           <div className="flex items-center gap-2">
-            <Cpu className="w-3.5 h-3.5 text-pm-accent" />
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-pm-text">
+            <Cpu className="w-4 h-4 text-indigo-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
               Demand Forecasting Model Accuracy & Error Diagnostics
             </h4>
           </div>
-          <span className="text-[10px] font-mono text-pm-textDim">
+          <span className="text-[10px] font-mono text-slate-400">
             Model: Hierarchical-Bayes + LightGBM v3.4.1
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-pm-borderSubtle gap-y-2 sm:gap-y-0 font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08] gap-y-3 sm:gap-y-0 font-mono">
           <div className="px-3 pt-1 sm:pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-pm-textDim uppercase">MAE (Mean Abs Error)</span>
+              <span className="text-[10px] text-slate-400 uppercase">MAE (Mean Abs Error)</span>
               <Tooltip content="Mean Absolute Error in unit demand terms" position="top">
-                <span className="text-pm-textDim text-[10px] cursor-help">ℹ</span>
+                <span className="text-slate-500 hover:text-slate-300 text-[10px] cursor-help">ℹ</span>
               </Tooltip>
             </div>
-            <span className="text-base sm:text-lg font-bold text-pm-text mt-0.5 block">
+            <span className="text-base sm:text-lg font-bold text-white mt-1 block">
               3.42 units/day
             </span>
-            <span className="text-[10px] text-pm-positiveText block">-0.32 vs prior retrain</span>
+            <span className="text-[10px] text-emerald-400 block mt-0.5">-0.32 vs prior retrain</span>
           </div>
 
           <div className="px-3 pt-1 sm:pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-pm-textDim uppercase">RMSE</span>
+              <span className="text-[10px] text-slate-400 uppercase">RMSE</span>
               <Tooltip content="Root Mean Squared Error penalizing large variance outliers" position="top">
-                <span className="text-pm-textDim text-[10px] cursor-help">ℹ</span>
+                <span className="text-slate-500 hover:text-slate-300 text-[10px] cursor-help">ℹ</span>
               </Tooltip>
             </div>
-            <span className="text-base sm:text-lg font-bold text-pm-text mt-0.5 block">
+            <span className="text-base sm:text-lg font-bold text-white mt-1 block">
               4.89
             </span>
-            <span className="text-[10px] text-pm-positiveText block">Stable Variance Band</span>
+            <span className="text-[10px] text-emerald-400 block mt-0.5">Stable Variance Band</span>
           </div>
 
           <div className="px-3 pt-1 sm:pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-pm-textDim uppercase">MAPE (Percentage Error)</span>
+              <span className="text-[10px] text-slate-400 uppercase">MAPE (Percentage Error)</span>
               <Tooltip content="Mean Absolute Percentage Error across active portfolio" position="top">
-                <span className="text-pm-textDim text-[10px] cursor-help">ℹ</span>
+                <span className="text-slate-500 hover:text-slate-300 text-[10px] cursor-help">ℹ</span>
               </Tooltip>
             </div>
-            <span className="text-base sm:text-lg font-bold text-pm-positiveText mt-0.5 block">
+            <span className="text-base sm:text-lg font-bold text-emerald-400 mt-1 block">
               4.2%
             </span>
-            <span className="text-[10px] text-pm-textDim block">Tolerance: &lt; 8.0%</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Tolerance: &lt; 8.0%</span>
           </div>
 
           <div className="px-3 pt-1 sm:pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-pm-textDim uppercase">R² Goodness-of-Fit</span>
+              <span className="text-[10px] text-slate-400 uppercase">R² Goodness-of-Fit</span>
               <Tooltip content="Coefficient of determination: explains 94.8% of historical demand variation" position="top">
-                <span className="text-pm-textDim text-[10px] cursor-help">ℹ</span>
+                <span className="text-slate-500 hover:text-slate-300 text-[10px] cursor-help">ℹ</span>
               </Tooltip>
             </div>
-            <span className="text-base sm:text-lg font-bold text-pm-positiveText mt-0.5 block">
+            <span className="text-base sm:text-lg font-bold text-emerald-400 mt-1 block">
               0.948
             </span>
-            <span className="text-[10px] text-pm-positiveText block">High Statistical Power</span>
+            <span className="text-[10px] text-emerald-400 block mt-0.5">High Statistical Power</span>
           </div>
         </div>
       </div>
@@ -422,14 +446,14 @@ export function DemandElasticity() {
       {/* =========================================================================
           3. LARGE TIME-SERIES FORECAST CHART (ACTUAL / FORECAST / UNCERTAINTY)
           ========================================================================= */}
-      <div className="bg-pm-surface border border-pm-border rounded-md p-4 shadow-sm font-sans flex flex-col">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-pm-borderSubtle mb-3">
+      <div className="pm-card-glass p-5 flex flex-col relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.08] mb-3">
           <div>
-            <h3 className="text-xs font-semibold text-pm-text uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-pm-accent" />
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-indigo-400" />
               Time-Series Demand Forecast & Prediction Uncertainty
             </h3>
-            <p className="text-[11px] text-pm-textDim mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               {activeSku
                 ? `Specific SKU trajectory: ${activeSku.skuCode} (${activeSku.name})`
                 : 'Aggregated catalog volume demand across historical and forecast horizons'}
@@ -437,14 +461,14 @@ export function DemandElasticity() {
           </div>
 
           <div className="flex items-center gap-4 text-xs font-mono">
-            <span className="flex items-center gap-1 text-pm-positiveText">
-              <span className="w-2.5 h-0.5 bg-pm-positive inline-block" /> Actual
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-2.5 h-0.5 bg-emerald-400 rounded-full inline-block shadow-[0_0_6px_rgba(52,211,153,0.8)]" /> Actual
             </span>
-            <span className="flex items-center gap-1 text-pm-accentText font-bold">
-              <span className="w-2.5 h-0.5 bg-pm-accent inline-block" /> Model Forecast
+            <span className="flex items-center gap-1.5 text-indigo-300 font-bold">
+              <span className="w-2.5 h-0.5 bg-indigo-500 rounded-full inline-block shadow-[0_0_6px_rgba(99,102,241,0.8)]" /> Model Forecast
             </span>
-            <span className="flex items-center gap-1 text-pm-textDim">
-              <span className="w-2.5 h-2.5 bg-pm-accent/20 border border-pm-accent/40 inline-block rounded-xs" /> Uncertainty Interval (90% Bound)
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-2.5 h-2.5 bg-indigo-500/20 border border-indigo-500/40 inline-block rounded-sm" /> Uncertainty Interval (90% Bound)
             </span>
           </div>
         </div>
@@ -455,11 +479,11 @@ export function DemandElasticity() {
             <AreaChart data={forecastSeries} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
               <defs>
                 <linearGradient id="uncertaintyGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366F1" stopOpacity={0.25} />
+                  <stop offset="5%" stopColor="#6366F1" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="#6366F1" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--pm-border-subtle)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis
                 dataKey="period"
                 stroke="#64748B"
@@ -472,9 +496,10 @@ export function DemandElasticity() {
               />
               <RechartsTooltip
                 contentStyle={{
-                  backgroundColor: 'var(--pm-bg-elevated)',
-                  borderColor: 'var(--pm-border-strong)',
-                  borderRadius: '4px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  borderColor: 'rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  backdropFilter: 'blur(12px)',
                   fontSize: '11px',
                 }}
                 formatter={(val, name) => [
@@ -488,7 +513,7 @@ export function DemandElasticity() {
                     : 'Lower Bound (-90% CI)',
                 ]}
               />
-              <ReferenceLine x="Feb W4 (Today)" stroke="#94A3B8" strokeDasharray="3 3" label={{ value: 'Today (Cutoff)', fill: '#94A3B8', fontSize: 10 }} />
+              <ReferenceLine x="Feb W4 (Today)" stroke="#818CF8" strokeDasharray="3 3" label={{ value: 'Today (Cutoff)', fill: '#818CF8', fontSize: 10 }} />
               
               {/* Uncertainty Area */}
               <Area
@@ -502,7 +527,7 @@ export function DemandElasticity() {
                 type="monotone"
                 dataKey="lowerBound"
                 stroke="transparent"
-                fill="var(--pm-bg-surface)"
+                fill="rgba(15, 23, 42, 0.6)"
                 name="lowerBound"
               />
 
@@ -529,7 +554,7 @@ export function DemandElasticity() {
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-2 text-[11px] text-pm-textDim font-mono flex items-center justify-between border-t border-pm-borderSubtle pt-2">
+        <div className="mt-2 text-[11px] text-slate-400 font-mono flex items-center justify-between border-t border-white/[0.08] pt-2">
           <span>Uncertainty area indicates model-generated 90% prediction interval based on historical error residuals</span>
           <span>N = 1,420,950 observations</span>
         </div>
@@ -538,19 +563,19 @@ export function DemandElasticity() {
       {/* =========================================================================
           4. ANALYSIS MODULES (Price vs Demand | Seasonality | Distribution | Accuracy)
           ========================================================================= */}
-      <div className="bg-pm-surface border border-pm-border rounded-md p-4 shadow-sm font-sans flex flex-col gap-4">
+      <div className="pm-card-glass p-5 flex flex-col gap-4">
         {/* Sub-Tab Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pm-borderSubtle">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
           <div>
-            <h3 className="text-xs font-semibold text-pm-text uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
               Empirical Demand Analytics & Decomposition
             </h3>
-            <p className="text-[11px] text-pm-textDim mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               Inspect price-volume elasticity curves, seasonal multipliers, unit distribution, and residual tracking
             </p>
           </div>
 
-          <div className="flex bg-pm-subtle p-0.5 rounded border border-pm-border text-xs font-medium">
+          <div className="flex bg-white/[0.04] p-1 rounded-lg border border-white/[0.08] text-xs font-medium">
             {[
               { id: 'price_vs_demand', label: 'Price vs Demand' },
               { id: 'seasonality', label: 'Seasonality Index' },
@@ -561,10 +586,10 @@ export function DemandElasticity() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveAnalysisTab(tab.id)}
-                className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeAnalysisTab === tab.id
-                    ? 'bg-pm-elevated text-pm-text font-semibold shadow-sm border border-pm-borderStrong'
-                    : 'text-pm-textDim hover:text-pm-text'
+                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {tab.label}
