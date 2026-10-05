@@ -177,6 +177,7 @@ export const apiClient = {
     return await fetchJson('/products/bulk-import', {
       method: 'POST',
       body: JSON.stringify(items),
+      throwOnError: true,
     });
   },
 

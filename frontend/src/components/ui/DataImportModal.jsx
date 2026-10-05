@@ -5,6 +5,30 @@ import { Button } from './Button';
 import { apiClient } from '../../api/client';
 import { useToast } from './ToastProvider';
 
+function parseCSVRow(text) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((char === ',' || char === '\t' || char === ';') && !inQuotes) {
+      result.push(cur.trim());
+      cur = '';
+    } else {
+      cur += char;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
 export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
   const [file, setFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
@@ -29,25 +53,31 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
           return;
         }
 
-        const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
+        const rawHeaders = parseCSVRow(lines[0]);
+        const headers = rawHeaders.map((h) => h.replace(/^["']|["']$/g, '').trim());
         const rows = [];
 
-        // Parse up to 2,000 rows for high responsiveness
+        // Parse up to 2,000 rows
         const maxRowsToParse = Math.min(lines.length, 2000);
         for (let i = 1; i < maxRowsToParse; i++) {
-          const values = lines[i].split(',').map((v) => v.trim().replace(/^["']|["']$/g, ''));
-          if (values.length < headers.length) continue;
+          const values = parseCSVRow(lines[i]).map((v) => v.replace(/^["']|["']$/g, '').trim());
+          if (values.length === 0 || (values.length === 1 && values[0] === '')) continue;
 
           const rowObj = {};
           headers.forEach((h, idx) => {
-            rowObj[h] = values[idx];
+            rowObj[h] = values[idx] !== undefined ? values[idx] : '';
           });
           rows.push(rowObj);
         }
 
+        if (rows.length === 0) {
+          setErrorMsg('No valid data rows found in CSV. Please verify column formatting.');
+          return;
+        }
+
         setParsedRows(rows);
       } catch (err) {
-        setErrorMsg('Failed to parse CSV file. Ensure valid comma-separated format.');
+        setErrorMsg('Failed to parse CSV file: ' + (err.message || 'Ensure valid CSV format.'));
       }
     };
     reader.readAsText(selected);
@@ -61,14 +91,18 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
       // Send up to 500 items per batch to keep backend SQLite transaction fast
       const batchToSend = parsedRows.slice(0, 500);
       const result = await apiClient.bulkImportSKUs(batchToSend);
+      if (!result || result.status !== 'success') {
+        throw new Error(result?.message || 'Ingestion returned unsuccessful status from server.');
+      }
       toast.success(
         'Catalog Ingested Successfully',
-        result?.message || `Ingested ${batchToSend.length} SKUs into live database.`
+        result.message || `Ingested ${result.inserted || batchToSend.length} SKUs into live database.`
       );
       if (onImportSuccess) onImportSuccess(result);
       onClose();
     } catch (err) {
-      toast.error('Import Failed', err?.message || 'Could not sync records with database.');
+      console.error('Import error:', err);
+      toast.error('Import Failed', err?.message || 'Backend server may be unreachable at http://localhost:8000.');
     } finally {
       setIsProcessing(false);
     }
