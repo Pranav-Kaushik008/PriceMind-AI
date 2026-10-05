@@ -39,14 +39,14 @@ const CS = {
 };
 
 export function PriceOptimization() {
-  const { setActivePage, setSelectedRecommendationForEvidence, setSelectedSkuForDrawer } = useAppStore();
+  const { setActivePage, setSelectedSkuForDrawer } = useAppStore();
 
   // Dynamic backend data
-  const [skus, setSkus]       = useState(mockSKUs);
-  const [recs, setRecs]       = useState(mockRecommendations);
+  const [skus, setSkus] = useState(mockSKUs);
+  const [recs, setRecs] = useState(mockRecommendations);
   const [isLoading, setIsLoading] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState(null);
+  const [, setOptimizationResult] = useState(null);
 
   const [selectedSkuCode, setSelectedSkuCode] = useState('SKU-8921-PRO');
   const [responseMetric, setResponseMetric] = useState('profit'); // 'demand' | 'revenue' | 'profit'
@@ -64,9 +64,13 @@ export function PriceOptimization() {
         if (mounted) {
           if (Array.isArray(skuList)) {
             setSkus(skuList);
-            if (skuList.length > 0) setSelectedSkuCode(skuList[0].skuCode);
+            if (skuList.length > 0) {
+              setSelectedSkuCode(skuList[0].skuCode);
+            }
           }
-          if (Array.isArray(recList)) setRecs(recList);
+          if (Array.isArray(recList)) {
+            setRecs(recList);
+          }
         }
       } catch (err) {
         console.error('PriceOptimization: failed to fetch catalog', err);
@@ -77,6 +81,62 @@ export function PriceOptimization() {
     loadCatalog();
     return () => { mounted = false; };
   }, []);
+
+  // Safe current SKU
+  const currentSKU = useMemo(() => {
+    const found = (skus && skus.length > 0 ? skus.find(s => s.skuCode === selectedSkuCode) || skus[0] : null) || mockSKUs[0];
+    const currentPrice = Number(found.currentPrice) || 100.0;
+    const recommendedPrice = Number(found.recommendedPrice) || Math.round(currentPrice * 1.06 * 100) / 100;
+    const costPrice = Number(found.costPrice) || Math.round(currentPrice * 0.55 * 100) / 100;
+    const elasticity = typeof found.elasticity === 'number' ? found.elasticity : (typeof found.elasticityScore === 'number' ? found.elasticityScore : -1.15);
+    const competitorPrice = typeof found.competitorPrice === 'number' ? found.competitorPrice : (typeof found.competitorAvgPrice === 'number' ? found.competitorAvgPrice : Math.round(currentPrice * 1.05 * 100) / 100);
+    const velocity = Number(found.currentVelocity) || 35;
+    const inventoryStock = Number(found.inventoryStock ?? found.inventory_level ?? 500) || 500;
+    const daysOfInventory = Number(found.daysOfInventory ?? 25) || 25;
+
+    return {
+      ...found,
+      id: found.id || 'sku-default',
+      skuCode: found.skuCode || 'SKU-DEFAULT',
+      name: found.name || 'Sample Product',
+      category: found.category || 'General',
+      currentPrice,
+      recommendedPrice,
+      costPrice,
+      elasticity,
+      competitorPrice,
+      currentVelocity: velocity,
+      inventoryStock,
+      daysOfInventory,
+    };
+  }, [selectedSkuCode, skus]);
+
+  // Safe current Recommendation
+  const currentRec = useMemo(() => {
+    const found = (recs && recs.length > 0 ? recs.find(r => r.skuCode === currentSKU.skuCode) || recs[0] : null) || mockRecommendations[0];
+    const rawConf = found.confidenceScore ? (found.confidenceScore > 1 ? found.confidenceScore / 100 : found.confidenceScore) : (found.confidence || 0.94);
+    const confidence = Number(rawConf) || 0.94;
+
+    const shapContributions = Array.isArray(found.shapContributions) && found.shapContributions.length > 0
+      ? found.shapContributions
+      : Array.isArray(found.shapAttribution) && found.shapAttribution.length > 0
+      ? found.shapAttribution
+      : [
+          { feature: 'Competitor Price Index Spread', impactPercent: 4.2, description: 'Market competitor pricing room available.' },
+          { feature: 'Empirical Inelasticity Demand Zone', impactPercent: 2.8, description: 'Low buyer sensitivity enables margin extraction.' },
+          { feature: 'Inventory Runway Buffer', impactPercent: 0.9, description: 'Optimal stock runway avoids markdown urgency.' },
+        ];
+
+    return {
+      ...found,
+      skuCode: found.skuCode || currentSKU.skuCode,
+      confidence,
+      projectedRevenueDelta: Number(found.projectedRevenueDelta) || 37800,
+      projectedProfitDelta: Number(found.projectedProfitDelta) || 16500,
+      expectedProfitLiftPercent: Number(found.expectedProfitLiftPercent) || 14.2,
+      shapContributions,
+    };
+  }, [recs, currentSKU]);
 
   // Run live optimization via backend ML engine
   const handleRunOptimization = async () => {
@@ -92,34 +152,25 @@ export function PriceOptimization() {
     }
   };
 
-  // Current SKU & Recommendation Context
-  const currentSKU = useMemo(() => {
-    return skus.find(s => s.skuCode === selectedSkuCode) || skus[0] || mockSKUs[0];
-  }, [selectedSkuCode, skus]);
-
-  const currentRec = useMemo(() => {
-    return recs.find(r => r.skuCode === selectedSkuCode) || recs[0] || mockRecommendations[0];
-  }, [selectedSkuCode, recs]);
-
   // Curve Data
   const curveData = useMemo(() => {
-    const raw = mockElasticityCurves[selectedSkuCode] || mockElasticityCurves['SKU-8921-PRO'] || [];
-    const cost = currentSKU?.costPrice || 50;
+    const raw = mockElasticityCurves[currentSKU.skuCode] || mockElasticityCurves['SKU-8921-PRO'] || [];
+    const cost = currentSKU.costPrice;
     return raw.map(pt => ({
       ...pt,
       cost: cost * pt.demand,
       profit: (pt.price - cost) * pt.demand,
       margin: pt.price > 0 ? ((pt.price - cost) / pt.price) * 100 : 0,
     }));
-  }, [selectedSkuCode, currentSKU]);
+  }, [currentSKU]);
 
   // Candidate Prices Matrix
   const candidatePrices = useMemo(() => {
-    const baseP = currentSKU?.currentPrice || 100;
-    const recP = currentSKU?.recommendedPrice || baseP * 1.05;
-    const cost = currentSKU?.costPrice || baseP * 0.55;
-    const ed = currentSKU?.elasticity ?? -1.15;
-    const velocity = currentSKU?.currentVelocity || 35;
+    const baseP = currentSKU.currentPrice;
+    const recP = currentSKU.recommendedPrice;
+    const cost = currentSKU.costPrice;
+    const ed = currentSKU.elasticity;
+    const velocity = currentSKU.currentVelocity;
 
     const testPrices = [
       { p: Math.round(baseP * 0.90 * 100) / 100, note: 'Discount Promotion', constraint: 'Volume Boost' },
@@ -134,12 +185,12 @@ export function PriceOptimization() {
     return testPrices.map((tp, idx) => {
       const priceDeltaPct = baseP > 0 ? (tp.p - baseP) / baseP : 0;
       const demandDeltaPct = priceDeltaPct * ed;
-      const predictedDemand = Math.round(velocity * 30 * (1 + demandDeltaPct));
+      const predictedDemand = Math.max(1, Math.round(velocity * 30 * (1 + demandDeltaPct)));
       const revenue = predictedDemand * tp.p;
       const profit = predictedDemand * (tp.p - cost);
       const margin = tp.p > 0 ? ((tp.p - cost) / tp.p) * 100 : 0;
-      const isOptimal = tp.p === recP;
-      const isCurrent = tp.p === baseP;
+      const isOptimal = Math.abs(tp.p - recP) < 0.01;
+      const isCurrent = Math.abs(tp.p - baseP) < 0.01;
 
       return {
         id: `cand-${idx}`,
@@ -147,7 +198,7 @@ export function PriceOptimization() {
         predictedDemand,
         revenue,
         profit,
-        margin,
+        margin: Number.isFinite(margin) ? margin : 0,
         constraint: tp.constraint,
         status: isOptimal ? 'OPTIMAL' : isCurrent ? 'CURRENT' : priceDeltaPct > 0.20 ? 'GUARDRAIL_BREACH' : 'FEASIBLE',
         isOptimal,
@@ -158,27 +209,37 @@ export function PriceOptimization() {
   }, [currentSKU]);
 
   // Expected Metrics
-  const basePrice = currentSKU?.currentPrice || 100;
-  const recPrice = currentSKU?.recommendedPrice || basePrice * 1.05;
-  const cost = currentSKU?.costPrice || basePrice * 0.55;
-  const currentMargin = basePrice > 0 ? ((basePrice - cost) / basePrice) * 100 : 0;
-  const expectedMargin = recPrice > 0 ? ((recPrice - cost) / recPrice) * 100 : 0;
+  const basePrice = currentSKU.currentPrice;
+  const recPrice = currentSKU.recommendedPrice;
+  const cost = currentSKU.costPrice;
+  const currentMargin = basePrice > 0 ? ((basePrice - cost) / basePrice) * 100 : 40.0;
+  const expectedMargin = recPrice > 0 ? ((recPrice - cost) / recPrice) * 100 : 45.0;
   const marginDeltaBps = Math.round((expectedMargin - currentMargin) * 100);
-  const profitLiftAmt = currentRec?.projectedProfitDelta || ((currentRec?.projectedRevenueDelta || 0) * (expectedMargin / 100));
+  const profitLiftAmt = currentRec.projectedProfitDelta || (currentRec.projectedRevenueDelta * (expectedMargin / 100));
+
+  const priceDeltaPercent = basePrice > 0 ? ((recPrice - basePrice) / basePrice) * 100 : 5.0;
+  const volumeDeltaPercent = priceDeltaPercent * (currentSKU.elasticity / 100);
+  const predictedUnits = Math.max(1, Math.round(currentSKU.currentVelocity * 30 * (1 + (priceDeltaPercent / 100) * currentSKU.elasticity)));
+  const predictedNetRevenue = recPrice * predictedUnits;
+  const predictedGrossProfit = (recPrice - cost) * predictedUnits;
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect
-        value={selectedSkuCode}
-        onChange={(e) => setSelectedSkuCode(e.target.value)}
-        className="text-xs h-8 font-mono"
-      >
-        {skus.map(s => (
-          <option key={s.id} value={s.skuCode}>{s.skuCode} — {s.name}</option>
-        ))}
-      </NativeSelect>
+      {skus.length > 0 && (
+        <NativeSelect
+          value={selectedSkuCode}
+          onChange={(e) => setSelectedSkuCode(e.target.value)}
+          className="text-xs h-8 font-mono"
+        >
+          {skus.map(s => (
+            <option key={s.id || s.skuCode} value={s.skuCode}>{s.skuCode} — {s.name}</option>
+          ))}
+        </NativeSelect>
+      )}
       <Button
-        variant="ghost" size="sm" icon={RefreshCw}
+        variant="ghost"
+        size="sm"
+        icon={RefreshCw}
         className="text-xs"
         onClick={handleRunOptimization}
         disabled={isOptimizing}
@@ -227,7 +288,7 @@ export function PriceOptimization() {
         <div className="p-3.5">
           <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Inventory Runway</div>
           <div className={`text-sm font-bold font-mono mt-1 ${currentSKU.daysOfInventory < 15 ? 'text-red-400' : 'text-emerald-400'}`}>
-            {currentSKU.inventoryStock.toLocaleString()} u ({currentSKU.daysOfInventory}d)
+            {(currentSKU.inventoryStock || 0).toLocaleString()} u ({currentSKU.daysOfInventory}d)
           </div>
           <div className="text-[10px] text-slate-400 font-mono mt-0.5">Buffer: Normal</div>
         </div>
@@ -236,7 +297,9 @@ export function PriceOptimization() {
           <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Competitor Median</div>
           <div className="text-sm font-bold font-mono text-white mt-1">{formatCurrency(currentSKU.competitorPrice)}</div>
           <div className="text-[10px] font-mono mt-0.5 text-emerald-400">
-            {currentSKU.competitorPrice > currentSKU.currentPrice ? `+${formatPercent((currentSKU.competitorPrice / currentSKU.currentPrice - 1) * 100)} room` : 'Undercut'}
+            {currentSKU.competitorPrice > currentSKU.currentPrice
+              ? `+${formatPercent(((currentSKU.competitorPrice / currentSKU.currentPrice) - 1) * 100)} room`
+              : 'Undercut'}
           </div>
         </div>
 
@@ -264,7 +327,7 @@ export function PriceOptimization() {
               <div className="flex items-center gap-2 font-mono text-xs">
                 <span className="text-slate-500 line-through">{formatCurrency(currentSKU.currentPrice)}</span>
                 <span className="text-emerald-400 font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
-                  +{formatPercent(((currentSKU.recommendedPrice - currentSKU.currentPrice) / currentSKU.currentPrice) * 100, true)}
+                  +{formatPercent(priceDeltaPercent, true)}
                 </span>
               </div>
             </div>
@@ -286,17 +349,17 @@ export function PriceOptimization() {
           <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             <span className="text-[10px] uppercase font-mono text-slate-400 block">Expected Demand</span>
             <div className="text-base font-mono font-bold text-white mt-1">
-              {formatNumber(Math.round(currentSKU.currentVelocity * 30 * (1 + ((currentSKU.recommendedPrice - currentSKU.currentPrice)/currentSKU.currentPrice)*currentSKU.elasticity)))} u/mo
+              {formatNumber(predictedUnits)} u/mo
             </div>
             <span className="text-[10px] font-mono text-slate-400">
-              {formatPercent(((currentSKU.recommendedPrice - currentSKU.currentPrice)/currentSKU.currentPrice)*currentSKU.elasticity * 100, true)} volume
+              {formatPercent(volumeDeltaPercent, true)} volume
             </span>
           </div>
 
           <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             <span className="text-[10px] uppercase font-mono text-slate-400 block">Expected Net Revenue</span>
             <div className="text-base font-mono font-bold text-white mt-1">
-              {formatCurrency(currentSKU.recommendedPrice * Math.round(currentSKU.currentVelocity * 30 * (1 + ((currentSKU.recommendedPrice - currentSKU.currentPrice)/currentSKU.currentPrice)*currentSKU.elasticity)), 'USD', true)}
+              {formatCurrency(predictedNetRevenue, 'USD', true)}
             </div>
             <span className="text-[10px] font-mono text-emerald-400">
               +{formatCurrency(currentRec.projectedRevenueDelta, 'USD', true)}/mo
@@ -306,7 +369,7 @@ export function PriceOptimization() {
           <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             <span className="text-[10px] uppercase font-mono text-slate-400 block">Expected Gross Profit</span>
             <div className="text-base font-mono font-bold text-emerald-400 mt-1">
-              {formatCurrency((currentSKU.recommendedPrice - currentSKU.costPrice) * Math.round(currentSKU.currentVelocity * 30 * (1 + ((currentSKU.recommendedPrice - currentSKU.currentPrice)/currentSKU.currentPrice)*currentSKU.elasticity)), 'USD', true)}
+              {formatCurrency(predictedGrossProfit, 'USD', true)}
             </div>
             <span className="text-[10px] font-mono text-emerald-400">
               +{formatCurrency(profitLiftAmt, 'USD', true)}/mo
@@ -480,7 +543,7 @@ export function PriceOptimization() {
                       {formatCurrency(cand.profit, 'USD', true)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono tabular-nums text-xs text-slate-400">
-                      {cand.margin.toFixed(1)}%
+                      {(cand.margin || 0).toFixed(1)}%
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-[11px] font-mono text-slate-300">{cand.constraint}</span>
@@ -535,7 +598,7 @@ export function PriceOptimization() {
                 <span className="text-indigo-400 font-mono">Market Med: ${currentSKU.competitorPrice}</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                Competitors Apex Industrial ($435) and OmniTech ($415) priced well above baseline ($389). Revised price of ${currentSKU.recommendedPrice} maintains parity without triggering undercutting retaliation.
+                Competitors Apex Industrial ($435) and OmniTech ($415) priced well above baseline (${currentSKU.currentPrice}). Revised price of ${currentSKU.recommendedPrice} maintains parity without triggering undercutting retaliation.
               </p>
             </div>
 
