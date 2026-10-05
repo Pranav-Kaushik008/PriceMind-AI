@@ -63,11 +63,41 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
           const values = parseCSVRow(lines[i]).map((v) => v.replace(/^["']|["']$/g, '').trim());
           if (values.length === 0 || (values.length === 1 && values[0] === '')) continue;
 
-          const rowObj = {};
+          const raw = {};
           headers.forEach((h, idx) => {
-            rowObj[h] = values[idx] !== undefined ? values[idx] : '';
+            raw[h] = values[idx] !== undefined ? values[idx] : '';
           });
-          rows.push(rowObj);
+
+          // Resilient field normalization supporting standard, M5, Walmart, and Kaggle formats
+          const skuCode = raw.skuCode || raw.sku || raw.external_product_id || raw.item_id || raw.itemid || raw.id || raw.product_id || `SKU-${i.toString().padStart(4, '0')}`;
+          const category = raw.category || raw.category_name || raw.cat_id || raw.dept_id || raw.department || raw.dept || 'General';
+          const name = raw.name || raw.product_name || raw.item_name || raw.description || `${skuCode} (${category})`;
+
+          let currentPrice = parseFloat(String(raw.currentPrice || raw.price || raw.sell_price || raw.unit_price || raw.sales || raw.weekly_sales || '').replace(/[\$,]/g, ''));
+          if (isNaN(currentPrice) || currentPrice <= 0) {
+            // Generate deterministic baseline price for demand datasets without unit prices
+            const hash = skuCode.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+            currentPrice = Math.round((25.0 + (hash % 160)) * 100) / 100;
+          }
+
+          let costPrice = parseFloat(String(raw.costPrice || raw.cost || raw.cogs || raw.unit_cost || '').replace(/[\$,]/g, ''));
+          if (isNaN(costPrice) || costPrice <= 0) {
+            costPrice = Math.round(currentPrice * 0.58 * 100) / 100;
+          }
+
+          const inventoryStock = parseInt(String(raw.inventoryStock || raw.inventory || raw.inventory_level || raw.stock || raw.quantity || raw.qty || raw.units_sold || '350').replace(/,/g, ''), 10) || 350;
+          const competitorAvgPrice = parseFloat(String(raw.competitorAvgPrice || raw.competitor_price || raw.market_price || '').replace(/[\$,]/g, '')) || Math.round(currentPrice * 1.05 * 100) / 100;
+
+          rows.push({
+            ...raw,
+            skuCode,
+            name,
+            category,
+            currentPrice,
+            costPrice,
+            inventoryStock,
+            competitorAvgPrice,
+          });
         }
 
         if (rows.length === 0) {
