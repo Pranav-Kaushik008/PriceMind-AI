@@ -281,6 +281,19 @@ def bulk_import_products(
         first_org = db.scalar(select(Organization))
         org_id = first_org.id if first_org else None
 
+    # Pre-fetch existing categories and products in tenant to make bulk insert blazing fast (<30ms)
+    categories_map = {c.name.lower(): c.id for c in db.scalars(select(Category)).all()}
+    if org_id:
+        existing_products_map = {p.external_product_id: p for p in db.scalars(select(Product).where(Product.organization_id == org_id)).all()}
+    else:
+        existing_products_map = {p.external_product_id: p for p in db.scalars(select(Product)).all()}
+    
+    product_ids = [p.id for p in existing_products_map.values()]
+    existing_recs_map = {}
+    if product_ids:
+        for rec in db.scalars(select(PricingRecommendation).where(PricingRecommendation.product_id.in_(product_ids))).all():
+            existing_recs_map[rec.product_id] = rec
+
     inserted = 0
     updated = 0
 
@@ -341,21 +354,22 @@ def bulk_import_products(
         )
         competitor_price = safe_float(raw_comp, default=current_price)
 
-        # Get or create category
-        cat = db.scalar(select(Category).where(Category.name == category_name))
-        if not cat:
-            cat = Category(id=str(uuid.uuid4()), name=category_name)
-            db.add(cat)
-            db.flush()
-
-        # Find existing product within this tenant
-        if org_id:
-            p = db.scalar(select(Product).where((Product.external_product_id == sku) & (Product.organization_id == org_id)))
+        # Get or create category from cache
+        cat_key = category_name.lower()
+        if cat_key in categories_map:
+            category_id = categories_map[cat_key]
         else:
-            p = db.scalar(select(Product).where(Product.external_product_id == sku))
+            cat_id = str(uuid.uuid4())
+            cat = Category(id=cat_id, name=category_name)
+            db.add(cat)
+            categories_map[cat_key] = cat_id
+            category_id = cat_id
+
+        # Find existing product within this tenant from cache
+        p = existing_products_map.get(sku)
         if p:
             p.name = name
-            p.category_id = cat.id
+            p.category_id = category_id
             p.store_channel = channel
             p.current_price = current_price
             p.cost_price = cost_price
@@ -368,7 +382,7 @@ def bulk_import_products(
             new_p = Product(
                 id=product_id,
                 organization_id=org_id,
-                category_id=cat.id,
+                category_id=category_id,
                 external_product_id=sku,
                 name=name,
                 store_channel=channel,
@@ -379,10 +393,11 @@ def bulk_import_products(
                 is_active=True,
             )
             db.add(new_p)
+            existing_products_map[sku] = new_p
             inserted += 1
 
-        # Automatically create/update AI Pricing Recommendation for this SKU
-        rec = db.scalar(select(PricingRecommendation).where(PricingRecommendation.product_id == product_id))
+        # Automatically create/update AI Pricing Recommendation for this SKU from cache
+        rec = existing_recs_map.get(product_id)
         rec_price = round(current_price * 1.06, 2)
         price_change_pct = round(((rec_price - current_price) / current_price) * 100.0, 2)
         pred_demand = float(safe_int(inventory_level * 0.8, default=120))

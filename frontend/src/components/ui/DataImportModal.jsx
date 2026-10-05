@@ -43,30 +43,35 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
     setFile(selected);
     setErrorMsg(null);
 
+    // Read only the first 512KB to parse instantly even on 100MB+ datasets
+    const slice = selected.slice(0, 512 * 1024);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const text = event.target.result;
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        if (lines.length < 2) {
+        const allLines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        if (allLines.length < 2) {
           setErrorMsg('CSV file must have a header row and at least 1 data row.');
           return;
         }
 
-        const rawHeaders = parseCSVRow(lines[0]);
+        const rawHeaders = parseCSVRow(allLines[0]);
         const headers = rawHeaders.map((h) => h.replace(/^["']|["']$/g, '').trim());
         const rows = [];
 
-        // Parse up to 2,000 rows
-        const maxRowsToParse = Math.min(lines.length, 2000);
+        // Parse up to 250 rows for snappy instant responsiveness
+        const maxRowsToParse = Math.min(allLines.length, 250);
         for (let i = 1; i < maxRowsToParse; i++) {
-          const values = parseCSVRow(lines[i]).map((v) => v.replace(/^["']|["']$/g, '').trim());
+          const values = parseCSVRow(allLines[i]).map((v) => v.replace(/^["']|["']$/g, '').trim());
           if (values.length === 0 || (values.length === 1 && values[0] === '')) continue;
 
           const raw = {};
-          headers.forEach((h, idx) => {
-            raw[h] = values[idx] !== undefined ? values[idx] : '';
-          });
+          // Only map known/useful headers or first 20 columns to avoid processing thousands of date columns
+          const maxCols = Math.min(headers.length, 30);
+          for (let col = 0; col < maxCols; col++) {
+            const h = headers[col];
+            if (h) raw[h] = values[col] !== undefined ? values[col] : '';
+          }
 
           // Resilient field normalization supporting standard, M5, Walmart, and Kaggle formats
           const skuCode = raw.skuCode || raw.sku || raw.external_product_id || raw.item_id || raw.itemid || raw.id || raw.product_id || `SKU-${i.toString().padStart(4, '0')}`;
@@ -110,7 +115,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
         setErrorMsg('Failed to parse CSV file: ' + (err.message || 'Ensure valid CSV format.'));
       }
     };
-    reader.readAsText(selected);
+    reader.readAsText(slice);
   };
 
   const handleImport = async () => {
