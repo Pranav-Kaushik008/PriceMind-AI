@@ -444,3 +444,58 @@ def bulk_import_products(
     }
 
 
+@router.delete(
+    "/clear-catalog",
+    summary="Clear Entire Product Catalog for Tenant",
+)
+def clear_catalog(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """
+    Delete all products and their associated pricing recommendations for the current tenant.
+    Use this to reset the catalog before uploading a completely new dataset.
+    """
+    from app.models.product import Product
+    from app.models.pricing import PricingRecommendation
+    from app.models.organization import Organization
+    from sqlalchemy import select, delete
+
+    if current_user and current_user.organization_id:
+        org_id = current_user.organization_id
+    else:
+        first_org = db.scalar(select(Organization))
+        org_id = first_org.id if first_org else None
+
+    # Find product IDs for this tenant
+    if org_id:
+        product_ids_q = select(Product.id).where(Product.organization_id == org_id)
+    else:
+        product_ids_q = select(Product.id)
+
+    product_ids = [row[0] for row in db.execute(product_ids_q).all()]
+
+    if not product_ids:
+        return {"status": "success", "deleted_products": 0, "deleted_recommendations": 0, "message": "Catalog is already empty."}
+
+    # Delete recommendations first (FK constraint)
+    recs_deleted = db.execute(
+        delete(PricingRecommendation).where(PricingRecommendation.product_id.in_(product_ids))
+    ).rowcount
+
+    # Delete products
+    if org_id:
+        prods_deleted = db.execute(
+            delete(Product).where(Product.organization_id == org_id)
+        ).rowcount
+    else:
+        prods_deleted = db.execute(delete(Product)).rowcount
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "deleted_products": prods_deleted,
+        "deleted_recommendations": recs_deleted,
+        "message": f"Catalog cleared: {prods_deleted} products and {recs_deleted} recommendations removed.",
+    }

@@ -187,6 +187,13 @@ export const apiClient = {
     });
   },
 
+  async clearCatalog() {
+    return await fetchJson('/products/clear-catalog', {
+      method: 'DELETE',
+      throwOnError: true,
+    });
+  },
+
   // ── 4. Pricing Recommendations ─────────────────────────────────────────────
   async getRecommendations(statusFilter) {
     const param = statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : '';

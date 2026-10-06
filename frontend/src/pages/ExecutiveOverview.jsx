@@ -33,6 +33,7 @@ import {
   Boxes,
   BarChart2,
   Tag,
+  Upload,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -47,6 +48,7 @@ import { Select } from '../components/ui/Select';
 import { ConfidenceIndicator } from '../components/ui/ConfidenceIndicator';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useToast } from '../components/ui/ToastProvider';
+import { DataImportModal } from '../components/ui/DataImportModal';
 
 // ─── Animated counter for KPI values ─────────────────────────────────────────
 function AnimatedValue({ value, className }) {
@@ -106,6 +108,7 @@ export function ExecutiveOverview() {
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
 
   // Live data from backend
@@ -542,6 +545,16 @@ export function ExecutiveOverview() {
             />
           </div>
           <Button
+            variant="primary"
+            size="sm"
+            icon={Upload}
+            onClick={() => setIsImportModalOpen(true)}
+            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+          >
+            Import / Replace CSV
+          </Button>
+
+          <Button
             variant="outline"
             size="sm"
             icon={RefreshCw}
@@ -566,7 +579,12 @@ export function ExecutiveOverview() {
               Import your first product catalog to see live KPIs, real pricing recommendations, and revenue forecasts.
             </p>
           </div>
-          <Button variant="primary" size="sm" icon={Sparkles}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Upload}
+            onClick={() => setIsImportModalOpen(true)}
+          >
             Import Catalog
           </Button>
         </div>
@@ -959,6 +977,13 @@ export function ExecutiveOverview() {
           </div>
         </div>
       </div>
+
+      {/* CSV Data Import & Analysis Modal */}
+      <DataImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => loadData(true)}
+      />
     </div>
   );
 }
