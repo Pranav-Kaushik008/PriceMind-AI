@@ -177,6 +177,7 @@ export function NativeSelect({
   disabled = false,
   size = 'sm',
   className = '',
+  children,
   ...props
 }) {
   return (
@@ -186,21 +187,23 @@ export function NativeSelect({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className={cn(
-          'appearance-none bg-[#131D31]/90 border border-white/[0.08] hover:border-white/[0.16] text-white font-sans rounded-lg pl-3 pr-7 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs shadow-inner',
+          'appearance-none bg-[#131D31]/90 border border-white/[0.08] hover:border-white/[0.16] text-white font-sans rounded-lg pl-3 pr-8 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs shadow-inner min-w-[180px]',
           size === 'xs' ? 'h-7 text-[11px]' : size === 'sm' ? 'h-8 text-xs' : 'h-9 text-xs',
           className
         )}
         {...props}
       >
-        {options.map((opt, i) => {
-          const val = typeof opt === 'object' ? opt.value : opt;
-          const lbl = typeof opt === 'object' ? opt.label : opt;
-          return (
-            <option key={i} value={val} className="bg-slate-900 text-white">
-              {lbl}
-            </option>
-          );
-        })}
+        {children
+          ? children
+          : options.map((opt, i) => {
+              const val = typeof opt === 'object' ? opt.value : opt;
+              const lbl = typeof opt === 'object' ? opt.label : opt;
+              return (
+                <option key={i} value={val} className="bg-slate-900 text-white">
+                  {lbl}
+                </option>
+              );
+            })}
       </select>
       <ChevronDown className="absolute right-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
     </div>

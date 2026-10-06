@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { ModuleShell } from '../components/layout/ModuleShell';
 import { Button } from '../components/ui/Button';
-import { NativeSelect } from '../components/ui/Select';
+import { Select } from '../components/ui/Select';
 import { formatCurrency, formatPercent, formatBps, formatNumber } from '../lib/utils';
 import { apiClient } from '../api/client';
 import { mockCrossElasticityMatrix } from '../mock/mockData';
@@ -125,18 +125,27 @@ export function WhatIfSimulator() {
   };
 
   const controls = (
-    <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={targetCategory} onChange={(e) => setTargetCategory(e.target.value)} className="text-xs h-8">
-        <option value="all">Full Enterprise Portfolio</option>
-        <option value="hardware">Hardware & Tools (Ed = -1.15)</option>
-        <option value="software">Software Subscriptions (Ed = -0.65)</option>
-        <option value="iot">IoT Sensors (Ed = -2.10)</option>
-      </NativeSelect>
+    <div className="flex flex-wrap items-center gap-2.5">
+      <div className="w-56 sm:w-64">
+        <Select
+          size="sm"
+          value={targetCategory}
+          onChange={setTargetCategory}
+          options={[
+            { value: 'all', label: 'Full Enterprise Portfolio' },
+            { value: 'hardware', label: 'Hardware & Tools (Ed = -1.15)' },
+            { value: 'software', label: 'Software (Ed = -0.65)' },
+            { value: 'iot', label: 'IoT Sensors (Ed = -2.10)' },
+          ]}
+        />
+      </div>
       <Button
-        variant="primary" size="sm" icon={Play}
+        variant="primary"
+        size="sm"
+        icon={Play}
         onClick={handleRunLiveSimulation}
         disabled={isRunning}
-        className="text-xs"
+        className="text-xs bg-indigo-600 hover:bg-indigo-500 font-semibold"
       >
         {isRunning ? 'Running…' : 'Run Live Simulation'}
       </Button>
