@@ -23,6 +23,7 @@ from app.api.v1.endpoints import (
     rag,
     agent,
     auth,
+    vision,
 )
 
 api_router = APIRouter()
@@ -51,3 +52,4 @@ api_router.include_router(competitors.router, prefix="/competitors", tags=["Comp
 api_router.include_router(simulations.router, prefix="/simulations", tags=["What-If Simulator (UI)"])
 api_router.include_router(assistant.router, prefix="/assistant", tags=["AI Copilot (UI)"])
 api_router.include_router(models.router, prefix="/models", tags=["Model Observatory (UI)"])
+api_router.include_router(vision.router, prefix="/vision", tags=["Visual Intelligence & Shelf OCR"])

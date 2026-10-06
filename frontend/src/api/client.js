@@ -438,6 +438,26 @@ export const apiClient = {
     return await fetchJson('/auth/me');
   },
 
+  // ── 15. Visual Intelligence & In-Store OCR ───────────────────────────────
+  async analyzeShelfImage(formData) {
+    const token = getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/vision/analyze`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      if (!res.ok) throw new Error(`Vision analysis failed with HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Vision backend call error, returning simulated pipeline result', err);
+      return null;
+    }
+  },
+
   // ── 15. Full Platform Integration (Module 14) ────────────────────────────
   async getConsolidatedRecommendation(productId, objective = 'PROFIT_MAX') {
     return await fetchJson('/pricing/recommend', {

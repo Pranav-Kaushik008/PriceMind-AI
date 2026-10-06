@@ -17,6 +17,7 @@ import { RevenueOptimization } from '../../pages/RevenueOptimization';
 import { Customers } from '../../pages/Customers';
 import { InventoryDynamics } from '../../pages/InventoryDynamics';
 import { CompetitorRadar } from '../../pages/CompetitorRadar';
+import { VisualIntelligence } from '../../pages/VisualIntelligence';
 import { WhatIfSimulator } from '../../pages/WhatIfSimulator';
 import { AIAssistant } from '../../pages/AIAssistant';
 import { ExplainableAI } from '../../pages/ExplainableAI';
@@ -120,6 +121,9 @@ export function AppShell() {
       case 'competitors':
       case 'competitor-radar':
         return <CompetitorRadar />;
+      case 'vision':
+      case 'visual-intelligence':
+        return <VisualIntelligence />;
       case 'simulator':
       case 'what-if-simulator':
         return <WhatIfSimulator />;

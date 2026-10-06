@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Shield,
   X,
+  ScanEye,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { cn } from '../../lib/utils';
@@ -42,6 +43,7 @@ export function Sidebar() {
     { id: 'customers', label: 'Customers', icon: Users, tooltip: 'Customer tiers & willingness-to-pay segments' },
     { id: 'inventory', label: 'Inventory', icon: Boxes, tooltip: 'Stock runway, holding costs & markdown planning' },
     { id: 'competitors', label: 'Competitors', icon: ShieldAlert, tooltip: 'Competitor price tracking & market position' },
+    { id: 'vision', label: 'Visual Intelligence', icon: ScanEye, badge: 'New', tooltip: 'In-store shelf scanning, OCR & competitor price extraction' },
   ];
 
   const analysisNav = [
