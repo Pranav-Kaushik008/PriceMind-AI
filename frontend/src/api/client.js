@@ -173,6 +173,12 @@ export const apiClient = {
     return mockSKUs.find((s) => s.id === id || s.skuCode === id);
   },
 
+  async getCategories() {
+    const data = await fetchJson('/products/categories');
+    if (data && Array.isArray(data)) return data;
+    return [];
+  },
+
   async bulkImportSKUs(items) {
     return await fetchJson('/products/bulk-import', {
       method: 'POST',
