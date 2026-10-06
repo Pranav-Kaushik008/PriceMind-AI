@@ -23,6 +23,7 @@ import {
   X,
   Play,
   Info,
+  RotateCcw,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -77,6 +78,8 @@ export function VisualIntelligence() {
 
   // Live Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
+  const [isCameraCapture, setIsCameraCapture] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
 
   // Vision Pipeline State
@@ -95,7 +98,7 @@ export function VisualIntelligence() {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Stop camera on unmount
+  // Stop camera tracks cleanly on component unmount
   useEffect(() => {
     return () => {
       if (cameraStream) {
@@ -103,6 +106,14 @@ export function VisualIntelligence() {
       }
     };
   }, [cameraStream]);
+
+  // Synchronize camera stream to video element whenever active
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch((e) => console.warn('Webcam auto-play notice:', e));
+    }
+  }, [isCameraActive, cameraStream]);
 
   // Auto-analyze initial sample
   useEffect(() => {
@@ -150,6 +161,7 @@ export function VisualIntelligence() {
     setErrorMessage(null);
     setSelectedFile(file);
     setActivePreset(null);
+    setIsCameraCapture(false);
     stopLiveCamera();
 
     const sizeFormatted = file.size > 1024 * 1024
@@ -179,6 +191,7 @@ export function VisualIntelligence() {
     setFileMeta(null);
     setActivePreset(null);
     setVisionResult(null);
+    setIsCameraCapture(false);
     setErrorMessage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopLiveCamera();
@@ -188,22 +201,74 @@ export function VisualIntelligence() {
   // ── 4. Live Camera Handlers ───────────────────────────────────────────────────
   const startLiveCamera = async () => {
     setErrorMessage(null);
+    setVisionResult(null);
+
+    // 1. Browser compatibility check
+    if (!navigator?.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const msg = 'Live Camera API is not supported in this browser or environment (requires HTTPS or localhost).';
+      setErrorMessage(msg);
+      toast.error('Browser Unsupported', msg);
+      return;
+    }
+
+    setIsStartingCamera(true);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'environment' },
-      });
+      // 2. Request user media stream with environment facing mode fallback
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1920, min: 640 },
+            height: { ideal: 1080, min: 480 },
+            facingMode: { ideal: 'environment' },
+          },
+          audio: false,
+        });
+      } catch (constraintErr) {
+        // Fallback to generic webcam constraints
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
+      // 3. Attach track termination listener
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          toast.warning('Camera Closed', 'The webcam stream was stopped or disconnected.');
+          stopLiveCamera();
+        };
+      }
+
       setCameraStream(stream);
       setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      toast.success('Camera Active', 'Point your camera at a store shelf and click Capture.');
+      setSelectedFile(null);
+      setActivePreset(null);
+      setPreviewUrl(null);
+      setIsCameraCapture(false);
+      toast.success('Camera Live', 'Align your camera with the store shelf and click "Capture Snapshot".');
     } catch (err) {
-      const msg = err.name === 'NotAllowedError'
-        ? 'Camera permission was denied. Please allow camera access in your browser.'
-        : 'Could not access camera: ' + (err.message || 'Device unavailable');
-      setErrorMessage(msg);
-      toast.error('Camera Access Error', msg);
+      let friendlyMessage = 'Could not access camera device.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        friendlyMessage = 'Camera permission was denied. Please allow camera permissions in your browser address bar.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        friendlyMessage = 'No camera device found on this system. Please connect a webcam.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        friendlyMessage = 'Camera is already in use by another application or tab. Please close other camera apps and retry.';
+      } else if (err.name === 'OverconstrainedError') {
+        friendlyMessage = 'Camera constraints could not be satisfied by available video hardware.';
+      } else if (err.name === 'SecurityError') {
+        friendlyMessage = 'Camera access was blocked by browser security policy (requires HTTPS or localhost).';
+      } else if (err.message) {
+        friendlyMessage = `Camera error: ${err.message}`;
+      }
+      setErrorMessage(friendlyMessage);
+      toast.error('Camera Access Error', friendlyMessage);
+      stopLiveCamera();
+    } finally {
+      setIsStartingCamera(false);
     }
   };
 
@@ -213,6 +278,7 @@ export function VisualIntelligence() {
       setCameraStream(null);
     }
     setIsCameraActive(false);
+    setIsStartingCamera(false);
   };
 
   const captureCameraFrame = () => {
@@ -220,24 +286,32 @@ export function VisualIntelligence() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, width, height);
     const dataUri = canvas.toDataURL('image/jpeg', 0.92);
 
+    // Stop camera stream after capture to avoid continuous power/battery consumption
     stopLiveCamera();
+
     setPreviewUrl(dataUri);
     setSelectedFile(null);
     setActivePreset(null);
+    setIsCameraCapture(true);
+    setVisionResult(null);
 
+    const approxSizeKb = Math.round((dataUri.length * 3) / 4 / 1024);
     setFileMeta({
-      name: 'live_camera_capture.jpg',
-      size: '~1.2 MB',
+      name: `webcam_snap_${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.jpg`,
+      size: `${approxSizeKb} KB`,
       type: 'image/jpeg',
     });
 
-    toast.success('Frame Captured', 'Click "Analyze Image" to run computer vision processing.');
+    toast.success('Snapshot Captured', 'Preview ready. Click "Analyze Image" to run YOLO + OCR.');
   };
 
   // ── 5. Analyze Image (Backend Trigger) ─────────────────────────────────────────
@@ -284,6 +358,7 @@ export function VisualIntelligence() {
   const runSampleAnalysis = async (preset) => {
     setActivePreset(preset);
     setSelectedFile(null);
+    setIsCameraCapture(false);
     setPreviewUrl(preset.url);
     setFileMeta({
       name: preset.filename,
@@ -323,10 +398,10 @@ export function VisualIntelligence() {
         <div>
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="text-xl font-bold text-white tracking-tight">Computer Vision & In-Store OCR</h1>
-            <Badge variant="indigo" size="sm" className="font-mono">PHASE 1 REAL UPLOAD</Badge>
+            <Badge variant="indigo" size="sm" className="font-mono">LIVE CAMERA + UPLOAD</Badge>
           </div>
           <p className="text-xs text-slate-400">
-            Select, preview, and analyze store shelf images (JPG, PNG, WebP up to 10MB) or capture with live webcam.
+            Select, preview, and analyze store shelf images (JPG, PNG, WebP up to 10MB) or capture on-demand frames with your live webcam.
           </p>
         </div>
 
@@ -340,7 +415,7 @@ export function VisualIntelligence() {
                 type="button"
                 onClick={() => runSampleAnalysis(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  activePreset?.id === s.id && !selectedFile && !isCameraActive
+                  activePreset?.id === s.id && !selectedFile && !isCameraActive && !isCameraCapture
                     ? 'bg-indigo-600 text-white font-semibold shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
@@ -351,13 +426,16 @@ export function VisualIntelligence() {
           </div>
 
           <Button
-            variant="outline"
+            variant={isCameraActive ? "danger" : "outline"}
             size="sm"
+            loading={isStartingCamera}
             icon={isCameraActive ? VideoOff : Camera}
             onClick={isCameraActive ? stopLiveCamera : startLiveCamera}
-            className="text-xs"
+            className={`text-xs transition-all ${
+              isCameraActive ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-lg' : ''
+            }`}
           >
-            {isCameraActive ? 'Close Camera' : 'Live Camera'}
+            {isCameraActive ? 'Stop Camera' : 'Live Camera'}
           </Button>
 
           <Button
@@ -399,7 +477,9 @@ export function VisualIntelligence() {
         {/* Selected Image Info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-xl bg-slate-900 border border-white/[0.12] overflow-hidden flex items-center justify-center flex-shrink-0 shadow-md">
-            {previewUrl ? (
+            {isCameraActive ? (
+              <Video className="w-6 h-6 text-emerald-400 animate-pulse" />
+            ) : previewUrl ? (
               <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
             ) : (
               <ImageIcon className="w-6 h-6 text-slate-500" />
@@ -407,14 +487,18 @@ export function VisualIntelligence() {
           </div>
           <div className="truncate">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white truncate">{fileMeta?.name || 'No image selected'}</span>
+              <span className="text-xs font-bold text-white truncate">
+                {isCameraActive ? 'Live Camera Feed' : fileMeta?.name || 'No image selected'}
+              </span>
+              {isCameraActive && <Badge variant="success" size="sm" className="animate-pulse">Streaming</Badge>}
+              {isCameraCapture && <Badge variant="warning" size="sm">Camera Snapshot</Badge>}
               {selectedFile && <Badge variant="indigo" size="sm">Local Upload</Badge>}
-              {activePreset && <Badge variant="neutral" size="sm">Sample Preset</Badge>}
+              {activePreset && !isCameraCapture && <Badge variant="neutral" size="sm">Sample Preset</Badge>}
             </div>
             <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-3">
-              <span>Size: {fileMeta?.size || '—'}</span>
+              <span>{isCameraActive ? 'Target: 1080p / 720p' : `Size: ${fileMeta?.size || '—'}`}</span>
               <span>•</span>
-              <span>Format: {fileMeta?.type || '—'}</span>
+              <span>{isCameraActive ? 'Mode: Live Viewfinder' : `Format: ${fileMeta?.type || '—'}`}</span>
               <span>•</span>
               <span className="text-slate-500">Max limit: 10 MB</span>
             </div>
@@ -423,7 +507,19 @@ export function VisualIntelligence() {
 
         {/* Primary Action Buttons */}
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-          {previewUrl && (
+          {isCameraCapture && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={RotateCcw}
+              onClick={startLiveCamera}
+              className="text-xs text-amber-300 hover:text-amber-200 border-amber-500/30 hover:bg-amber-500/10"
+            >
+              Retake Photo
+            </Button>
+          )}
+
+          {previewUrl && !isCameraActive && (
             <Button
               variant="outline"
               size="sm"
@@ -435,17 +531,19 @@ export function VisualIntelligence() {
             </Button>
           )}
 
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Play}
-            loading={isAnalyzing}
-            disabled={!previewUrl || isAnalyzing}
-            onClick={handleAnalyzeImage}
-            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 shadow-[0_0_20px_rgba(99,102,241,0.35)]"
-          >
-            {isAnalyzing ? 'Analyzing Image…' : 'Analyze Image'}
-          </Button>
+          {!isCameraActive && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Play}
+              loading={isAnalyzing}
+              disabled={!previewUrl || isAnalyzing}
+              onClick={handleAnalyzeImage}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 shadow-[0_0_20px_rgba(99,102,241,0.35)]"
+            >
+              {isAnalyzing ? 'Analyzing Image…' : 'Analyze Image'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -491,19 +589,48 @@ export function VisualIntelligence() {
           {/* Canvas Box */}
           <div className="relative w-full h-[400px] sm:h-[460px] rounded-xl overflow-hidden border border-white/[0.12] bg-[#070A11] flex items-center justify-center select-none group shadow-inner">
             {isCameraActive ? (
-              <div className="relative w-full h-full">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2.5">
+              <div className="relative w-full h-full flex items-center justify-center bg-black">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-contain"
+                />
+
+                {/* Viewfinder Target / Crosshair HUD */}
+                <div className="absolute inset-8 pointer-events-none border border-white/20 rounded-2xl flex flex-col justify-between p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="w-6 h-6 border-t-2 border-l-2 border-emerald-400" />
+                    <div className="px-2.5 py-1 rounded-full bg-slate-900/80 border border-emerald-500/30 text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1.5 backdrop-blur-md">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span>LIVE VIEW • ALIGN SHELF</span>
+                    </div>
+                    <div className="w-6 h-6 border-t-2 border-r-2 border-emerald-400" />
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div className="w-6 h-6 border-b-2 border-l-2 border-emerald-400" />
+                    <div className="w-6 h-6 border-b-2 border-r-2 border-emerald-400" />
+                  </div>
+                </div>
+
+                {/* Live Camera Bottom Toolbar */}
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
                   <Button
                     variant="primary"
                     size="sm"
                     icon={Camera}
                     onClick={captureCameraFrame}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-xl"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-[0_0_25px_rgba(16,185,129,0.5)] px-5 py-2"
                   >
                     Capture Snapshot
                   </Button>
-                  <Button variant="outline" size="sm" onClick={stopLiveCamera} className="text-xs bg-slate-900/90 text-white">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={stopLiveCamera}
+                    className="text-xs bg-slate-900/90 text-white border-white/20 hover:bg-slate-800"
+                  >
                     Cancel
                   </Button>
                 </div>
