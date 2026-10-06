@@ -93,7 +93,7 @@ export function VisualIntelligence() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [visionResult, setVisionResult] = useState(null);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
-  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'ocr' | 'json'
+  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'json'
   const [copiedJson, setCopiedJson] = useState(false);
 
   // Overlay Toggles
@@ -397,6 +397,7 @@ export function VisualIntelligence() {
   const allTextLabels = visionResult?.detected_text_and_prices || [];
   const detectedPrices = allTextLabels.filter((t) => t.is_price_tag || t.extracted_price !== null);
   const detectedTextRegions = allTextLabels.filter((t) => !t.is_price_tag && t.extracted_price === null);
+  const matchedProducts = visionResult?.matched_products || [];
 
   const hasLowConfidence = detectedObjects.some((o) => o.confidence < 0.4) || allTextLabels.some((t) => t.confidence < 0.4);
 
@@ -897,6 +898,15 @@ export function VisualIntelligence() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab('matches')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  activeTab === 'matches' ? 'bg-emerald-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Matches ({matchedProducts.length})
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab('json')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 ${
                   activeTab === 'json' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
@@ -1115,7 +1125,128 @@ export function VisualIntelligence() {
           )}
 
           {/* =========================================================================
-              TAB 4: JSON TELEMETRY VIEW
+              TAB 5: PRODUCT CATALOG MATCHES
+              ========================================================================= */}
+          {activeTab === 'matches' && (
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-500 text-xs gap-2">
+                  <span className="text-2xl">🔍</span>
+                  <span>Analyze an image to see product catalog matches</span>
+                </div>
+              ) : matchedProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-500 text-xs gap-2">
+                  <span className="text-2xl">📦</span>
+                  <span>No catalog matches found</span>
+                  <span className="text-slate-600 text-[11px]">Try an image with visible product labels or brand names</span>
+                </div>
+              ) : (
+                matchedProducts.map((match, idx) => {
+                  const isMatched = match.match_status === 'matched';
+                  const isPossible = match.match_status === 'possible_match';
+                  const isUnmatched = match.match_status === 'unmatched';
+                  const pct = Math.round((match.match_confidence || 0) * 100);
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        isMatched
+                          ? 'bg-emerald-900/20 border-emerald-500/30'
+                          : isPossible
+                          ? 'bg-amber-900/20 border-amber-500/30'
+                          : 'bg-white/[0.03] border-white/[0.08]'
+                      }`}
+                    >
+                      {/* Header Row */}
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                            {match.detected_label}
+                          </span>
+                          <span className="text-slate-600">→</span>
+                          <span className={`text-[11px] font-semibold ${isMatched ? 'text-emerald-400' : isPossible ? 'text-amber-400' : 'text-slate-500'}`}>
+                            {match.matched_product ? match.matched_product.name : 'No catalog match'}
+                          </span>
+                        </div>
+                        {/* Status badge */}
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          isMatched ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : isPossible ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-slate-700/40 text-slate-500 border border-slate-600/30'
+                        }`}>
+                          {isMatched ? 'Matched' : isPossible ? 'Possible' : 'Unmatched'}
+                        </span>
+                      </div>
+
+                      {/* Matched Product Details */}
+                      {match.matched_product && (
+                        <div className="grid grid-cols-2 gap-2 mb-2.5 text-[11px]">
+                          <div>
+                            <span className="text-slate-500 uppercase tracking-wider text-[10px]">SKU</span>
+                            <p className="text-slate-200 font-mono">{match.matched_product.sku}</p>
+                          </div>
+                          {match.matched_product.brand && (
+                            <div>
+                              <span className="text-slate-500 uppercase tracking-wider text-[10px]">Brand</span>
+                              <p className="text-slate-200">{match.matched_product.brand}</p>
+                            </div>
+                          )}
+                          {match.matched_product.category && (
+                            <div>
+                              <span className="text-slate-500 uppercase tracking-wider text-[10px]">Category</span>
+                              <p className="text-slate-300">{match.matched_product.category}</p>
+                            </div>
+                          )}
+                          {match.matched_product.current_price != null && (
+                            <div>
+                              <span className="text-slate-500 uppercase tracking-wider text-[10px]">Catalog Price</span>
+                              <p className="text-emerald-400 font-semibold">₹{match.matched_product.current_price?.toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Confidence bar */}
+                      <div className="mb-1.5">
+                        <div className="flex justify-between items-center mb-1 text-[10px]">
+                          <span className="text-slate-500 uppercase tracking-wider">Match Confidence</span>
+                          <span className={`font-bold ${isMatched ? 'text-emerald-400' : isPossible ? 'text-amber-400' : 'text-slate-500'}`}>
+                            {pct}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              isMatched ? 'bg-emerald-500' : isPossible ? 'bg-amber-500' : 'bg-slate-600'
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Warning for possible match */}
+                      {isPossible && (
+                        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-400 bg-amber-900/20 rounded-lg px-2.5 py-1.5 border border-amber-500/20">
+                          <span>⚠️</span>
+                          <span>Possible match — verify product</span>
+                        </div>
+                      )}
+
+                      {/* Reason */}
+                      {match.match_reason && !isUnmatched && (
+                        <div className="mt-1.5 text-[10px] text-slate-500 font-mono truncate">
+                          {match.match_reason}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 6: JSON TELEMETRY VIEW
               ========================================================================= */}
           {activeTab === 'json' && (
             <div className="flex flex-col gap-2">
@@ -1139,12 +1270,14 @@ export function VisualIntelligence() {
 
           {/* Pipeline Execution Footer */}
           {visionResult && (
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono flex items-center justify-between text-slate-400">
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono flex items-center justify-between text-slate-400 flex-wrap gap-1">
               <span>Preprocessing: {visionResult.processing_stats?.preprocessing_time_ms || 0}ms</span>
               <span>•</span>
               <span>YOLO Det: {visionResult.processing_stats?.detection_time_ms || 0}ms</span>
               <span>•</span>
               <span>OCR: {visionResult.processing_stats?.ocr_time_ms || 0}ms</span>
+              <span>•</span>
+              <span>Matching: {visionResult.processing_stats?.matching_time_ms || 0}ms</span>
             </div>
           )}
         </div>

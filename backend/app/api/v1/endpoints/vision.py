@@ -7,10 +7,12 @@ Uses existing authentication architecture if available.
 """
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from sqlalchemy.orm import Session
 from typing import Optional
 import base64
 
 from app.core.deps import get_optional_current_user
+from app.db.session import get_db
 from app.models.user import User
 from app.schemas.vision import VisionPipelineResponse
 from app.services import vision_service
@@ -33,6 +35,7 @@ async def analyze_image_endpoint(
     image_base64: Optional[str] = Form(None),
     sample_id: Optional[str] = Form(None),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Phase 1 Real Image Upload & Analysis Flow:
@@ -113,7 +116,7 @@ async def analyze_image_endpoint(
 
     # Run computer vision processing on the actual bytes
     try:
-        return vision_service.analyze_image_bytes(image_bytes=image_bytes, filename=filename)
+        return vision_service.analyze_image_bytes(image_bytes=image_bytes, filename=filename, db=db)
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as exc:

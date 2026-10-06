@@ -1,8 +1,8 @@
 """
 backend/app/schemas/vision.py
 -----------------------------
-Pydantic schemas for Phase 1 Computer Vision & In-Store OCR Module.
-Structured schemas strictly for image processing, object detection, and OCR extraction.
+Pydantic schemas for Visual Intelligence & Computer Vision Module.
+Structured schemas for image processing, object detection, OCR extraction, and product catalog matching.
 """
 
 from typing import List, Optional, Dict, Any
@@ -38,6 +38,24 @@ class DetectedTextLabel(BaseModel):
     is_price_tag: bool = False
 
 
+class MatchedProductInfo(BaseModel):
+    product_id: str
+    sku: str
+    name: str
+    brand: Optional[str] = None
+    category: Optional[str] = None
+    current_price: Optional[float] = None
+
+
+class ProductMatchResult(BaseModel):
+    detected_object_id: Optional[str] = None
+    detected_label: str
+    matched_product: Optional[MatchedProductInfo] = None
+    match_confidence: float = 0.0
+    match_status: str = "unmatched"  # "matched" | "possible_match" | "unmatched"
+    match_reason: Optional[str] = None
+
+
 class ImageMetadata(BaseModel):
     filename: str
     format: str
@@ -52,6 +70,7 @@ class ProcessingStats(BaseModel):
     preprocessing_time_ms: float
     detection_time_ms: float
     ocr_time_ms: float
+    matching_time_ms: float = 0.0
     total_pipeline_time_ms: float
 
 
@@ -61,5 +80,7 @@ class VisionPipelineResponse(BaseModel):
     processing_stats: ProcessingStats
     detected_objects_count: int
     detected_text_count: int
-    detected_objects: List[DetectedObject]
-    detected_text_and_prices: List[DetectedTextLabel]
+    matched_products_count: int = 0
+    detected_objects: List[DetectedObject] = []
+    detected_text_and_prices: List[DetectedTextLabel] = []
+    matched_products: List[ProductMatchResult] = []

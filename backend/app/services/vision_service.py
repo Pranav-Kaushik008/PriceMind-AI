@@ -13,6 +13,7 @@ import time
 import re
 import numpy as np
 from typing import Tuple, List, Dict, Any, Optional
+from sqlalchemy.orm import Session
 from PIL import Image, ImageStat, ImageOps
 
 # Ensure unverified SSL context for PyTorch model downloads if needed
@@ -108,11 +109,12 @@ def parse_price_candidate(text: str) -> Tuple[bool, Optional[float], Optional[st
 
 def analyze_image_bytes(
     image_bytes: bytes,
-    filename: str = "upload.jpg"
+    filename: str = "upload.jpg",
+    db: Optional[Session] = None,
 ) -> VisionPipelineResponse:
     """
-    Full Phase 1 Pipeline:
-    Image → Image Preprocessing → YOLO Object Detection → EasyOCR Text Detection → Price Extraction
+    Full Vision Pipeline:
+    Image → Preprocessing → YOLO Object Detection → EasyOCR Text & Price Extraction → Product Catalog Matching
     """
     start_total = time.perf_counter()
 
@@ -266,6 +268,18 @@ def analyze_image_bytes(
             print(f"EasyOCR extraction error: {ocr_err}")
 
     ocr_time_ms = round((time.perf_counter() - start_ocr) * 1000, 2)
+
+    # Step 5: Product Catalog Matching
+    start_match = time.perf_counter()
+    matched_products = []
+    if db is not None:
+        try:
+            from app.services.product_matching_service import match_products_from_vision
+            matched_products = match_products_from_vision(db, detected_objects, detected_texts)
+        except Exception as match_err:
+            print(f"Product matching error (non-fatal): {match_err}")
+    match_time_ms = round((time.perf_counter() - start_match) * 1000, 2)
+
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)
 
     return VisionPipelineResponse(
@@ -283,10 +297,13 @@ def analyze_image_bytes(
             preprocessing_time_ms=prep_time_ms,
             detection_time_ms=det_time_ms,
             ocr_time_ms=ocr_time_ms,
+            matching_time_ms=match_time_ms,
             total_pipeline_time_ms=total_time_ms,
         ),
         detected_objects_count=len(detected_objects),
         detected_text_count=len(detected_texts),
+        matched_products_count=len(matched_products),
         detected_objects=detected_objects,
         detected_text_and_prices=detected_texts,
+        matched_products=matched_products,
     )
