@@ -14,6 +14,7 @@ class AnalyticsOverviewResponse(BaseModel):
     total_sales_records: int
     total_revenue: Optional[float] = 0.0
     average_price: Optional[float] = 0.0
+    average_margin: Optional[float] = 0.0
     average_demand_units: Optional[float] = 0.0
     total_recommendations: int = 0
     total_optimizations_run: int = 0

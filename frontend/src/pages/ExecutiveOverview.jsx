@@ -171,12 +171,15 @@ export function ExecutiveOverview() {
   const avgPrice = analyticsOverview?.average_price || 0;
   const totalSalesRecords = analyticsOverview?.total_sales_records || 0;
 
-  // Derive margin from recommendations data
+  // Use backend-computed average_margin first, then fallback to recommendation data
   const avgMargin = useMemo(() => {
+    // 1. Backend computed from products (most accurate when no SalesRecords)
+    if (analyticsOverview?.average_margin > 0) return analyticsOverview.average_margin;
+    // 2. Compute from recommendations
     const recsWithMargin = recommendations.filter((r) => r.currentMarginPercent > 0);
     if (recsWithMargin.length === 0) return 0;
     return recsWithMargin.reduce((sum, r) => sum + r.currentMarginPercent, 0) / recsWithMargin.length;
-  }, [recommendations]);
+  }, [analyticsOverview, recommendations]);
 
   const grossProfit = Math.round(totalRevenue * (avgMargin / 100));
   const pendingRecs = recommendations.filter((r) => r.status === 'pending');
@@ -208,30 +211,32 @@ export function ExecutiveOverview() {
     return [
       {
         id: 'revenue',
-        title: 'Total Revenue',
+        title: totalSalesRecords > 0 ? 'Total Revenue' : 'Portfolio Value',
         value: totalRevenue > 0 ? formatCurrency(totalRevenue, currency, true) : (kpiMap['kpi-1']?.value || '—'),
         raw: totalRevenue,
         sparkline: kpiMap['kpi-1']?.historicalSparkline || [],
         change: kpiMap['kpi-1']?.delta,
-        changePeriod: kpiMap['kpi-1']?.deltaPeriod || 'vs prior period',
+        changePeriod: totalSalesRecords > 0 ? (kpiMap['kpi-1']?.deltaPeriod || 'vs prior period') : 'catalog price × inventory',
         isPositive: (kpiMap['kpi-1']?.deltaType || 'positive') === 'positive',
         color: '#6366F1',
         icon: DollarSign,
-        tooltip: 'Total revenue from all catalogued products in the database.',
+        tooltip: totalSalesRecords > 0
+          ? 'Total revenue from sales records.'
+          : 'Estimated portfolio value = sum of (price × inventory) across all imported products.',
         live: totalRevenue > 0,
       },
       {
         id: 'profit',
-        title: 'Gross Profit',
+        title: totalSalesRecords > 0 ? 'Gross Profit' : 'Est. Gross Profit',
         value: grossProfit > 0 ? formatCurrency(grossProfit, currency, true) : '—',
         raw: grossProfit,
         sparkline: kpiMap['kpi-2']?.historicalSparkline || [],
         change: kpiMap['kpi-2']?.delta,
-        changePeriod: kpiMap['kpi-2']?.deltaPeriod || 'vs prior period',
+        changePeriod: avgMargin > 0 ? `${avgMargin.toFixed(1)}% avg margin applied` : 'vs prior period',
         isPositive: true,
         color: '#10B981',
         icon: TrendingUp,
-        tooltip: 'Gross profit estimated from average margin across active catalog.',
+        tooltip: 'Gross profit = Portfolio Value × average margin across your catalog.',
         live: grossProfit > 0,
       },
       {
@@ -659,7 +664,7 @@ export function ExecutiveOverview() {
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   {chartConfig.title}
                   <span className="text-[9px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-full">
-                    {totalRevenue > 0 ? 'CATALOG-BASED' : 'DEMO DATA'}
+                    {totalRevenue > 0 ? (totalSalesRecords > 0 ? 'SALES RECORDS' : 'CATALOG-BASED') : 'AWAITING DATA'}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">{chartConfig.subtitle}</p>

@@ -28,6 +28,7 @@ def get_analytics_overview(db: Session, organization_id: Optional[str] = None) -
     cat_q = select(func.count(Category.id))
     total_categories = db.scalar(cat_q) or 0
 
+    # Try sales records first
     sales_count_q = select(func.count(SalesRecord.id))
     sales_agg_q = select(
         func.sum(SalesRecord.revenue),
@@ -44,6 +45,38 @@ def get_analytics_overview(db: Session, organization_id: Optional[str] = None) -
     total_revenue = float(sales_aggregates[0]) if sales_aggregates and sales_aggregates[0] else 0.0
     avg_price = float(sales_aggregates[1]) if sales_aggregates and sales_aggregates[1] else 0.0
     avg_demand = float(sales_aggregates[2]) if sales_aggregates and sales_aggregates[2] else 0.0
+
+    # ── Catalog-based fallback when no sales records exist ──────────────────────
+    # Derive meaningful KPIs directly from the imported product catalog.
+    if total_revenue == 0 and total_products > 0:
+        prod_agg_q = select(
+            func.sum(Product.current_price * Product.inventory_level),   # portfolio value proxy
+            func.avg(Product.current_price),
+            func.avg(Product.inventory_level),
+            func.avg(
+                (Product.current_price - Product.cost_price) / Product.current_price * 100
+            ),
+        ).where(
+            Product.current_price != None,
+            Product.current_price > 0,
+            Product.cost_price != None,
+            Product.cost_price > 0,
+        )
+        if organization_id:
+            prod_agg_q = prod_agg_q.where(Product.organization_id == organization_id)
+
+        prod_agg = db.execute(prod_agg_q).first()
+        total_revenue = float(prod_agg[0]) if prod_agg and prod_agg[0] else 0.0
+        avg_price = float(prod_agg[1]) if prod_agg and prod_agg[1] else 0.0
+        avg_demand = float(prod_agg[2]) if prod_agg and prod_agg[2] else 0.0
+    # ───────────────────────────────────────────────────────────────────────────
+
+    # Real avg margin from pricing recommendations
+    margin_q = select(func.avg(PricingRecommendation.predicted_margin_pct)).where(
+        PricingRecommendation.predicted_margin_pct != None,
+        PricingRecommendation.predicted_margin_pct > 0,
+    )
+    avg_margin = float(db.scalar(margin_q) or 0.0)
 
     recs_q = select(func.count(PricingRecommendation.id))
     if organization_id:
@@ -62,6 +95,7 @@ def get_analytics_overview(db: Session, organization_id: Optional[str] = None) -
         total_optimizations_run=total_opts,
         model_status="active",
         data_timeframe_days=365,
+        average_margin=round(avg_margin, 2),
     )
 
 
