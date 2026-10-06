@@ -82,11 +82,11 @@ export function KPIDisplay({
       </div>
 
       {/* Benchmark or Progress or Sparkline */}
-      <div className="mt-auto pt-1 flex items-center justify-between text-[11px] text-slate-500">
+      <div className="mt-auto pt-2 border-t border-white/[0.05] space-y-1.5 text-[11px] font-mono">
         {benchmarkLabel && (
-          <div className="flex items-center gap-1.5 truncate font-mono">
+          <div className="flex items-center justify-between gap-1.5 text-[11px]">
             <span className="text-slate-500">{benchmarkLabel}:</span>
-            <span className="font-semibold text-slate-300">
+            <span className="font-semibold text-slate-300 truncate">
               {benchmarkValue}
             </span>
           </div>
@@ -94,18 +94,23 @@ export function KPIDisplay({
 
         {/* Micro progress bar */}
         {progress !== undefined && (
-          <div className="w-full flex flex-col gap-1.5 mt-1">
+          <div className="w-full flex flex-col gap-1 pt-0.5">
             <div className="w-full h-1.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/[0.06]">
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-500 shadow-sm',
-                  progress > 90 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-indigo-500 to-cyan-400'
+                  progress >= 95
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                    : progress > 80
+                    ? 'bg-gradient-to-r from-indigo-500 to-cyan-400'
+                    : 'bg-gradient-to-r from-amber-500 to-rose-500'
                 )}
                 style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] font-mono text-slate-400">
-              <span>Target: {progress}%</span>
+            <div className="flex justify-between text-[10px] text-slate-400">
+              <span>Ingestion SLA</span>
+              <span className="text-emerald-400 font-semibold">{progress}%</span>
             </div>
           </div>
         )}
