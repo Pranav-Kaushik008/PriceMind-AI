@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, TrendingUp, Cpu, CheckCircle2, AlertTriangle, ArrowRight, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { formatCurrency, formatPercent } from '../../lib/utils';
+import { cn, formatCurrency, formatPercent } from '../../lib/utils';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { SHAPWaterfall } from './SHAPWaterfall';
