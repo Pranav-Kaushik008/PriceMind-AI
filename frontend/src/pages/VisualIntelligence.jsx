@@ -24,6 +24,12 @@ import {
   Play,
   Info,
   RotateCcw,
+  DollarSign,
+  Type,
+  Target,
+  Clock,
+  ShieldAlert,
+  SearchX,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -386,6 +392,14 @@ export function VisualIntelligence() {
     toast.success('JSON Copied', 'Structured vision response copied to clipboard.');
   };
 
+  // Derived Results & Filtering
+  const detectedObjects = visionResult?.detected_objects || [];
+  const allTextLabels = visionResult?.detected_text_and_prices || [];
+  const detectedPrices = allTextLabels.filter((t) => t.is_price_tag || t.extracted_price !== null);
+  const detectedTextRegions = allTextLabels.filter((t) => !t.is_price_tag && t.extracted_price === null);
+
+  const hasLowConfidence = detectedObjects.some((o) => o.confidence < 0.4) || allTextLabels.some((t) => t.confidence < 0.4);
+
   return (
     <div className="flex flex-col gap-6 w-full font-sans max-w-7xl mx-auto pb-16">
       {/* Hidden Snapshot Canvas */}
@@ -398,10 +412,10 @@ export function VisualIntelligence() {
         <div>
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="text-xl font-bold text-white tracking-tight">Computer Vision & In-Store OCR</h1>
-            <Badge variant="indigo" size="sm" className="font-mono">LIVE CAMERA + UPLOAD</Badge>
+            <Badge variant="indigo" size="sm" className="font-mono">VISUAL INTELLIGENCE</Badge>
           </div>
           <p className="text-xs text-slate-400">
-            Select, preview, and analyze store shelf images (JPG, PNG, WebP up to 10MB) or capture on-demand frames with your live webcam.
+            Upload images or capture live camera frames to run YOLO object detection and EasyOCR multi-currency price parsing.
           </p>
         </div>
 
@@ -457,23 +471,33 @@ export function VisualIntelligence() {
         </div>
       </div>
 
-      {/* Error Alert Box */}
+      {/* Analysis Failure Alert */}
       {errorMessage && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center justify-between gap-3 animate-in fade-in">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-            <span>{errorMessage}</span>
+            <div>
+              <span className="font-semibold block text-rose-200">Analysis Error</span>
+              <span className="text-slate-300">{errorMessage}</span>
+            </div>
           </div>
-          <Button variant="ghost" size="xs" onClick={() => setErrorMessage(null)} className="text-rose-400">
-            <X className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {previewUrl && (
+              <Button variant="outline" size="xs" onClick={handleAnalyzeImage} className="text-xs text-rose-300 border-rose-500/30">
+                Retry Analysis
+              </Button>
+            )}
+            <Button variant="ghost" size="xs" onClick={() => setErrorMessage(null)} className="text-rose-400">
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       )}
 
       {/* =========================================================================
           2. SELECTION & PREVIEW CONTROLS CARD
           ========================================================================= */}
-      <div className="p-4 rounded-2xl bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-[#0D1524]/60 backdrop-blur-md border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
         {/* Selected Image Info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-xl bg-slate-900 border border-white/[0.12] overflow-hidden flex items-center justify-center flex-shrink-0 shadow-md">
@@ -486,16 +510,16 @@ export function VisualIntelligence() {
             )}
           </div>
           <div className="truncate">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-white truncate">
                 {isCameraActive ? 'Live Camera Feed' : fileMeta?.name || 'No image selected'}
               </span>
               {isCameraActive && <Badge variant="success" size="sm" className="animate-pulse">Streaming</Badge>}
-              {isCameraCapture && <Badge variant="warning" size="sm">Camera Snapshot</Badge>}
-              {selectedFile && <Badge variant="indigo" size="sm">Local Upload</Badge>}
-              {activePreset && !isCameraCapture && <Badge variant="neutral" size="sm">Sample Preset</Badge>}
+              {isCameraCapture && <Badge variant="warning" size="sm">Webcam Snapshot</Badge>}
+              {selectedFile && <Badge variant="indigo" size="sm">Local File</Badge>}
+              {activePreset && !isCameraCapture && <Badge variant="neutral" size="sm">Preset</Badge>}
             </div>
-            <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-3">
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-3 flex-wrap">
               <span>{isCameraActive ? 'Target: 1080p / 720p' : `Size: ${fileMeta?.size || '—'}`}</span>
               <span>•</span>
               <span>{isCameraActive ? 'Mode: Live Viewfinder' : `Format: ${fileMeta?.type || '—'}`}</span>
@@ -548,7 +572,90 @@ export function VisualIntelligence() {
       </div>
 
       {/* =========================================================================
-          3. MAIN WORKSPACE: CANVAS (LEFT) + STRUCTURED RESULTS (RIGHT)
+          3. ANALYSIS SUMMARY KPI RIBBON
+          ========================================================================= */}
+      {visionResult && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          {/* KPI 1: Objects Detected */}
+          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-medium uppercase tracking-wider">Objects Detected</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Boxes className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-emerald-400">
+                {detectedObjects.length}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {detectedObjects.length === 1 ? 'product' : 'products'} found
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 2: Text Regions */}
+          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-medium uppercase tracking-wider">Text Regions</span>
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <Type className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-indigo-300">
+                {allTextLabels.length}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">OCR regions</span>
+            </div>
+          </div>
+
+          {/* KPI 3: Prices Extracted */}
+          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-medium uppercase tracking-wider">Prices Detected</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <DollarSign className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-amber-400">
+                {detectedPrices.length}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">price tags</span>
+            </div>
+          </div>
+
+          {/* KPI 4: Total Latency */}
+          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-medium uppercase tracking-wider">Pipeline Latency</span>
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-cyan-300">
+                {visionResult.processing_stats?.total_pipeline_time_ms || 0}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">ms total</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Low Confidence Warning Notice */}
+      {hasLowConfidence && (
+        <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5">
+          <ShieldAlert className="w-4 h-4 flex-shrink-0 text-amber-400" />
+          <span>
+            Some detections have confidence below 40%. For highest accuracy, ensure steady focus, adequate retail illumination, and upright shelf labels.
+          </span>
+        </div>
+      )}
+
+      {/* =========================================================================
+          4. MAIN WORKSPACE: CANVAS (LEFT) + STRUCTURED RESULTS (RIGHT)
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
@@ -572,7 +679,7 @@ export function VisualIntelligence() {
                   onChange={(e) => setShowObjectBoxes(e.target.checked)}
                   className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-0"
                 />
-                <span className="text-[11px] text-emerald-400 font-mono">Object Boxes</span>
+                <span className="text-[11px] text-emerald-400 font-mono">Object Boxes ({detectedObjects.length})</span>
               </label>
               <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
                 <input
@@ -581,7 +688,7 @@ export function VisualIntelligence() {
                   onChange={(e) => setShowOcrBoxes(e.target.checked)}
                   className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-0"
                 />
-                <span className="text-[11px] text-amber-400 font-mono">OCR Price Tags</span>
+                <span className="text-[11px] text-amber-400 font-mono">OCR Tags ({allTextLabels.length})</span>
               </label>
             </div>
           </div>
@@ -645,7 +752,7 @@ export function VisualIntelligence() {
 
                 {/* Object Bounding Boxes Overlay */}
                 {showObjectBoxes &&
-                  visionResult?.detected_objects?.map((obj) => {
+                  detectedObjects.map((obj) => {
                     const isSelected = selectedBoxId === obj.id;
                     return (
                       <div
@@ -664,7 +771,7 @@ export function VisualIntelligence() {
                         }}
                       >
                         <div
-                          className={`absolute -top-6 left-0 px-2 py-0.5 rounded-t-md font-mono text-[10px] font-bold flex items-center gap-1 shadow-md ${
+                          className={`absolute -top-6 left-0 px-2 py-0.5 rounded-t-md font-mono text-[10px] font-bold flex items-center gap-1 shadow-md whitespace-nowrap ${
                             isSelected ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
                           }`}
                         >
@@ -677,13 +784,18 @@ export function VisualIntelligence() {
 
                 {/* OCR Price Tags Overlay */}
                 {showOcrBoxes &&
-                  visionResult?.detected_text_and_prices?.map((ocr) => {
+                  allTextLabels.map((ocr) => {
                     const isSelected = selectedBoxId === ocr.id;
+                    const isPrice = ocr.is_price_tag || ocr.extracted_price !== null;
                     return (
                       <div
                         key={ocr.id}
                         onClick={() => setSelectedBoxId(ocr.id)}
-                        className={`absolute border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center ${
+                        className={`absolute border-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center ${
+                          isPrice
+                            ? 'border-dashed border-amber-300 bg-amber-400/20'
+                            : 'border-dotted border-cyan-400/60 bg-cyan-500/10'
+                        } ${
                           isSelected ? 'scale-105 z-30 shadow-[0_0_15px_rgba(251,191,36,0.8)]' : 'z-20'
                         }`}
                         style={{
@@ -693,10 +805,19 @@ export function VisualIntelligence() {
                           height: `${ocr.box.height_percent}%`,
                         }}
                       >
-                        <div className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-extrabold text-[11px] shadow-lg flex items-center gap-1">
-                          <Tag className="w-2.5 h-2.5 text-slate-950" />
-                          <span>${ocr.extracted_price ? ocr.extracted_price.toFixed(2) : ocr.raw_text}</span>
-                        </div>
+                        {isPrice ? (
+                          <div className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-extrabold text-[11px] shadow-lg flex items-center gap-1 whitespace-nowrap">
+                            <Tag className="w-2.5 h-2.5 text-slate-950" />
+                            <span>
+                              {ocr.currency_symbol || '$'}
+                              {ocr.extracted_price ? ocr.extracted_price.toFixed(2) : ocr.raw_text}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="px-1.5 py-0.5 rounded bg-slate-900/90 text-cyan-300 font-mono text-[9px] border border-cyan-500/30 whitespace-nowrap">
+                            {ocr.raw_text}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -724,51 +845,61 @@ export function VisualIntelligence() {
               </span>
             </div>
             <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-              <span className="text-[10px] text-slate-500 block">Objects Detected</span>
+              <span className="text-[10px] text-slate-500 block">Objects / OCR</span>
               <span className="text-emerald-400 font-bold block mt-0.5">
-                {visionResult?.detected_objects_count || 0} Found
+                {detectedObjects.length} obj / {allTextLabels.length} txt
               </span>
             </div>
             <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-              <span className="text-[10px] text-slate-500 block">Pipeline Latency</span>
-              <span className="text-indigo-300 font-bold block mt-0.5">
+              <span className="text-[10px] text-slate-500 block">Latency Breakdown</span>
+              <span className="text-indigo-300 font-bold block mt-0.5 truncate" title={`Prep: ${visionResult?.processing_stats?.preprocessing_time_ms}ms, YOLO: ${visionResult?.processing_stats?.detection_time_ms}ms, OCR: ${visionResult?.processing_stats?.ocr_time_ms}ms`}>
                 {visionResult?.processing_stats?.total_pipeline_time_ms ? `${visionResult.processing_stats.total_pipeline_time_ms} ms` : '—'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT (5 COLS): STRUCTURED RESULTS & RAW JSON VIEW */}
+        {/* RIGHT (5 COLS): STRUCTURED RESULTS & DETAILED TABS */}
         <div className="lg:col-span-5 bg-[#0D1524]/70 backdrop-blur-md border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col gap-4">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
             <h2 className="text-xs font-bold text-white uppercase tracking-wider">
-              Extraction Telemetry
+              Detection Results
             </h2>
 
-            <div className="flex bg-white/[0.03] p-1 rounded-lg border border-white/[0.08] text-xs font-mono">
+            {/* Navigation Tabs */}
+            <div className="flex bg-white/[0.03] p-1 rounded-lg border border-white/[0.08] text-xs font-mono flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('objects')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  activeTab === 'objects' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  activeTab === 'objects' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Objects ({visionResult?.detected_objects_count || 0})
+                Objects ({detectedObjects.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('prices')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  activeTab === 'prices' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Prices ({detectedPrices.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('ocr')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  activeTab === 'ocr' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  activeTab === 'ocr' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                OCR Tags ({visionResult?.detected_text_count || 0})
+                Text ({allTextLabels.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('json')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 ${
-                  activeTab === 'json' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  activeTab === 'json' ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Code className="w-3 h-3" /> JSON
@@ -776,41 +907,65 @@ export function VisualIntelligence() {
             </div>
           </div>
 
-          {/* TAB 1: OBJECTS */}
+          {/* =========================================================================
+              TAB 1: DETECTED OBJECTS
+              ========================================================================= */}
           {activeTab === 'objects' && (
-            <div className="space-y-2.5 max-h-[440px] overflow-y-auto">
-              {!visionResult?.detected_objects?.length ? (
-                <div className="text-center text-xs text-slate-500 py-12">
-                  Click "Analyze Image" to view detected objects.
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="text-center text-xs text-slate-500 py-12 flex flex-col items-center gap-2">
+                  <ScanEye className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>Click "Analyze Image" to run YOLO object detection.</span>
+                </div>
+              ) : detectedObjects.length === 0 ? (
+                /* Clear State: No Objects Detected */
+                <div className="text-center p-8 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2">
+                  <SearchX className="w-8 h-8 text-slate-500 mb-1" />
+                  <span className="text-xs font-bold text-slate-300">No Objects Detected</span>
+                  <p className="text-[11px] text-slate-500 max-w-xs">
+                    No relevant retail objects or products were identified above the confidence threshold. Try repositioning or adjusting lighting.
+                  </p>
                 </div>
               ) : (
-                visionResult.detected_objects.map((obj) => {
+                detectedObjects.map((obj) => {
                   const isSelected = selectedBoxId === obj.id;
+                  const isLowConf = obj.confidence < 0.4;
                   return (
                     <div
                       key={obj.id}
                       onClick={() => setSelectedBoxId(obj.id)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected
-                          ? 'bg-indigo-500/15 border-indigo-500/50 shadow-lg'
+                          ? 'bg-indigo-500/15 border-indigo-500/60 shadow-lg'
                           : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono text-xs font-bold flex-shrink-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono text-xs font-bold flex-shrink-0">
                           {obj.id}
                         </div>
                         <div className="truncate">
-                          <span className="text-xs font-bold text-white truncate block">{obj.label}</span>
-                          <span className="text-[10px] text-slate-400 font-mono block">
-                            Box: [{obj.box.x_percent}%, {obj.box.y_percent}%] • {obj.box.width_percent}% × {obj.box.height_percent}%
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white truncate">{obj.label}</span>
+                            {isLowConf && (
+                              <Badge variant="warning" size="sm" className="text-[9px] font-mono">
+                                Low Conf
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            Position: [{obj.box.x_percent}%, {obj.box.y_percent}%] • Dimensions: {obj.box.width_percent}% × {obj.box.height_percent}%
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col items-end flex-shrink-0">
-                        <Badge variant="success" size="sm" className="font-mono">
-                          {(obj.confidence * 100).toFixed(0)}% Conf
+                        <Badge
+                          variant={obj.confidence >= 0.7 ? "success" : obj.confidence >= 0.4 ? "indigo" : "warning"}
+                          size="sm"
+                          className="font-mono"
+                        >
+                          {(obj.confidence * 100).toFixed(1)}% Conf
                         </Badge>
                         <span className="text-[10px] text-slate-500 font-mono mt-1">
                           {obj.box.width_px}×{obj.box.height_px} px
@@ -823,46 +978,69 @@ export function VisualIntelligence() {
             </div>
           )}
 
-          {/* TAB 2: OCR TAGS */}
-          {activeTab === 'ocr' && (
-            <div className="space-y-2.5 max-h-[440px] overflow-y-auto">
-              {!visionResult?.detected_text_and_prices?.length ? (
-                <div className="text-center text-xs text-slate-500 py-12">
-                  Click "Analyze Image" to view extracted OCR price tags.
+          {/* =========================================================================
+              TAB 2: DETECTED PRICES
+              ========================================================================= */}
+          {activeTab === 'prices' && (
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="text-center text-xs text-slate-500 py-12 flex flex-col items-center gap-2">
+                  <Tag className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>Click "Analyze Image" to extract in-store price tags.</span>
+                </div>
+              ) : detectedPrices.length === 0 ? (
+                /* Clear State: No Prices Detected */
+                <div className="text-center p-8 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2">
+                  <SearchX className="w-8 h-8 text-slate-500 mb-1" />
+                  <span className="text-xs font-bold text-slate-300">No Prices Detected</span>
+                  <p className="text-[11px] text-slate-500 max-w-xs">
+                    No price-formatted text (e.g. $599.99, ₹1,299, €499) was recognized in this image. Ensure shelf tags are in clear focus.
+                  </p>
                 </div>
               ) : (
-                visionResult.detected_text_and_prices.map((ocr) => {
-                  const isSelected = selectedBoxId === ocr.id;
+                detectedPrices.map((priceItem) => {
+                  const isSelected = selectedBoxId === priceItem.id;
+                  const isLowConf = priceItem.confidence < 0.4;
                   return (
                     <div
-                      key={ocr.id}
-                      onClick={() => setSelectedBoxId(ocr.id)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      key={priceItem.id}
+                      onClick={() => setSelectedBoxId(priceItem.id)}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected
-                          ? 'bg-amber-500/15 border-amber-500/50 shadow-lg'
+                          ? 'bg-amber-500/15 border-amber-500/60 shadow-lg'
                           : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono text-xs font-bold flex-shrink-0">
-                          $
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono text-sm font-bold flex-shrink-0">
+                          {priceItem.currency_symbol || '$'}
                         </div>
                         <div className="truncate">
-                          <span className="text-xs font-bold text-amber-300 font-mono truncate block">
-                            {ocr.raw_text}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono block">
-                            Extracted: {ocr.extracted_price ? `$${ocr.extracted_price.toFixed(2)}` : 'None'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-amber-300 font-mono">
+                              {priceItem.raw_text}
+                            </span>
+                            <Badge variant="warning" size="sm" className="font-mono text-[9px]">
+                              Price Tag
+                            </Badge>
+                            {isLowConf && (
+                              <Badge variant="danger" size="sm" className="text-[9px] font-mono">
+                                Low Conf
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            Normalized Value: <span className="text-white font-bold">{priceItem.currency_symbol || '$'}{priceItem.extracted_price?.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col items-end flex-shrink-0">
-                        <span className="text-xs font-mono font-bold text-white">
-                          ${ocr.extracted_price?.toFixed(2)}
+                        <span className="text-sm font-mono font-extrabold text-white">
+                          {priceItem.currency_symbol || '$'}{priceItem.extracted_price ? priceItem.extracted_price.toFixed(2) : priceItem.raw_text}
                         </span>
                         <Badge variant="neutral" size="sm" className="font-mono mt-1 text-[10px]">
-                          {(ocr.confidence * 100).toFixed(0)}% OCR
+                          {(priceItem.confidence * 100).toFixed(1)}% OCR
                         </Badge>
                       </div>
                     </div>
@@ -872,10 +1050,77 @@ export function VisualIntelligence() {
             </div>
           )}
 
-          {/* TAB 3: JSON VIEW */}
+          {/* =========================================================================
+              TAB 3: DETECTED TEXT / OCR
+              ========================================================================= */}
+          {activeTab === 'ocr' && (
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="text-center text-xs text-slate-500 py-12 flex flex-col items-center gap-2">
+                  <Type className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>Click "Analyze Image" to view detected text regions.</span>
+                </div>
+              ) : allTextLabels.length === 0 ? (
+                /* Clear State: No Text Detected */
+                <div className="text-center p-8 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2">
+                  <SearchX className="w-8 h-8 text-slate-500 mb-1" />
+                  <span className="text-xs font-bold text-slate-300">No Text Detected</span>
+                  <p className="text-[11px] text-slate-500 max-w-xs">
+                    The EasyOCR engine did not detect any readable text strings in this image.
+                  </p>
+                </div>
+              ) : (
+                allTextLabels.map((txt) => {
+                  const isSelected = selectedBoxId === txt.id;
+                  const isPrice = txt.is_price_tag || txt.extracted_price !== null;
+                  return (
+                    <div
+                      key={txt.id}
+                      onClick={() => setSelectedBoxId(txt.id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-indigo-500/15 border-indigo-500/50 shadow-lg'
+                          : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 ${
+                          isPrice ? 'bg-amber-500/10 border border-amber-500/25 text-amber-400' : 'bg-slate-800 border border-white/10 text-cyan-400'
+                        }`}>
+                          {isPrice ? '$' : 'T'}
+                        </div>
+                        <div className="truncate">
+                          <span className={`text-xs font-bold font-mono truncate block ${isPrice ? 'text-amber-300' : 'text-white'}`}>
+                            {txt.raw_text}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            Type: {isPrice ? 'Price Tag' : 'Text Region'} • Box: [{txt.box.x_percent}%, {txt.box.y_percent}%]
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end flex-shrink-0">
+                        <Badge variant={isPrice ? "warning" : "neutral"} size="sm" className="font-mono text-[10px]">
+                          {(txt.confidence * 100).toFixed(1)}% Conf
+                        </Badge>
+                        <span className="text-[10px] text-slate-500 font-mono mt-1">
+                          {txt.box.width_px}×{txt.box.height_px} px
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 4: JSON TELEMETRY VIEW
+              ========================================================================= */}
           {activeTab === 'json' && (
             <div className="flex flex-col gap-2">
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center text-xs text-slate-400">
+                <span className="font-mono text-[11px]">Direct Backend Response Payload</span>
                 <Button
                   variant="ghost"
                   size="xs"
@@ -892,12 +1137,12 @@ export function VisualIntelligence() {
             </div>
           )}
 
-          {/* Timing Breakdown */}
+          {/* Pipeline Execution Footer */}
           {visionResult && (
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono flex items-center justify-between text-slate-400">
-              <span>Prep: {visionResult.processing_stats?.preprocessing_time_ms || 0}ms</span>
+              <span>Preprocessing: {visionResult.processing_stats?.preprocessing_time_ms || 0}ms</span>
               <span>•</span>
-              <span>Detect: {visionResult.processing_stats?.detection_time_ms || 0}ms</span>
+              <span>YOLO Det: {visionResult.processing_stats?.detection_time_ms || 0}ms</span>
               <span>•</span>
               <span>OCR: {visionResult.processing_stats?.ocr_time_ms || 0}ms</span>
             </div>
