@@ -1,16 +1,25 @@
 """
 backend/app/services/vision_service.py
 --------------------------------------
-Real Computer Vision service layer using lightweight YOLOv8 for Object Detection
-and spatial text/price region extraction.
+Real Computer Vision pipeline combining:
+1. Lightweight YOLOv8 Object Detection
+2. EasyOCR Text & Price Label Extraction
 """
 
 import io
 import os
+import ssl
 import time
 import re
+import numpy as np
 from typing import Tuple, List, Dict, Any, Optional
 from PIL import Image, ImageStat, ImageOps
+
+# Ensure unverified SSL context for PyTorch model downloads if needed
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except Exception:
+    pass
 
 from app.schemas.vision import (
     BoundingBoxCoordinates,
@@ -21,14 +30,13 @@ from app.schemas.vision import (
     VisionPipelineResponse,
 )
 
-# Global YOLO model instance (lazy loaded singleton)
+# Global Cached Singletons
 _yolo_model = None
+_easyocr_reader = None
 
 
 def get_yolo_model():
-    """
-    Lazy loads and caches the lightweight YOLOv8 Nano model.
-    """
+    """Lazy loads and caches the lightweight YOLOv8 Nano model."""
     global _yolo_model
     if _yolo_model is None:
         try:
@@ -43,22 +51,59 @@ def get_yolo_model():
     return _yolo_model
 
 
-def extract_price_from_text(text: str) -> Tuple[Optional[float], Optional[str]]:
-    """
-    Extracts numeric price and currency symbols from OCR text strings.
-    Matches formats: $19.99, £45.00, €12.50, 99.95, $1,299.00
-    """
-    match = re.search(r'([$£€¥₹])?\s*([0-9]{1,4}(?:,[0-9]{3})*(?:\.[0-9]{2})?)', text)
-    if match:
-        currency = match.group(1) or "$"
-        raw_val = match.group(2).replace(',', '')
+def get_easyocr_reader():
+    """Lazy loads and caches the EasyOCR Reader instance on CPU."""
+    global _easyocr_reader
+    if _easyocr_reader is None:
         try:
-            val = float(raw_val)
+            import easyocr
+            _easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+        except Exception as e:
+            print(f"Warning: Could not initialize EasyOCR reader: {e}")
+            _easyocr_reader = None
+    return _easyocr_reader
+
+
+def parse_price_candidate(text: str) -> Tuple[bool, Optional[float], Optional[str]]:
+    """
+    Identifies price-like text candidates and normalizes numeric values & currencies.
+    Supports: ₹59,999, $599.99, €499, £45.50, 599.99, ₹1,299
+    Rejects: dates (2026-03-12), percentages (4.8%), model numbers (v3.4), dimensions (55"), single integers.
+    """
+    clean_text = text.strip()
+
+    # Reject percentages or dimension tags
+    if '%' in clean_text or clean_text.endswith('"') or clean_text.endswith("'") or clean_text.endswith("px"):
+        return False, None, None
+
+    # Reject dates (e.g. 2026-03-12 or 12/03/2026)
+    if re.search(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}', clean_text):
+        return False, None, None
+
+    # Match currency symbol + price amount: ₹59,999, $599.99, €499, £1,299.00
+    currency_match = re.search(r'([₹$€£¥])\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)', clean_text)
+    if currency_match:
+        currency = currency_match.group(1)
+        raw_num = currency_match.group(2).replace(',', '')
+        try:
+            val = float(raw_num)
             if val > 0:
-                return round(val, 2), currency
+                return True, round(val, 2), currency
         except ValueError:
             pass
-    return None, None
+
+    # Match standard decimal price format without currency symbol: 599.99, 1299.50, 49.99
+    decimal_match = re.search(r'\b([0-9]{1,4}(?:,[0-9]{3})*\.[0-9]{2})\b', clean_text)
+    if decimal_match:
+        raw_num = decimal_match.group(1).replace(',', '')
+        try:
+            val = float(raw_num)
+            if val > 0:
+                return True, round(val, 2), None
+        except ValueError:
+            pass
+
+    return False, None, None
 
 
 def analyze_image_bytes(
@@ -66,21 +111,14 @@ def analyze_image_bytes(
     filename: str = "upload.jpg"
 ) -> VisionPipelineResponse:
     """
-    Real Computer Vision Pipeline:
-    1. Ingest & decode image bytes with Pillow
-    2. Extract actual metadata (width, height, channels, format, aspect ratio)
-    3. Preprocess image
-    4. Run real YOLOv8 inference for object & product detection
-    5. Extract real bounding box coordinates & confidences
-    6. Extract OCR price labels
-    7. Return structured telemetry
+    Full Phase 1 Pipeline:
+    Image → Image Preprocessing → YOLO Object Detection → EasyOCR Text Detection → Price Extraction
     """
     start_total = time.perf_counter()
 
     # Step 1: Decode image with Pillow
     try:
         pil_image = Image.open(io.BytesIO(image_bytes))
-        # Ensure image is in RGB format for YOLO
         if pil_image.mode not in ("RGB", "L"):
             pil_image = pil_image.convert("RGB")
     except Exception as e:
@@ -103,23 +141,18 @@ def analyze_image_bytes(
     start_det = time.perf_counter()
     detected_objects: List[DetectedObject] = []
 
-    model = get_yolo_model()
-    if model is not None:
+    yolo = get_yolo_model()
+    if yolo is not None:
         try:
-            # Run real YOLO inference
-            results = model(pil_image, conf=0.15, verbose=False)
+            results = yolo(pil_image, conf=0.15, verbose=False)
             boxes = results[0].boxes
 
             for idx, b in enumerate(boxes):
                 cls_id = int(b.cls.item())
-                # Retrieve actual class name from YOLO model class dictionary
                 raw_label = results[0].names.get(cls_id, "Unknown")
                 confidence = round(float(b.conf.item()), 4)
 
-                # Real pixel coordinates [x_min, y_min, x_max, y_max]
                 x_min, y_min, x_max, y_max = b.xyxy[0].tolist()
-                
-                # Clip to image bounds
                 x_min = max(0.0, min(float(orig_width), float(x_min)))
                 y_min = max(0.0, min(float(orig_height), float(y_min)))
                 x_max = max(x_min, min(float(orig_width), float(x_max)))
@@ -130,14 +163,11 @@ def analyze_image_bytes(
                 x_px = int(x_min)
                 y_px = int(y_min)
 
-                # Normalized percentage coordinates
                 x_pct = round((x_min / orig_width) * 100.0, 2)
                 y_pct = round((y_min / orig_height) * 100.0, 2)
                 w_pct = round(((x_max - x_min) / orig_width) * 100.0, 2)
                 h_pct = round(((y_max - y_min) / orig_height) * 100.0, 2)
 
-                # Display class label clearly (e.g. "tv", "bottle", "refrigerator", "laptop", "cell phone")
-                # Format generic names nicely (e.g. "tv" -> "TV Display", "cell phone" -> "Cell Phone")
                 display_label = raw_label.title()
                 if raw_label.lower() in ("tv", "monitor"):
                     display_label = "TV / Display Unit"
@@ -171,51 +201,69 @@ def analyze_image_bytes(
                     )
                 )
         except Exception as det_err:
-            print(f"YOLO detection exception: {det_err}")
+            print(f"YOLO detection error: {det_err}")
 
     det_time_ms = round((time.perf_counter() - start_det) * 1000, 2)
 
-    # Step 4: Text & Price Label OCR Extraction
+    # Step 4: Real EasyOCR Text & Price Detection
     start_ocr = time.perf_counter()
     detected_texts: List[DetectedTextLabel] = []
 
-    # Localized OCR Price Tags mapped to detected objects or shelf sections
-    if detected_objects:
-        for i, obj in enumerate(detected_objects[:6]):
-            # Place OCR tag near the bottom of each detected object bounding box
-            tag_x_pct = round(obj.box.x_percent + (obj.box.width_percent * 0.2), 2)
-            tag_y_pct = round(min(92.0, obj.box.y_percent + (obj.box.height_percent * 0.85)), 2)
-            tag_w_pct = round(min(30.0, max(14.0, obj.box.width_percent * 0.6)), 2)
-            tag_h_pct = 7.0
+    ocr_reader = get_easyocr_reader()
+    if ocr_reader is not None:
+        try:
+            # Convert PIL image to numpy array for EasyOCR
+            np_img = np.array(pil_image)
+            ocr_results = ocr_reader.readtext(np_img, paragraph=False)
 
-            tag_x_px = int((tag_x_pct / 100.0) * orig_width)
-            tag_y_px = int((tag_y_pct / 100.0) * orig_height)
-            tag_w_px = int((tag_w_pct / 100.0) * orig_width)
-            tag_h_px = int((tag_h_pct / 100.0) * orig_height)
+            for i, (polygon, raw_text, ocr_conf) in enumerate(ocr_results):
+                # Filter low-confidence OCR noise
+                if ocr_conf < 0.10 or not raw_text or len(raw_text.strip()) == 0:
+                    continue
 
-            sample_prices = [549.99, 599.99, 649.99, 499.99, 29.99, 89.50]
-            price_val = sample_prices[i % len(sample_prices)]
+                # Calculate bounding box from 4-corner polygon: [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                xs = [pt[0] for pt in polygon]
+                ys = [pt[1] for pt in polygon]
+                x_min = max(0.0, min(xs))
+                y_min = max(0.0, min(ys))
+                x_max = min(float(orig_width), max(xs))
+                y_max = min(float(orig_height), max(ys))
 
-            detected_texts.append(
-                DetectedTextLabel(
-                    id=f"ocr_{i+1:02d}",
-                    raw_text=f"${price_val:.2f}",
-                    extracted_price=price_val,
-                    currency_symbol="$",
-                    confidence=round(0.92 + (i * 0.01), 2),
-                    box=BoundingBoxCoordinates(
-                        x_percent=tag_x_pct,
-                        y_percent=tag_y_pct,
-                        width_percent=tag_w_pct,
-                        height_percent=tag_h_pct,
-                        x_px=tag_x_px,
-                        y_px=tag_y_px,
-                        width_px=tag_w_px,
-                        height_px=tag_h_px,
-                    ),
-                    is_price_tag=True,
+                x_px = int(x_min)
+                y_px = int(y_min)
+                w_px = max(1, int(x_max - x_min))
+                h_px = max(1, int(y_max - y_min))
+
+                x_pct = round((x_min / orig_width) * 100.0, 2)
+                y_pct = round((y_min / orig_height) * 100.0, 2)
+                w_pct = round(((x_max - x_min) / orig_width) * 100.0, 2)
+                h_pct = round(((y_max - y_min) / orig_height) * 100.0, 2)
+
+                # Identify if text is price-like (₹59,999, $599.99, €499, 599.99, etc.)
+                is_price, price_val, curr_sym = parse_price_candidate(raw_text)
+
+                detected_texts.append(
+                    DetectedTextLabel(
+                        id=f"ocr_{i+1:02d}",
+                        raw_text=raw_text.strip(),
+                        extracted_price=price_val,
+                        currency_symbol=curr_sym,
+                        confidence=round(float(ocr_conf), 4),
+                        box=BoundingBoxCoordinates(
+                            x_percent=x_pct,
+                            y_percent=y_pct,
+                            width_percent=w_pct,
+                            height_percent=h_pct,
+                            x_px=x_px,
+                            y_px=y_px,
+                            width_px=w_px,
+                            height_px=h_px,
+                        ),
+                        is_price_tag=is_price,
+                    )
                 )
-            )
+        except Exception as ocr_err:
+            print(f"EasyOCR extraction error: {ocr_err}")
 
     ocr_time_ms = round((time.perf_counter() - start_ocr) * 1000, 2)
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)
