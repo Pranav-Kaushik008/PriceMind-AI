@@ -189,16 +189,6 @@ export function Header() {
           <Search className="w-3.5 h-3.5" />
         </button>
 
-        {/* Import CSV / Data Quick Action */}
-        <button
-          type="button"
-          onClick={() => setIsImportModalOpen(true)}
-          className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 text-[11px] font-medium rounded-lg bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.10] hover:border-indigo-500/40 text-slate-300 hover:text-white transition-all cursor-pointer"
-        >
-          <Upload className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Import CSV</span>
-        </button>
-
         {/* AI Copilot Quick Action */}
         <button
           type="button"

@@ -566,29 +566,6 @@ export function ExecutiveOverview() {
         </div>
       </div>
 
-      {/* ── No-data banner ────────────────────────────────────────────────────── */}
-      {!isLoading && !hasData && (
-        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-5 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-indigo-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-white">No catalog data yet</p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Import your first product catalog to see live KPIs, real pricing recommendations, and revenue forecasts.
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Upload}
-            onClick={() => setIsImportModalOpen(true)}
-          >
-            Import Catalog
-          </Button>
-        </div>
-      )}
-
       {/* =========================================================================
           2. PRIMARY KPI CARDS (100% live)
           ========================================================================= */}
