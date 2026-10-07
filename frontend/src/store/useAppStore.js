@@ -104,18 +104,24 @@ export const useAppStore = create((set) => ({
   currency: 'USD',
   setCurrency: (c) => set({ currency: c }),
 
-  theme: 'dark',
+  theme: (() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('pm_theme') : null;
+    const t = saved || 'dark';
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', t === 'dark');
+      document.documentElement.classList.toggle('light', t === 'light');
+    }
+    return t;
+  })(),
   toggleTheme: () =>
     set((state) => {
       const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
       if (typeof document !== 'undefined') {
-        if (nextTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-          document.documentElement.classList.remove('light');
-        } else {
-          document.documentElement.classList.add('light');
-          document.documentElement.classList.remove('dark');
-        }
+        document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+        document.documentElement.classList.toggle('light', nextTheme === 'light');
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('pm_theme', nextTheme);
       }
       return { theme: nextTheme };
     }),

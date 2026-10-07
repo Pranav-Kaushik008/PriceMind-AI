@@ -45,6 +45,7 @@ export function Sidebar() {
   const [isResizing, setIsResizing] = useState(false);
   const [isEdgeHovered, setIsEdgeHovered] = useState(false);
   const [isHoverExpanded, setIsHoverExpanded] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState(null);
   const sidebarRef = useRef(null);
 
   // Sync width when collapsed state changes via other triggers
@@ -131,36 +132,49 @@ export function Sidebar() {
   const renderNavItem = (item) => {
     const Icon = item.icon;
     const isActive = activePage === item.id;
+    const isHovered = hoveredItem === item.id;
 
     const buttonContent = (
       <button
         type="button"
         onClick={() => setActivePage(item.id)}
+        onMouseEnter={() => setHoveredItem(item.id)}
+        onMouseLeave={() => setHoveredItem(null)}
         className={cn(
           'w-full flex items-center gap-2.5 rounded-lg text-xs transition-all duration-150 group cursor-pointer text-left border relative overflow-hidden focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500',
           effectivelyCollapsed ? 'justify-center p-2.5' : 'px-3 py-2 justify-between',
           isActive
-            ? 'bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-transparent text-white font-semibold border-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.15)]'
-            : 'text-slate-300 hover:text-white hover:bg-white/[0.06] border-transparent'
+            ? 'bg-indigo-500/20 text-white font-semibold border-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+            : isHovered
+            ? 'bg-pm-hover text-pm-text border-pm-border'
+            : 'text-pm-textMuted hover:text-pm-text hover:bg-pm-hover border-transparent'
         )}
       >
+        {/* Active left accent bar */}
         {isActive && (
           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-indigo-500 rounded-r shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
         )}
+        {/* Hover highlight shimmer */}
+        {!isActive && isHovered && (
+          <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-500/[0.08] to-transparent pointer-events-none" />
+        )}
+
         <div className="flex items-center gap-2.5 min-w-0">
           <Icon
             className={cn(
               'w-4 h-4 flex-shrink-0 transition-all duration-150',
               isActive
                 ? 'text-indigo-400 drop-shadow-[0_0_6px_rgba(99,102,241,0.6)] scale-105'
-                : 'text-slate-400 group-hover:text-slate-200'
+                : isHovered
+                ? 'text-indigo-400 scale-110'
+                : 'text-pm-textMuted group-hover:text-pm-textSecondary'
             )}
           />
           {!effectivelyCollapsed && (
             <span
               className={cn(
-                'truncate text-xs tracking-wide',
-                isActive ? 'text-white font-medium' : 'text-slate-300 font-normal'
+                'truncate text-xs tracking-wide transition-colors duration-150',
+                isActive ? 'text-white font-medium' : isHovered ? 'text-pm-text font-normal' : 'text-pm-textSecondary font-normal'
               )}
             >
               {item.label}
@@ -174,7 +188,7 @@ export function Sidebar() {
               'text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 uppercase tracking-wider',
               isActive
                 ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.2)]'
-                : 'bg-white/[0.06] text-slate-400 border border-white/[0.08]'
+                : 'bg-pm-accentBg text-pm-accentText border border-pm-accentBorder'
             )}
           >
             {item.badge}
@@ -200,42 +214,42 @@ export function Sidebar() {
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#070B14] border-r border-white/[0.09] font-sans select-none relative shadow-2xl">
+    <div className="flex flex-col h-full bg-pm-surface border-r border-pm-borderSubtle font-sans select-none relative shadow-2xl">
       {/* Navigation Groups */}
       <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 custom-scrollbar">
         {/* Workspace */}
         <div>
           {!effectivelyCollapsed && (
-            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-pm-textDim block mb-1.5">
               Workspace
             </span>
           )}
-          <div className="space-y-1">{workspaceNav.map(renderNavItem)}</div>
+          <div className="space-y-0.5">{workspaceNav.map(renderNavItem)}</div>
         </div>
 
         {/* Analysis */}
-        <div className="pt-2.5 border-t border-white/[0.06]">
+        <div className="pt-2.5 border-t border-pm-borderSubtle">
           {!effectivelyCollapsed && (
-            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-pm-textDim block mb-1.5">
               Analysis
             </span>
           )}
-          <div className="space-y-1">{analysisNav.map(renderNavItem)}</div>
+          <div className="space-y-0.5">{analysisNav.map(renderNavItem)}</div>
         </div>
 
         {/* Models & System */}
-        <div className="pt-2.5 border-t border-white/[0.06]">
+        <div className="pt-2.5 border-t border-pm-borderSubtle">
           {!effectivelyCollapsed && (
-            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 block mb-1.5">
+            <span className="px-2.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-pm-textDim block mb-1.5">
               Models & System
             </span>
           )}
-          <div className="space-y-1">{systemNav.map(renderNavItem)}</div>
+          <div className="space-y-0.5">{systemNav.map(renderNavItem)}</div>
         </div>
       </div>
 
       {/* Collapse & Status Footer */}
-      <div className="p-2.5 border-t border-white/[0.08] bg-[#0A0E1A] flex items-center justify-between">
+      <div className="p-2.5 border-t border-pm-borderSubtle bg-pm-subtle flex items-center justify-between">
         {!effectivelyCollapsed ? (
           <>
             <div className="flex items-center gap-2.5 min-w-0">
@@ -244,7 +258,7 @@ export function Sidebar() {
                 <span className="absolute w-3.5 h-3.5 rounded-full bg-emerald-400/30 animate-ping" />
               </div>
               <div className="min-w-0">
-                <span className="text-[11px] font-medium text-slate-200 truncate block">
+                <span className="text-[11px] font-medium text-pm-text truncate block">
                   Engine Active
                 </span>
                 <span className="text-[9px] font-mono text-emerald-400/90 truncate block">
@@ -256,7 +270,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer border border-transparent hover:border-white/[0.08]"
+              className="p-1.5 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-all cursor-pointer border border-transparent hover:border-pm-border"
               title="Collapse sidebar"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -267,7 +281,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+              className="p-1.5 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-all cursor-pointer"
               title="Expand sidebar"
             >
               <ChevronRight className="w-3.5 h-3.5" />
@@ -309,7 +323,7 @@ export function Sidebar() {
             toggleSidebarCollapsed();
           }}
           className={cn(
-            'absolute top-1/2 -translate-y-1/2 w-5 h-7 rounded-full bg-[#0D1527] border border-white/[0.15] text-slate-300 hover:text-white hover:border-indigo-400/60 shadow-xl flex items-center justify-center transition-all cursor-pointer z-40',
+            'absolute top-1/2 -translate-y-1/2 w-5 h-7 rounded-full bg-pm-elevated border border-pm-border text-pm-textMuted hover:text-pm-text hover:border-indigo-400/60 shadow-xl flex items-center justify-center transition-all cursor-pointer z-40',
             (isEdgeHovered || isResizing || isSidebarCollapsed)
               ? 'opacity-100 scale-100 shadow-[0_0_12px_rgba(99,102,241,0.3)]'
               : 'opacity-40 hover:opacity-100 scale-95'
@@ -319,7 +333,7 @@ export function Sidebar() {
           {isSidebarCollapsed ? (
             <ChevronRight className="w-3 h-3 text-indigo-400" />
           ) : (
-            <ChevronLeft className="w-3 h-3 text-slate-300" />
+            <ChevronLeft className="w-3 h-3 text-pm-textMuted" />
           )}
         </button>
       </div>
@@ -362,7 +376,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => setMobileSidebarOpen(false)}
-                className="p-1 text-slate-400 hover:text-white rounded hover:bg-white/[0.08]"
+                className="p-1 text-pm-textMuted hover:text-pm-text rounded hover:bg-pm-hover"
               >
                 <X className="w-4 h-4" />
               </button>

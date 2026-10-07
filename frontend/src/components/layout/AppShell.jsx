@@ -149,7 +149,7 @@ export function AppShell() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#060A12] text-white antialiased relative">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-pm-bg text-pm-text antialiased relative">
       {/* Global ambient mesh background */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-1/4 w-[600px] h-[400px] rounded-full bg-indigo-600/[0.07] blur-[120px]" />
