@@ -275,3 +275,29 @@ class VisionPipelineResponse(BaseModel):
     pricemind_contexts: List[UnifiedPriceMindContext] = []
     pricing_recommendations: List[VisionPricingRecommendation] = []
 
+
+class StructuredExplanationSections(BaseModel):
+    detected_summary: str
+    current_situation: str
+    why_recommended: str
+    expected_impact: str
+    key_factors: List[str] = []
+    next_step: str
+
+
+class VisionExplanationResponse(BaseModel):
+    status: str = "success"  # "success" | "unavailable" | "error"
+    explanation: Optional[StructuredExplanationSections] = None
+    sources: Dict[str, Any] = Field(default_factory=dict)
+    model_used: Optional[str] = None
+    error_message: Optional[str] = None
+    provider: str = "google-gemini"
+    grounded: bool = True
+
+
+class VisionExplainRequest(BaseModel):
+    recommendation_id: Optional[str] = None
+    context: Dict[str, Any]
+    user_question: Optional[str] = None
+
+

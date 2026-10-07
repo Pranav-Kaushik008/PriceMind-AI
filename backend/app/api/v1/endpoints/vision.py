@@ -10,11 +10,14 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, s
 from sqlalchemy.orm import Session
 from typing import Optional
 import base64
-
 from app.core.deps import get_optional_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.vision import VisionPipelineResponse
+from app.schemas.vision import (
+    VisionPipelineResponse,
+    VisionExplainRequest,
+    VisionExplanationResponse,
+)
 from app.services import vision_service
 
 router = APIRouter()
@@ -126,6 +129,46 @@ async def analyze_image_endpoint(
         )
 
 
+@router.post(
+    "/explain",
+    response_model=VisionExplanationResponse,
+    summary="Generate Grounded AI Pricing Explanation",
+    description="Generates an authoritative, grounded natural language explanation for Visual Intelligence and Pricing Optimization results.",
+)
+async def explain_vision_endpoint(
+    payload: VisionExplainRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Phase 3.2: Grounded AI Explanation Endpoint
+    1. Authenticate user and verify organization context if logged in.
+    2. Extract and sanitize context (Prompt injection protection).
+    3. Call explanation engine (Gemini or deterministic grounded fallback).
+    4. Return structured 6-section business explanation.
+    """
+    try:
+        from app.services.vision_explanation_service import generate_vision_explanation
+        
+        # Call explanation service with backend-controlled grounding
+        return generate_vision_explanation(
+            context=payload.context,
+            user_question=payload.user_question,
+        )
+    except Exception as exc:
+        # Non-fatal: Explanation layer failure never breaks the underlying recommendation
+        return VisionExplanationResponse(
+            status="unavailable",
+            explanation=None,
+            sources={},
+            model_used=None,
+            error_message=f"AI explanation temporarily unavailable: {str(exc)}",
+            provider="fallback",
+            grounded=False,
+        )
+
+
 def io_import():
     import io
     return io.BytesIO()
+

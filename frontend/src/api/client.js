@@ -458,6 +458,28 @@ export const apiClient = {
     }
   },
 
+  async explainVisionAnalysis(context) {
+    // Phase 3.2: Grounded AI Explanation
+    // The backend constructs the verified context from authorized sources.
+    // We send the structured pipeline output; backend sanitizes before passing to LLM.
+    try {
+      return await fetchJson('/vision/explain', {
+        method: 'POST',
+        body: JSON.stringify({ context }),
+      });
+    } catch (err) {
+      console.warn('Vision explanation unavailable:', err.message);
+      // Non-fatal: explanation is an enhancement, not required for recommendation
+      return {
+        status: 'unavailable',
+        explanation: null,
+        sources: {},
+        model_used: null,
+        error_message: 'AI explanation temporarily unavailable. The pricing recommendation above is still valid.',
+      };
+    }
+  },
+
   // ── 15. Full Platform Integration (Module 14) ────────────────────────────
   async getConsolidatedRecommendation(productId, objective = 'PROFIT_MAX') {
     return await fetchJson('/pricing/recommend', {

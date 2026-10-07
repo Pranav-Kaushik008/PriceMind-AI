@@ -54,7 +54,12 @@ class Settings(BaseSettings):
     # ── Frontend ───────────────────────────────────────────────────────────
     VITE_API_URL: str = "http://localhost:8000/api/v1"
 
+    # ── Generative AI & Explanation (Module 10 & Phase 3.2) ─────────────────
+    GOOGLE_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+
     model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 
 settings = Settings()
+

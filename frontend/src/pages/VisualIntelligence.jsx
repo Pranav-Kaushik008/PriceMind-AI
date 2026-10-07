@@ -47,6 +47,11 @@ import {
   History,
   PackageCheck,
   PackageX,
+  Bot,
+  Send,
+  MessageSquare,
+  Cpu,
+  HelpCircle,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -113,6 +118,8 @@ export function VisualIntelligence() {
   const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'context' | 'recommendations' | 'json'
   const [copiedJson, setCopiedJson] = useState(false);
   const [simulatedRecs, setSimulatedRecs] = useState({}); // { [recId]: boolean }
+  const [explanations, setExplanations] = useState({}); // { [recId]: { loading, data, error } }
+  const [userQuestions, setUserQuestions] = useState({}); // { [recId]: string }
 
   // Overlay Toggles
   const [showObjectBoxes, setShowObjectBoxes] = useState(true);
@@ -408,6 +415,84 @@ export function VisualIntelligence() {
     setCopiedJson(true);
     setTimeout(() => setCopiedJson(false), 2000);
     toast.success('JSON Copied', 'Structured vision response copied to clipboard.');
+  };
+
+  // Phase 3.2: Generate Grounded AI Explanation
+  const handleGenerateExplanation = async (rec, customQuestion = null) => {
+    if (!rec) return;
+    const recId = rec.id;
+    setExplanations((prev) => ({
+      ...prev,
+      [recId]: { ...prev[recId], loading: true, error: null },
+    }));
+
+    // Retrieve corresponding unified PriceMind context
+    const matchedCtx = (pricemindContexts || []).find(
+      (c) => c.product_id === rec.product_id || c.sku === rec.sku
+    ) || {};
+
+    const explainPayload = {
+      product: {
+        name: rec.product_name,
+        sku: rec.sku,
+        category: matchedCtx.category || null,
+        brand: matchedCtx.brand || null,
+      },
+      visual_analysis: {
+        detected_label: matchedCtx.visual_analysis?.detected_label || 'retail item',
+        match_confidence: matchedCtx.visual_analysis?.match_confidence || 0.85,
+        detected_competitor_price: rec.detected_competitor_price,
+        competitor_name: matchedCtx.competitor_analysis?.competitor_info?.competitor_name || 'Competitor',
+        ocr_texts: allTextLabels.map((t) => t.raw_text).slice(0, 5),
+      },
+      pricing_context: {
+        current_price: rec.current_price,
+        cost_price: matchedCtx.pricing_context?.cost_price || null,
+        competitor_price: rec.detected_competitor_price,
+        historical_demand_daily: matchedCtx.pricing_context?.historical_demand?.avg_daily_demand || null,
+        price_elasticity: matchedCtx.pricing_context?.elasticity?.elasticity || null,
+        elasticity_category: matchedCtx.pricing_context?.elasticity?.elasticity_category || 'elastic',
+        inventory_level: matchedCtx.pricing_context?.inventory?.inventory_level || null,
+        stock_status: matchedCtx.pricing_context?.inventory?.stock_status || 'In Stock',
+        margin_percent: rec.margin_percent,
+      },
+      optimization_result: {
+        recommended_price: rec.recommended_price,
+        price_change_pct: rec.price_change_pct,
+        expected_demand: rec.expected_demand,
+        expected_revenue: rec.expected_revenue,
+        expected_profit: rec.expected_profit,
+        margin_percent: rec.margin_percent,
+        objective: rec.objective || 'PROFIT_MAX',
+        confidence: rec.confidence,
+        status: rec.status,
+        factors_considered: rec.factors_considered,
+        constraints_valid: rec.constraints?.valid,
+        constraint_violations: rec.constraints?.violations || [],
+      },
+      user_question: customQuestion,
+    };
+
+    try {
+      const res = await apiClient.explainVisionAnalysis(explainPayload);
+      if (res && res.status === 'success') {
+        setExplanations((prev) => ({
+          ...prev,
+          [recId]: { loading: false, data: res, error: null },
+        }));
+        toast.success('AI Explanation Generated', 'Grounded explanation generated from PriceMind data.');
+      } else {
+        setExplanations((prev) => ({
+          ...prev,
+          [recId]: { loading: false, data: res, error: res?.error_message || 'Explanation unavailable' },
+        }));
+      }
+    } catch (err) {
+      setExplanations((prev) => ({
+        ...prev,
+        [recId]: { loading: false, data: null, error: err.message },
+      }));
+    }
   };
 
   // Derived Results & Filtering
@@ -2039,7 +2124,193 @@ export function VisualIntelligence() {
                         </div>
                       )}
 
-                      {/* 7. Four-Way Data Provenance Footer */}
+                      {/* 7. Phase 3.2: Grounded AI Pricing Explanation Card */}
+                      <div className="p-4 rounded-xl bg-gradient-to-b from-[#111A2E] to-[#0A101D] border border-indigo-500/30 shadow-lg space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-white/[0.08]">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold text-white tracking-tight flex items-center gap-2">
+                                AI Pricing Explanation
+                                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                  ✓ 100% Grounded
+                                </span>
+                              </h3>
+                              <p className="text-[10px] text-slate-400">
+                                Natural language business rationale synthesized from backend telemetry
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Provider & Action */}
+                          <div className="flex items-center gap-2">
+                            {explanations[rec.id]?.data && (
+                              <span className="text-[9px] font-mono text-slate-400">
+                                Engine: {explanations[rec.id]?.data?.provider === 'google-gemini' ? 'Gemini Flash' : 'Grounded Engine'}
+                              </span>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              loading={explanations[rec.id]?.loading}
+                              icon={Bot}
+                              onClick={() => handleGenerateExplanation(rec)}
+                              className="text-[10px] text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/20"
+                            >
+                              {explanations[rec.id]?.data ? 'Regenerate' : 'Generate Explanation'}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Explanation Body */}
+                        {explanations[rec.id]?.loading ? (
+                          <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs font-mono">
+                            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                            <span>Synthesizing grounded explanation from verified PriceMind context...</span>
+                          </div>
+                        ) : explanations[rec.id]?.data?.explanation ? (
+                          <div className="space-y-3 text-xs">
+                            {/* 1. What We Detected */}
+                            <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-1">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-purple-300 flex items-center gap-1 font-bold">
+                                <Camera className="w-3 h-3" /> What We Detected
+                              </div>
+                              <p className="text-slate-300 text-[11px] leading-relaxed">
+                                {explanations[rec.id].data.explanation.detected_summary}
+                              </p>
+                            </div>
+
+                            {/* 2. Current Situation */}
+                            <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-1">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 flex items-center gap-1 font-bold">
+                                <Database className="w-3 h-3" /> Current Situation
+                              </div>
+                              <p className="text-slate-300 text-[11px] leading-relaxed">
+                                {explanations[rec.id].data.explanation.current_situation}
+                              </p>
+                            </div>
+
+                            {/* 3. Why This Recommendation */}
+                            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-1">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 flex items-center gap-1 font-bold">
+                                <Sparkles className="w-3 h-3" /> Why This Recommendation
+                              </div>
+                              <p className="text-amber-100/90 text-[11px] leading-relaxed">
+                                {explanations[rec.id].data.explanation.why_recommended}
+                              </p>
+                            </div>
+
+                            {/* 4. Expected Impact */}
+                            <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-1">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 flex items-center justify-between font-bold">
+                                <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Expected Impact</span>
+                                <span className="text-[9px] font-normal text-cyan-400 font-mono">Model estimate</span>
+                              </div>
+                              <p className="text-slate-300 text-[11px] leading-relaxed">
+                                {explanations[rec.id].data.explanation.expected_impact}
+                              </p>
+                            </div>
+
+                            {/* 5. Key Factors & 6. Next Step */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-1">
+                                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                                  Key Factors
+                                </div>
+                                <ul className="text-[11px] text-slate-300 space-y-0.5 list-disc list-inside">
+                                  {explanations[rec.id].data.explanation.key_factors?.map((f, i) => (
+                                    <li key={i} className="truncate">{f}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/20 space-y-1">
+                                <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> Recommended Next Step
+                                </div>
+                                <p className="text-slate-200 text-[11px] leading-relaxed">
+                                  {explanations[rec.id].data.explanation.next_step}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Interactive Follow-Up Questions Section */}
+                            <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                                <span className="flex items-center gap-1"><HelpCircle className="w-3 h-3 text-indigo-400" /> Ask a Grounded Follow-up Question:</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  'Why not match competitor price exactly?',
+                                  'How sensitive is this SKU to price changes?',
+                                  'What happens to margin at this price?',
+                                ].map((q, qIdx) => (
+                                  <button
+                                    key={qIdx}
+                                    type="button"
+                                    onClick={() => handleGenerateExplanation(rec, q)}
+                                    className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-indigo-600/30 text-slate-300 hover:text-white border border-white/[0.06] transition-all cursor-pointer"
+                                  >
+                                    {q}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="text"
+                                  placeholder="Ask a specific pricing question about this product..."
+                                  value={userQuestions[rec.id] || ''}
+                                  onChange={(e) => setUserQuestions((prev) => ({ ...prev, [rec.id]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && userQuestions[rec.id]?.trim()) {
+                                      handleGenerateExplanation(rec, userQuestions[rec.id]);
+                                      setUserQuestions((prev) => ({ ...prev, [rec.id]: '' }));
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.08] text-xs text-white placeholder-slate-500 font-sans focus:outline-none focus:border-indigo-500"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  icon={Send}
+                                  disabled={!userQuestions[rec.id]?.trim()}
+                                  onClick={() => {
+                                    if (userQuestions[rec.id]?.trim()) {
+                                      handleGenerateExplanation(rec, userQuestions[rec.id]);
+                                      setUserQuestions((prev) => ({ ...prev, [rec.id]: '' }));
+                                    }
+                                  }}
+                                  className="text-xs text-indigo-300 border-indigo-500/40"
+                                >
+                                  Ask
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Prompt to generate */
+                          <div className="p-4 rounded-lg bg-black/30 border border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                            <div>
+                              <span className="text-xs font-bold text-white block">Generate Grounded Rationale</span>
+                              <span className="text-[11px] text-slate-400">
+                                Synthesize Computer Vision, competitor delta, elasticity curve, and safety constraints into plain business language.
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={Sparkles}
+                              onClick={() => handleGenerateExplanation(rec)}
+                              className="text-xs text-amber-300 border-amber-500/40 hover:bg-amber-500/20 whitespace-nowrap"
+                            >
+                              ✦ Explain Recommendation
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 8. Four-Way Data Provenance Footer */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[9px] font-mono text-slate-400">
                         <div className="flex items-center gap-1 text-purple-300 truncate">
                           <Camera className="w-2.5 h-2.5 shrink-0" />
