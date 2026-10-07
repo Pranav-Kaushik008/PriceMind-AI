@@ -280,6 +280,20 @@ def analyze_image_bytes(
             print(f"Product matching error (non-fatal): {match_err}")
     match_time_ms = round((time.perf_counter() - start_match) * 1000, 2)
 
+    # Step 6: Competitor Price Intelligence & Comparison
+    start_comp = time.perf_counter()
+    competitor_insights = []
+    try:
+        from app.services.competitor_intelligence_service import extract_competitor_intelligence
+        competitor_insights = extract_competitor_intelligence(
+            detected_objects=detected_objects,
+            detected_texts=detected_texts,
+            matched_products=matched_products,
+        )
+    except Exception as comp_err:
+        print(f"Competitor intelligence error (non-fatal): {comp_err}")
+    comp_time_ms = round((time.perf_counter() - start_comp) * 1000, 2)
+
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)
 
     return VisionPipelineResponse(
@@ -298,12 +312,16 @@ def analyze_image_bytes(
             detection_time_ms=det_time_ms,
             ocr_time_ms=ocr_time_ms,
             matching_time_ms=match_time_ms,
+            competitor_intelligence_time_ms=comp_time_ms,
             total_pipeline_time_ms=total_time_ms,
         ),
         detected_objects_count=len(detected_objects),
         detected_text_count=len(detected_texts),
         matched_products_count=len(matched_products),
+        competitor_insights_count=len(competitor_insights),
         detected_objects=detected_objects,
         detected_text_and_prices=detected_texts,
         matched_products=matched_products,
+        competitor_intelligence=competitor_insights,
     )
+

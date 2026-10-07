@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 DEV_ORG_NAME = "[DEV] PriceMind Demo Organization"
 
-# Mirror the 5 actual SKUs from the project dataset
+# Project SKUs and retail benchmark catalog products
 SEED_PRODUCTS = [
     {
         "external_product_id": "SKU-1090-CAB",
@@ -74,6 +74,70 @@ SEED_PRODUCTS = [
         "current_price": 750.0,
         "cost_price": 380.0,
         "store_channel": "STORE-NORTH-01",
+    },
+    {
+        "external_product_id": "SKU-TV-SAMS-55",
+        "name": "Samsung 55-Inch Crystal 4K UHD Smart TV",
+        "category_name": "Electronics",
+        "current_price": 599.99,
+        "cost_price": 380.0,
+        "store_channel": "STORE-RETAIL-01",
+    },
+    {
+        "external_product_id": "SKU-TV-SONY-65",
+        "name": "Sony Bravia 65-Inch 4K Ultra HD Google TV",
+        "category_name": "Electronics",
+        "current_price": 899.99,
+        "cost_price": 590.0,
+        "store_channel": "STORE-RETAIL-01",
+    },
+    {
+        "external_product_id": "SKU-TV-LG-55",
+        "name": "LG OLED55C3 55-Inch 4K OLED evo Smart TV",
+        "category_name": "Electronics",
+        "current_price": 1299.99,
+        "cost_price": 850.0,
+        "store_channel": "STORE-RETAIL-02",
+    },
+    {
+        "external_product_id": "SKU-AUD-BOSE-QC45",
+        "name": "Bose QuietComfort 45 Wireless Noise Cancelling Headphones",
+        "category_name": "Audio",
+        "current_price": 279.0,
+        "cost_price": 160.0,
+        "store_channel": "STORE-ONLINE-GLOBAL",
+    },
+    {
+        "external_product_id": "SKU-AUD-SNY-WH1000",
+        "name": "Sony WH-1000XM5 Wireless Noise Canceling Headphones",
+        "category_name": "Audio",
+        "current_price": 349.99,
+        "cost_price": 210.0,
+        "store_channel": "STORE-RETAIL-01",
+    },
+    {
+        "external_product_id": "SKU-BOT-HYDR-750",
+        "name": "Hydro Flask Stainless Steel Wide Mouth Water Bottle 750ml",
+        "category_name": "Accessories",
+        "current_price": 44.95,
+        "cost_price": 18.0,
+        "store_channel": "STORE-RETAIL-02",
+    },
+    {
+        "external_product_id": "SKU-LAP-APPL-M3",
+        "name": "Apple MacBook Air 15-inch M3 512GB Laptop",
+        "category_name": "Computers",
+        "current_price": 1299.0,
+        "cost_price": 950.0,
+        "store_channel": "STORE-ONLINE-GLOBAL",
+    },
+    {
+        "external_product_id": "SKU-MTR-LOGI-MX3S",
+        "name": "Logitech MX Master 3S Wireless Performance Mouse",
+        "category_name": "Peripherals",
+        "current_price": 99.99,
+        "cost_price": 55.0,
+        "store_channel": "STORE-RETAIL-01",
     },
 ]
 

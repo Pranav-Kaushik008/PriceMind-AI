@@ -30,6 +30,18 @@ import {
   Clock,
   ShieldAlert,
   SearchX,
+  Building2,
+  Store,
+  Database,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ShoppingBag,
+  BadgePercent,
+  Scale,
+  ArrowUpRight,
+  ArrowDownRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -93,7 +105,7 @@ export function VisualIntelligence() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [visionResult, setVisionResult] = useState(null);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
-  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'json'
+  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'json'
   const [copiedJson, setCopiedJson] = useState(false);
 
   // Overlay Toggles
@@ -398,6 +410,7 @@ export function VisualIntelligence() {
   const detectedPrices = allTextLabels.filter((t) => t.is_price_tag || t.extracted_price !== null);
   const detectedTextRegions = allTextLabels.filter((t) => !t.is_price_tag && t.extracted_price === null);
   const matchedProducts = visionResult?.matched_products || [];
+  const competitorInsights = visionResult?.competitor_intelligence || [];
 
   const hasLowConfidence = detectedObjects.some((o) => o.confidence < 0.4) || allTextLabels.some((t) => t.confidence < 0.4);
 
@@ -576,70 +589,90 @@ export function VisualIntelligence() {
           3. ANALYSIS SUMMARY KPI RIBBON
           ========================================================================= */}
       {visionResult && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           {/* KPI 1: Objects Detected */}
-          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-medium uppercase tracking-wider">Objects Detected</span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Boxes className="w-4 h-4" />
+              <span className="text-[11px] font-medium uppercase tracking-wider">Objects</span>
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Boxes className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-2.5 flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-mono text-emerald-400">
                 {detectedObjects.length}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">
-                {detectedObjects.length === 1 ? 'product' : 'products'} found
+              <span className="text-[10px] text-slate-400 font-mono">
+                {detectedObjects.length === 1 ? 'item' : 'items'}
               </span>
             </div>
           </div>
 
           {/* KPI 2: Text Regions */}
-          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-medium uppercase tracking-wider">Text Regions</span>
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                <Type className="w-4 h-4" />
+              <span className="text-[11px] font-medium uppercase tracking-wider">Text Tags</span>
+              <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <Type className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-2.5 flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-mono text-indigo-300">
                 {allTextLabels.length}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">OCR regions</span>
+              <span className="text-[10px] text-slate-400 font-mono">regions</span>
             </div>
           </div>
 
           {/* KPI 3: Prices Extracted */}
-          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-medium uppercase tracking-wider">Prices Detected</span>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <DollarSign className="w-4 h-4" />
+              <span className="text-[11px] font-medium uppercase tracking-wider">Prices</span>
+              <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <DollarSign className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-2.5 flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-mono text-amber-400">
                 {detectedPrices.length}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">price tags</span>
+              <span className="text-[10px] text-slate-400 font-mono">detected</span>
             </div>
           </div>
 
-          {/* KPI 4: Total Latency */}
-          <div className="p-4 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
+          {/* KPI 4: Catalog Matches */}
+          <div className="p-3.5 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-medium uppercase tracking-wider">Pipeline Latency</span>
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                <Clock className="w-4 h-4" />
+              <span className="text-[11px] font-medium uppercase tracking-wider">Matches</span>
+              <div className="w-6 h-6 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                <Database className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-bold font-mono text-cyan-300">
-                {visionResult.processing_stats?.total_pipeline_time_ms || 0}
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold font-mono text-teal-300">
+                {matchedProducts.filter((m) => m.match_status === 'matched').length}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">ms total</span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                / {matchedProducts.length} items
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 5: Competitor Intel */}
+          <div className="p-3.5 rounded-2xl bg-[#0D1524]/70 border border-white/[0.08] backdrop-blur-md flex flex-col justify-between col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-medium uppercase tracking-wider">Competitor Intel</span>
+              <div className="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                <Store className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold font-mono text-purple-300">
+                {competitorInsights.length}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {competitorInsights.filter((c) => c.competitor_info?.is_identified).length > 0 ? 'competitor tagged' : 'detected'}
+              </span>
             </div>
           </div>
         </div>
@@ -904,6 +937,15 @@ export function VisualIntelligence() {
                 }`}
               >
                 Matches ({matchedProducts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('competitor')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  activeTab === 'competitor' ? 'bg-purple-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Competitor Intel ({competitorInsights.length})
               </button>
               <button
                 type="button"
@@ -1246,7 +1288,215 @@ export function VisualIntelligence() {
           )}
 
           {/* =========================================================================
-              TAB 6: JSON TELEMETRY VIEW
+              TAB 6: COMPETITOR PRICE INTELLIGENCE & COMPARISON
+              ========================================================================= */}
+          {activeTab === 'competitor' && (
+            <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <Store className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>Analyze an image to view competitor price comparisons.</span>
+                </div>
+              ) : competitorInsights.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <SearchX className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>No competitor prices or items detected</span>
+                  <span className="text-slate-600 text-[11px]">Upload an image containing visible shelf price tags or competitor listings</span>
+                </div>
+              ) : (
+                competitorInsights.map((item) => {
+                  const isLower = item.comparison_status === 'lower_than_competitor';
+                  const isHigher = item.comparison_status === 'higher_than_competitor';
+                  const isSimilar = item.comparison_status === 'similar_to_competitor';
+                  const isNoPrice = item.comparison_status === 'no_price_detected';
+                  const isUnmatched = item.comparison_status === 'unmatched_product';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isLower
+                          ? 'bg-emerald-950/20 border-emerald-500/30'
+                          : isHigher
+                          ? 'bg-amber-950/20 border-amber-500/30'
+                          : isSimilar
+                          ? 'bg-blue-950/20 border-blue-500/30'
+                          : 'bg-white/[0.03] border-white/[0.08]'
+                      }`}
+                    >
+                      {/* Top Header Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white tracking-tight">
+                            {item.product_name}
+                          </span>
+                          {item.sku && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-slate-300 border border-white/[0.08]">
+                              SKU: {item.sku}
+                            </span>
+                          )}
+                          {!item.sku && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                              {item.detected_label}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status Indicator Badge */}
+                        <div className="flex items-center gap-1.5">
+                          {isLower && (
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                              <TrendingDown className="w-3 h-3" />
+                              Lower than competitor ({item.price_difference_percent > 0 ? `+${item.price_difference_percent}%` : `${item.price_difference_percent}%`})
+                            </span>
+                          )}
+                          {isHigher && (
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              Higher than competitor ({item.price_difference_percent > 0 ? `+${item.price_difference_percent}%` : `${item.price_difference_percent}%`})
+                            </span>
+                          )}
+                          {isSimilar && (
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                              <Minus className="w-3 h-3" />
+                              Similar to competitor ({item.price_difference_percent > 0 ? `+${item.price_difference_percent}%` : `${item.price_difference_percent}%`})
+                            </span>
+                          )}
+                          {isNoPrice && (
+                            <span className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 border border-slate-600/30">
+                              Competitor Price Not Detected
+                            </span>
+                          )}
+                          {isUnmatched && (
+                            <span className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 border border-slate-600/30">
+                              Unmatched Catalog Product
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 3-Column Price Comparison Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+                        {/* 1. Your Price */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider">Your Price</span>
+                            <Database className="w-3 h-3 text-indigo-400" />
+                          </div>
+                          <div className="text-lg font-bold font-mono text-white">
+                            {item.your_price != null ? `₹${item.your_price.toLocaleString()}` : '—'}
+                          </div>
+                          <div className="mt-1 text-[9px] text-indigo-300/80 font-mono truncate">
+                            Retrieved from PriceMind database
+                          </div>
+                        </div>
+
+                        {/* 2. Detected Competitor Price */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider">Detected Competitor Price</span>
+                            <Camera className="w-3 h-3 text-purple-400" />
+                          </div>
+                          <div className="text-lg font-bold font-mono text-purple-300">
+                            {item.competitor_price != null ? `₹${item.competitor_price.toLocaleString()}` : '—'}
+                          </div>
+                          <div className="mt-1 text-[9px] text-purple-300/80 font-mono truncate">
+                            Detected from image
+                          </div>
+                        </div>
+
+                        {/* 3. Difference */}
+                        <div className={`p-3 rounded-lg border flex flex-col justify-between ${
+                          isLower
+                            ? 'bg-emerald-950/30 border-emerald-500/20'
+                            : isHigher
+                            ? 'bg-amber-950/30 border-amber-500/20'
+                            : isSimilar
+                            ? 'bg-blue-950/30 border-blue-500/20'
+                            : 'bg-black/40 border-white/[0.06]'
+                        }`}>
+                          <div className="flex items-center justify-between text-slate-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider">Difference</span>
+                            <Scale className="w-3 h-3 text-slate-400" />
+                          </div>
+                          <div className={`text-lg font-bold font-mono ${
+                            isLower
+                              ? 'text-emerald-400'
+                              : isHigher
+                              ? 'text-amber-400'
+                              : isSimilar
+                              ? 'text-blue-400'
+                              : 'text-slate-400'
+                          }`}>
+                            {item.price_difference_percent != null
+                              ? `${item.price_difference_percent > 0 ? '+' : ''}${item.price_difference_percent.toFixed(2)}%`
+                              : '—'}
+                          </div>
+                          <div className="mt-1 text-[9px] font-mono text-slate-400">
+                            {item.price_difference != null
+                              ? `${item.price_difference > 0 ? '+' : ''}₹${item.price_difference.toLocaleString()}`
+                              : isNoPrice
+                              ? 'Awaiting image price'
+                              : 'No baseline catalog price'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Competitor Retail Information Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[11px] mb-2.5">
+                        {/* Competitor Name */}
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Competitor</span>
+                          <span className={`font-medium ${item.competitor_info?.is_identified ? 'text-purple-300 font-semibold' : 'text-slate-400 italic'}`}>
+                            {item.competitor_info?.competitor_name || 'Competitor not identified'}
+                          </span>
+                        </div>
+
+                        {/* Promotion */}
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Promotion / Discount</span>
+                          <span className="text-slate-300 font-medium truncate block">
+                            {item.competitor_info?.promotion || 'None detected'}
+                          </span>
+                        </div>
+
+                        {/* Availability */}
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Availability</span>
+                          <span className="text-slate-300 font-medium truncate block">
+                            {item.competitor_info?.availability || 'Not specified'}
+                          </span>
+                        </div>
+
+                        {/* Detection Confidence */}
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">OCR Confidence</span>
+                          <span className="text-emerald-400 font-mono font-medium">
+                            {item.competitor_info?.detection_confidence ? `${Math.round(item.competitor_info.detection_confidence * 100)}%` : '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Strict Data Provenance Attribution */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-white/[0.04] gap-1">
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <Database className="w-2.5 h-2.5 text-indigo-400" />
+                          <span>{item.your_price_provenance}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <Camera className="w-2.5 h-2.5 text-purple-400" />
+                          <span>{item.competitor_price_provenance}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 7: JSON TELEMETRY VIEW
               ========================================================================= */}
           {activeTab === 'json' && (
             <div className="flex flex-col gap-2">
@@ -1278,6 +1528,8 @@ export function VisualIntelligence() {
               <span>OCR: {visionResult.processing_stats?.ocr_time_ms || 0}ms</span>
               <span>•</span>
               <span>Matching: {visionResult.processing_stats?.matching_time_ms || 0}ms</span>
+              <span>•</span>
+              <span>Comp Intel: {visionResult.processing_stats?.competitor_intelligence_time_ms || 0}ms</span>
             </div>
           )}
         </div>

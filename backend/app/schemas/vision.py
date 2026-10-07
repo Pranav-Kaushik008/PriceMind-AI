@@ -56,6 +56,39 @@ class ProductMatchResult(BaseModel):
     match_reason: Optional[str] = None
 
 
+class CompetitorInfo(BaseModel):
+    competitor_name: Optional[str] = None  # None or competitor name like "Amazon", "Walmart", "Best Buy", etc.
+    is_identified: bool = False
+    detected_price: Optional[float] = None
+    currency_symbol: str = "₹"
+    raw_price_text: Optional[str] = None
+    promotion: Optional[str] = None  # e.g. "20% OFF", "Save $50", "Sale"
+    availability: Optional[str] = None  # e.g. "In Stock", "Out of Stock"
+    detection_confidence: float = 0.0
+    ocr_tag_id: Optional[str] = None
+    box: Optional[BoundingBoxCoordinates] = None
+
+
+class CompetitorComparisonResult(BaseModel):
+    id: str
+    product_id: Optional[str] = None
+    sku: Optional[str] = None
+    product_name: str
+    detected_label: str
+    match_status: str = "unmatched"  # "matched" | "possible_match" | "unmatched"
+    match_confidence: float = 0.0
+    your_price: Optional[float] = None  # Retrieved from PriceMind DB
+    competitor_price: Optional[float] = None  # Detected from image
+    currency_symbol: str = "₹"
+    price_difference: Optional[float] = None  # your_price - competitor_price
+    price_difference_percent: Optional[float] = None  # ((your_price - competitor_price) / competitor_price) * 100
+    comparison_status: str = "no_comparison"  # "lower_than_competitor" | "similar_to_competitor" | "higher_than_competitor" | "no_price_detected" | "unmatched_product"
+    status_label: str = "No Price Detected"  # Human-readable status indicator
+    competitor_info: CompetitorInfo
+    your_price_provenance: str = "Retrieved from PriceMind database"
+    competitor_price_provenance: str = "Detected from image"
+
+
 class ImageMetadata(BaseModel):
     filename: str
     format: str
@@ -71,6 +104,7 @@ class ProcessingStats(BaseModel):
     detection_time_ms: float
     ocr_time_ms: float
     matching_time_ms: float = 0.0
+    competitor_intelligence_time_ms: float = 0.0
     total_pipeline_time_ms: float
 
 
@@ -81,6 +115,8 @@ class VisionPipelineResponse(BaseModel):
     detected_objects_count: int
     detected_text_count: int
     matched_products_count: int = 0
+    competitor_insights_count: int = 0
     detected_objects: List[DetectedObject] = []
     detected_text_and_prices: List[DetectedTextLabel] = []
     matched_products: List[ProductMatchResult] = []
+    competitor_intelligence: List[CompetitorComparisonResult] = []
