@@ -69,7 +69,7 @@ export function Header() {
   const currentWs = workspaces.find((w) => w.id === activeWorkspace) || workspaces[0];
 
   return (
-    <header className="h-13 bg-[#090D16]/90 backdrop-blur-xl border-b border-white/[0.08] px-3 sm:px-5 flex items-center justify-between gap-3 select-none z-30 font-sans sticky top-0">
+    <header className="h-13 bg-pm-surface border-b border-pm-borderSubtle px-3 sm:px-5 flex items-center justify-between gap-3 select-none z-30 font-sans sticky top-0">
       {/* Left: Mobile Menu Toggle & Brand / Workspace Selector */}
       <div className="flex items-center gap-3 min-w-0">
         <button
@@ -118,7 +118,7 @@ export function Header() {
           </button>
 
           {isWorkspaceOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-72 bg-[#0F1624]/95 backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 py-1.5 font-sans overflow-hidden">
+            <div className="absolute left-0 top-full mt-1.5 w-72 bg-pm-elevated backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 py-1.5 font-sans overflow-hidden">
               <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/[0.08]">
                 Workspaces & Environments
               </div>
@@ -214,7 +214,7 @@ export function Header() {
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-80 bg-[#0F1624]/95 backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 font-sans overflow-hidden">
+            <div className="absolute right-0 top-full mt-1.5 w-80 bg-pm-elevated backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 font-sans overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.08]">
                 <span className="text-xs font-semibold text-white">Telemetry Alerts</span>
                 {notificationsCount > 0 && (
@@ -274,7 +274,7 @@ export function Header() {
           </button>
 
           {isUserMenuOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-64 bg-[#0F1624]/95 backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 py-1.5 font-sans overflow-hidden">
+            <div className="absolute right-0 top-full mt-1.5 w-64 bg-pm-elevated backdrop-blur-xl border border-white/[0.12] rounded-xl shadow-2xl z-50 py-1.5 font-sans overflow-hidden">
               <div className="px-4 py-3 border-b border-white/[0.08]">
                 <div className="font-semibold text-xs text-white truncate">{user.name}</div>
                 <div className="text-[10px] text-slate-400 font-mono truncate mt-0.5">{user.email}</div>

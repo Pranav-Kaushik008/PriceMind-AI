@@ -33,35 +33,30 @@
   --pm-text-inverse: #05070A;       /* Text on solid accent pills */
 
   /* Semantic Status Colors */
-  /* Positive / Margin Lift / Above Target */
   --pm-positive: #10B981;
   --pm-positive-hover: #059669;
   --pm-positive-subtle: rgba(16, 185, 129, 0.12);
   --pm-positive-border: rgba(16, 185, 129, 0.30);
   --pm-positive-text: #34D399;
 
-  /* Negative / Revenue Risk / Margin Compression */
   --pm-negative: #EF4444;
   --pm-negative-hover: #DC2626;
   --pm-negative-subtle: rgba(239, 68, 68, 0.12);
   --pm-negative-border: rgba(239, 68, 68, 0.30);
   --pm-negative-text: #F87171;
 
-  /* Warning / Review Required / Inventory Outlier */
   --pm-warning: #F59E0B;
   --pm-warning-hover: #D97706;
   --pm-warning-subtle: rgba(245, 158, 11, 0.12);
   --pm-warning-border: rgba(245, 158, 11, 0.30);
   --pm-warning-text: #FBBF24;
 
-  /* Information / Strategy Guidance / Elasticity */
   --pm-info: #0284C7;
   --pm-info-hover: #0369A1;
   --pm-info-subtle: rgba(2, 132, 199, 0.12);
   --pm-info-border: rgba(2, 132, 199, 0.30);
   --pm-info-text: #38BDF8;
 
-  /* Accent / Platform Identity (Institutional Indigo/Cyan) */
   --pm-accent: #6366F1;
   --pm-accent-hover: #4F46E5;
   --pm-accent-subtle: rgba(99, 102, 241, 0.12);
@@ -72,7 +67,7 @@
   --pm-cyan-subtle: rgba(6, 182, 212, 0.12);
   --pm-cyan-border: rgba(6, 182, 212, 0.30);
 
-  /* Modern World Glass & Ambient Glows (Dark) */
+  /* Glass & Ambient Glows (Dark) */
   --pm-glass-bg: rgba(13, 17, 26, 0.75);
   --pm-glass-border: rgba(255, 255, 255, 0.08);
   --pm-glass-elevated: rgba(19, 26, 39, 0.85);
@@ -81,7 +76,7 @@
   --pm-glow-emerald: rgba(16, 185, 129, 0.15);
   --pm-glow-purple: rgba(168, 85, 247, 0.15);
 
-  /* Shadows (Minimal, restrained, enterprise) */
+  /* Shadows */
   --pm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --pm-shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
   --pm-shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.7);
@@ -89,32 +84,37 @@
   --pm-shadow-glow: 0 0 25px -5px rgba(99, 102, 241, 0.25);
 }
 
-/* Light Mode Overrides */
+/* ============================================================
+   LIGHT MODE — Premium, eye-friendly, vibrant-but-calm palette
+   Inspired by: Linear, Vercel, Stripe dashboards
+   ============================================================ */
 .light, html.light, body.light {
-  /* Backgrounds & Surfaces */
-  --pm-bg-app: #F4F6F9;             /* Crisp institutional light gray */
-  --pm-bg-surface: #FFFFFF;         /* Pure white container cards */
-  --pm-bg-elevated: #FFFFFF;        /* Elevated menus / popovers */
-  --pm-bg-subtle: #F8FAFC;          /* Recessed table headers */
-  --pm-bg-hover: #F1F5F9;           /* Item hover */
-  --pm-bg-active: #E2E8F0;          /* Item pressed */
-  --pm-bg-selected: #EFF6FF;        /* Selected rows */
 
-  /* Borders & Separators */
-  --pm-border-subtle: #E2E8F0;
-  --pm-border-default: #CBD5E1;
-  --pm-border-strong: #94A3B8;
+  /* ── Backgrounds ─────────────────────────────────────────── */
+  /* Warm-cool balanced slate — NOT pure white, NOT gray. Feels fresh. */
+  --pm-bg-app: #EEF1F8;             /* Whole page canvas — soft blue-slate tint */
+  --pm-bg-surface: #FFFFFF;         /* Cards, panels — pure white, pops from canvas */
+  --pm-bg-elevated: #FFFFFF;        /* Modals, dropdowns */
+  --pm-bg-subtle: #F4F6FB;          /* Table row headers, recessed wells */
+  --pm-bg-hover: #EEF2FF;           /* Hover = pale indigo tint, feels interactive */
+  --pm-bg-active: #E0E7FF;          /* Pressed state */
+  --pm-bg-selected: #EEF2FF;        /* Selected rows */
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --pm-border-subtle: #E4E8F2;      /* Very soft, barely visible dividers */
+  --pm-border-default: #D1D9EC;     /* Card/input borders */
+  --pm-border-strong: #A8B5D0;      /* Tabs, section separators */
   --pm-border-focus: #4F46E5;
   --pm-border-accent: #4F46E5;
 
-  /* Text & Content Hierarchy */
-  --pm-text-primary: #0F172A;       /* Deep slate black */
-  --pm-text-secondary: #334155;     /* Dark slate body */
-  --pm-text-muted: #64748B;         /* Muted annotations */
-  --pm-text-dim: #94A3B8;           /* Dim timestamps */
+  /* ── Text ────────────────────────────────────────────────── */
+  --pm-text-primary: #0F172A;       /* Almost-black, rich contrast */
+  --pm-text-secondary: #374151;     /* Body text — dark enough, not harsh */
+  --pm-text-muted: #6B7280;         /* Sub-labels */
+  --pm-text-dim: #9CA3AF;           /* Timestamps, disabled */
   --pm-text-inverse: #FFFFFF;
 
-  /* Semantic Status Colors (Light Theme Adjusted) */
+  /* ── Semantic colors (adjusted for light backgrounds) ────── */
   --pm-positive: #059669;
   --pm-positive-hover: #047857;
   --pm-positive-subtle: #ECFDF5;
@@ -123,7 +123,7 @@
 
   --pm-negative: #DC2626;
   --pm-negative-hover: #B91C1C;
-  --pm-negative-subtle: #FEF2F2;
+  --pm-negative-subtle: #FFF1F1;
   --pm-negative-border: #FECACA;
   --pm-negative-text: #991B1B;
 
@@ -149,19 +149,19 @@
   --pm-cyan-subtle: #ECFEFF;
   --pm-cyan-border: #A5F3FC;
 
-  /* Modern World Glass & Ambient Glows (Light) */
+  /* ── Glass & Glows (calmer in light) ─────────────────────── */
   --pm-glass-bg: rgba(255, 255, 255, 0.85);
-  --pm-glass-border: rgba(226, 232, 240, 0.9);
+  --pm-glass-border: rgba(209, 217, 236, 0.8);
   --pm-glass-elevated: rgba(255, 255, 255, 0.95);
-  --pm-glow-indigo: rgba(79, 70, 229, 0.08);
-  --pm-glow-cyan: rgba(8, 145, 178, 0.08);
-  --pm-glow-emerald: rgba(5, 150, 105, 0.08);
-  --pm-glow-purple: rgba(147, 51, 234, 0.08);
+  --pm-glow-indigo: rgba(79, 70, 229, 0.07);
+  --pm-glow-cyan: rgba(8, 145, 178, 0.07);
+  --pm-glow-emerald: rgba(5, 150, 105, 0.07);
+  --pm-glow-purple: rgba(147, 51, 234, 0.07);
 
-  /* Shadows (Light Theme) */
-  --pm-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-  --pm-shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
-  --pm-shadow-lg: 0 12px 28px -4px rgba(15, 23, 42, 0.12);
-  --pm-shadow-drawer: -4px 0 24px rgba(15, 23, 42, 0.15);
-  --pm-shadow-glow: 0 0 25px -5px rgba(79, 70, 229, 0.15);
+  /* ── Shadows (crisp, directional — not blurry) ───────────── */
+  --pm-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --pm-shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --pm-shadow-lg: 0 16px 32px -4px rgba(15, 23, 42, 0.10), 0 6px 12px -2px rgba(15, 23, 42, 0.05);
+  --pm-shadow-drawer: 4px 0 24px rgba(15, 23, 42, 0.10);
+  --pm-shadow-glow: 0 0 20px -4px rgba(79, 70, 229, 0.18);
 }

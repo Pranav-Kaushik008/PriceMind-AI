@@ -180,3 +180,223 @@
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   transition-duration: 150ms;
 }
+
+/* ==========================================================================
+   LIGHT MODE — Global Component Overrides
+   
+   Many page components use hardcoded dark Tailwind hex colors. These rules
+   remap those colors to beautiful light equivalents when .light is on <html>.
+   The cascade order is: token vars → these overrides → component styles.
+   ========================================================================== */
+
+/* ── Ambient background blobs — hide in light mode ────────────────────────── */
+html.light .fixed.inset-0.pointer-events-none .rounded-full,
+html.light .fixed.inset-0.pointer-events-none div {
+  opacity: 0 !important;
+}
+
+/* ── Main scrollable workspace ────────────────────────────────────────────── */
+html.light main {
+  background-color: var(--pm-bg-app);
+}
+
+/* ── All hardcoded dark card / panel backgrounds → white cards ────────────── */
+html.light [class*="bg-[#060A12]"],
+html.light [class*="bg-[#090D16]"],
+html.light [class*="bg-[#0A0F1A]"],
+html.light [class*="bg-[#0a0f1d]"],
+html.light [class*="bg-[#0A101D]"],
+html.light [class*="bg-[#0D1524]"],
+html.light [class*="bg-[#0D1526]"],
+html.light [class*="bg-[#0D1527]"],
+html.light [class*="bg-[#0F1624]"],
+html.light [class*="bg-[#0F172A]"],
+html.light [class*="bg-[#131D31]"],
+html.light [class*="bg-[#1a2035]"],
+html.light [class*="bg-[#070B14]"],
+html.light [class*="bg-[#0A0E1A]"] {
+  background-color: #FFFFFF !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+/* ── Dark opacity variants of cards ──────────────────────────────────────── */
+html.light [class*="bg-[#0D1524]/"],
+html.light [class*="bg-[#0D1527]/"],
+html.light [class*="bg-[#0A0F1A]/"],
+html.light [class*="bg-[#131D31]/"],
+html.light [class*="bg-[#0F172A]/"] {
+  background-color: #FFFFFF !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+/* ── Dark Tailwind slate/gray card classes ───────────────────────────────── */
+html.light .bg-slate-900,
+html.light .bg-slate-800,
+html.light .bg-gray-900,
+html.light .bg-gray-800,
+html.light .bg-zinc-900,
+html.light .bg-zinc-800,
+html.light .bg-neutral-900,
+html.light .bg-neutral-800 {
+  background-color: #FFFFFF !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+html.light .bg-slate-950,
+html.light .bg-gray-950,
+html.light .bg-zinc-950,
+html.light .bg-neutral-950 {
+  background-color: var(--pm-bg-subtle) !important;
+}
+
+/* ── Text overrides ──────────────────────────────────────────────────────── */
+html.light .text-white {
+  color: var(--pm-text-primary) !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: var(--pm-text-primary) !important;
+}
+
+html.light .text-slate-300,
+html.light .text-slate-400 {
+  color: var(--pm-text-secondary) !important;
+}
+
+html.light .text-slate-500 {
+  color: var(--pm-text-muted) !important;
+}
+
+/* ── Border overrides ────────────────────────────────────────────────────── */
+html.light .border-white\/\[0\.08\],
+html.light .border-white\/\[0\.06\],
+html.light .border-white\/\[0\.04\] {
+  border-color: var(--pm-border-default) !important;
+}
+
+html.light [class*="border-white/0"] {
+  border-color: var(--pm-border-default) !important;
+}
+
+/* ── Header / top bar ────────────────────────────────────────────────────── */
+html.light header,
+html.light [class*="bg-[#060"][class*="border"] {
+  background-color: #FFFFFF !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+/* ── Stat / KPI metric cards — make them visually distinct ──────────────── */
+html.light .rounded-2xl,
+html.light .rounded-xl {
+  box-shadow: var(--pm-shadow-sm);
+}
+
+/* ── Input fields ────────────────────────────────────────────────────────── */
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: var(--pm-bg-surface) !important;
+  color: var(--pm-text-primary) !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: var(--pm-text-dim) !important;
+}
+
+/* ── Table rows ──────────────────────────────────────────────────────────── */
+html.light tr:hover {
+  background-color: var(--pm-bg-hover) !important;
+}
+
+/* ── Backdrop blur glass cards → solid white in light ────────────────────── */
+html.light [class*="backdrop-blur"] {
+  background-color: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: var(--pm-border-default) !important;
+}
+
+/* ── Make sure accent/status colors still pop in light mode ─────────────── */
+html.light .text-indigo-400,
+html.light .text-indigo-300 {
+  color: #4F46E5 !important;
+}
+
+html.light .text-emerald-400,
+html.light .text-emerald-300 {
+  color: #059669 !important;
+}
+
+html.light .text-red-400,
+html.light .text-red-300 {
+  color: #DC2626 !important;
+}
+
+html.light .text-amber-400,
+html.light .text-amber-300 {
+  color: #D97706 !important;
+}
+
+html.light .text-cyan-400,
+html.light .text-cyan-300 {
+  color: #0891B2 !important;
+}
+
+/* ── Subtle background tints ─────────────────────────────────────────────── */
+html.light .bg-indigo-500\/20,
+html.light .bg-indigo-500\/10 {
+  background-color: #EEF2FF !important;
+}
+
+html.light .bg-emerald-500\/10,
+html.light .bg-emerald-400\/10 {
+  background-color: #ECFDF5 !important;
+}
+
+html.light .bg-red-500\/10,
+html.light .bg-red-400\/10 {
+  background-color: #FFF1F1 !important;
+}
+
+html.light .bg-amber-500\/10,
+html.light .bg-amber-400\/10 {
+  background-color: #FFFBEB !important;
+}
+
+/* ── Dividers & separators ───────────────────────────────────────────────── */
+html.light .divide-white\/\[0\.06\] > *,
+html.light [class*="divide-white"] > * {
+  border-color: var(--pm-border-subtle) !important;
+}
+
+/* ── Dropdowns, modals, popovers ─────────────────────────────────────────── */
+html.light [role="dialog"],
+html.light [role="menu"],
+html.light [role="listbox"] {
+  background-color: var(--pm-bg-elevated) !important;
+  border-color: var(--pm-border-default) !important;
+  color: var(--pm-text-primary) !important;
+}
+
+/* ── Chart tooltips / data labels ────────────────────────────────────────── */
+html.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--pm-bg-elevated) !important;
+  border-color: var(--pm-border-default) !important;
+  color: var(--pm-text-primary) !important;
+}
+
+html.light .recharts-cartesian-grid line {
+  stroke: var(--pm-border-subtle) !important;
+}
+
+/* ── Scrollbar in light mode ─────────────────────────────────────────────── */
+html.light ::-webkit-scrollbar-track {
+  background: var(--pm-bg-subtle);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: var(--pm-border-strong);
+}
