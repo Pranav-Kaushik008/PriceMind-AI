@@ -42,8 +42,14 @@ def get_yolo_model():
     if _yolo_model is None:
         try:
             from ultralytics import YOLO
-            model_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "yolov8n.pt")
-            if not os.path.exists(model_path):
+            # Check backend/yolov8n.pt, root yolov8n.pt, or fallback
+            backend_model = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "yolov8n.pt"))
+            root_model = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "yolov8n.pt"))
+            if os.path.exists(backend_model):
+                model_path = backend_model
+            elif os.path.exists(root_model):
+                model_path = root_model
+            else:
                 model_path = "yolov8n.pt"
             _yolo_model = YOLO(model_path)
         except Exception as e:
@@ -310,6 +316,21 @@ def analyze_image_bytes(
         print(f"PriceMind context extraction error (non-fatal): {ctx_err}")
     ctx_time_ms = round((time.perf_counter() - start_ctx) * 1000, 2)
 
+    # Step 8: Pricing Optimization (Phase 3.1)
+    start_opt = time.perf_counter()
+    pricing_recommendations = []
+    if db is not None and pricemind_contexts:
+        try:
+            from app.services.vision_pricing_optimization_service import run_vision_pricing_optimization
+            pricing_recommendations = run_vision_pricing_optimization(
+                db=db,
+                unified_contexts=pricemind_contexts,
+                objective="PROFIT_MAX"
+            )
+        except Exception as opt_err:
+            print(f"Vision pricing optimization error (non-fatal): {opt_err}")
+    opt_time_ms = round((time.perf_counter() - start_opt) * 1000, 2)
+
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)
 
     return VisionPipelineResponse(
@@ -330,6 +351,7 @@ def analyze_image_bytes(
             matching_time_ms=match_time_ms,
             competitor_intelligence_time_ms=comp_time_ms,
             pricemind_context_time_ms=ctx_time_ms,
+            optimization_time_ms=opt_time_ms,
             total_pipeline_time_ms=total_time_ms,
         ),
         detected_objects_count=len(detected_objects),
@@ -337,11 +359,13 @@ def analyze_image_bytes(
         matched_products_count=len(matched_products),
         competitor_insights_count=len(competitor_insights),
         pricemind_contexts_count=len(pricemind_contexts),
+        pricing_recommendations_count=len(pricing_recommendations),
         detected_objects=detected_objects,
         detected_text_and_prices=detected_texts,
         matched_products=matched_products,
         competitor_intelligence=competitor_insights,
         pricemind_contexts=pricemind_contexts,
+        pricing_recommendations=pricing_recommendations,
     )
 
 

@@ -180,6 +180,63 @@ class UnifiedPriceMindContext(BaseModel):
     )
 
 
+class ConstraintStatus(BaseModel):
+    valid: bool = True
+    violations: List[str] = []
+
+
+class SimulationMetrics(BaseModel):
+    price: float
+    demand: float
+    revenue: float
+    profit: Optional[float] = None
+    margin_pct: Optional[float] = None
+
+
+class SimulationComparison(BaseModel):
+    baseline: SimulationMetrics
+    recommended: SimulationMetrics
+    demand_change_pct: Optional[float] = None
+    revenue_change_pct: Optional[float] = None
+    profit_change_pct: Optional[float] = None
+
+
+class VisionPricingRecommendation(BaseModel):
+    id: str
+    product_id: Optional[str] = None
+    sku: Optional[str] = None
+    product_name: str
+    current_price: Optional[float] = None
+    detected_competitor_price: Optional[float] = None
+    recommended_price: Optional[float] = None
+    price_change_pct: Optional[float] = None
+    expected_demand: Optional[float] = None
+    expected_revenue: Optional[float] = None
+    expected_profit: Optional[float] = None
+    margin_percent: Optional[float] = None
+    objective: str = "PROFIT_MAX"
+    confidence: str = "Not available"
+    status: str = "optimized"  # "optimized" | "constraint_violation" | "missing_data" | "unmatched"
+    status_message: str
+    factors_considered: List[str] = []
+    constraints: ConstraintStatus
+    simulation: Optional[SimulationComparison] = None
+    data_provenance: Dict[str, List[str]] = Field(
+        default_factory=lambda: {
+            "image_derived": ["Detected competitor price", "Competitor context"],
+            "database_derived": ["Baseline price", "Unit cost", "Inventory level", "Historical sales"],
+            "model_derived": ["Demand model", "Elasticity estimate"],
+            "optimization_derived": [
+                "Recommended price",
+                "Expected demand",
+                "Expected revenue",
+                "Expected gross profit",
+                "Constraint validation",
+            ],
+        }
+    )
+
+
 class ImageMetadata(BaseModel):
     filename: str
     format: str
@@ -197,6 +254,7 @@ class ProcessingStats(BaseModel):
     matching_time_ms: float = 0.0
     competitor_intelligence_time_ms: float = 0.0
     pricemind_context_time_ms: float = 0.0
+    optimization_time_ms: float = 0.0
     total_pipeline_time_ms: float
 
 
@@ -209,8 +267,11 @@ class VisionPipelineResponse(BaseModel):
     matched_products_count: int = 0
     competitor_insights_count: int = 0
     pricemind_contexts_count: int = 0
+    pricing_recommendations_count: int = 0
     detected_objects: List[DetectedObject] = []
     detected_text_and_prices: List[DetectedTextLabel] = []
     matched_products: List[ProductMatchResult] = []
     competitor_intelligence: List[CompetitorComparisonResult] = []
     pricemind_contexts: List[UnifiedPriceMindContext] = []
+    pricing_recommendations: List[VisionPricingRecommendation] = []
+

@@ -110,8 +110,9 @@ export function VisualIntelligence() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [visionResult, setVisionResult] = useState(null);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
-  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'context' | 'json'
+  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'context' | 'recommendations' | 'json'
   const [copiedJson, setCopiedJson] = useState(false);
+  const [simulatedRecs, setSimulatedRecs] = useState({}); // { [recId]: boolean }
 
   // Overlay Toggles
   const [showObjectBoxes, setShowObjectBoxes] = useState(true);
@@ -417,6 +418,7 @@ export function VisualIntelligence() {
   const matchedProducts = visionResult?.matched_products || [];
   const competitorInsights = visionResult?.competitor_intelligence || [];
   const pricemindContexts = visionResult?.pricemind_contexts || [];
+  const pricingRecommendations = visionResult?.pricing_recommendations || [];
 
   const hasLowConfidence = detectedObjects.some((o) => o.confidence < 0.4) || allTextLabels.some((t) => t.confidence < 0.4);
 
@@ -961,6 +963,16 @@ export function VisualIntelligence() {
                 }`}
               >
                 PriceMind Context ({pricemindContexts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('recommendations')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 ${
+                  activeTab === 'recommendations' ? 'bg-amber-600 text-white font-semibold shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                Recommendations ({pricingRecommendations.length})
               </button>
               <button
                 type="button"
@@ -1736,7 +1748,325 @@ export function VisualIntelligence() {
           )}
 
           {/* =========================================================================
-              TAB 8: JSON TELEMETRY VIEW
+              TAB 8: PRICING RECOMMENDATIONS (PHASE 3.1)
+              ========================================================================= */}
+          {activeTab === 'recommendations' && (
+            <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <Sparkles className="w-8 h-8 text-amber-500/60" />
+                  <span>Analyze an image to generate mathematical pricing recommendations.</span>
+                </div>
+              ) : pricingRecommendations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <SearchX className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>No pricing recommendations generated</span>
+                  <span className="text-slate-600 text-[11px]">Ensure the detected product matches a catalog SKU with active cost and demand context</span>
+                </div>
+              ) : (
+                pricingRecommendations.map((rec) => {
+                  const isOptimized = rec.status === 'optimized';
+                  const isViolation = rec.status === 'constraint_violation';
+                  const isMissing = rec.status === 'missing_data' || rec.status === 'unmatched';
+                  const isSimOpen = simulatedRecs[rec.id] !== false; // default open
+                  const sim = rec.simulation;
+
+                  return (
+                    <div
+                      key={rec.id}
+                      className="p-4 rounded-xl border bg-white/[0.02] border-white/[0.08] space-y-3.5 transition-all shadow-md"
+                    >
+                      {/* 1. Header Bar: Product Name, SKU, Status & Confidence */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-white/[0.06]">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white tracking-tight">
+                            {rec.product_name}
+                          </span>
+                          {rec.sku && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              SKU: {rec.sku}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/[0.06]">
+                            Objective: {rec.objective}
+                          </span>
+                        </div>
+
+                        {/* Status & Confidence Badges */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isOptimized && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Optimized
+                            </span>
+                          )}
+                          {isViolation && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Constraint Violation
+                            </span>
+                          )}
+                          {isMissing && (
+                            <span className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 border border-slate-600/30 flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3" /> Missing Data
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            Confidence: {rec.confidence}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 2. 3-Way KPI Comparison Card */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {/* 1. Current Price */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider">Current Price</span>
+                            <Database className="w-3 h-3 text-indigo-400" />
+                          </div>
+                          <div className="text-lg font-bold font-mono text-white">
+                            {rec.current_price != null ? `₹${rec.current_price.toLocaleString()}` : '—'}
+                          </div>
+                          <div className="mt-1 text-[9px] text-indigo-300/80 font-mono truncate">
+                            PriceMind Database
+                          </div>
+                        </div>
+
+                        {/* 2. Detected Competitor Price */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider">Detected Competitor</span>
+                            <Camera className="w-3 h-3 text-purple-400" />
+                          </div>
+                          <div className="text-lg font-bold font-mono text-purple-300">
+                            {rec.detected_competitor_price != null ? `₹${rec.detected_competitor_price.toLocaleString()}` : 'Not detected'}
+                          </div>
+                          <div className="mt-1 text-[9px] text-purple-300/80 font-mono truncate">
+                            Detected from image
+                          </div>
+                        </div>
+
+                        {/* 3. Recommended Price */}
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between shadow-inner">
+                          <div className="flex items-center justify-between text-amber-400 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> Recommended Price
+                            </span>
+                            <Scale className="w-3 h-3 text-amber-400" />
+                          </div>
+                          <div className="text-xl font-bold font-mono text-amber-300 flex items-baseline gap-2">
+                            <span>{rec.recommended_price != null ? `₹${rec.recommended_price.toLocaleString()}` : '—'}</span>
+                            {rec.price_change_pct != null && (
+                              <span className={`text-xs font-mono font-medium ${
+                                rec.price_change_pct > 0 ? 'text-emerald-400' : rec.price_change_pct < 0 ? 'text-amber-400' : 'text-slate-400'
+                              }`}>
+                                ({rec.price_change_pct > 0 ? `+${rec.price_change_pct}%` : `${rec.price_change_pct}%`})
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 text-[9px] text-amber-200/80 font-mono truncate">
+                            Existing Pricing Optimizer
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Expected Outcomes 4-Card Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[11px]">
+                        {/* Expected Demand */}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Exp. Demand</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-white/[0.05] text-cyan-300">Model estimate</span>
+                          </div>
+                          <div className="font-mono font-bold text-white mt-0.5">
+                            {rec.expected_demand != null ? `${rec.expected_demand} units/day` : '—'}
+                          </div>
+                        </div>
+
+                        {/* Expected Revenue */}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Exp. Revenue</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-white/[0.05] text-cyan-300">Model estimate</span>
+                          </div>
+                          <div className="font-mono font-bold text-slate-200 mt-0.5">
+                            {rec.expected_revenue != null ? `₹${rec.expected_revenue.toLocaleString()}/day` : '—'}
+                          </div>
+                        </div>
+
+                        {/* Expected Profit */}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Exp. Profit</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-white/[0.05] text-cyan-300">Model estimate</span>
+                          </div>
+                          <div className="font-mono font-bold text-emerald-400 mt-0.5">
+                            {rec.expected_profit != null ? `₹${rec.expected_profit.toLocaleString()}/day` : '—'}
+                          </div>
+                        </div>
+
+                        {/* Gross Margin */}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Gross Margin</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-emerald-500/10 text-emerald-300">Verified</span>
+                          </div>
+                          <div className="font-mono font-bold text-amber-300 mt-0.5">
+                            {rec.margin_percent != null ? `${rec.margin_percent}%` : '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Factors Considered Checklist */}
+                      <div className="p-2.5 rounded-lg bg-white/[0.01] border border-white/[0.04] space-y-1.5">
+                        <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                          <span>Factors Evaluated by Optimizer</span>
+                          <span className="text-[9px] text-slate-500">{rec.factors_considered?.length || 0} inputs</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {rec.factors_considered?.map((f, fIdx) => (
+                            <span
+                              key={fIdx}
+                              className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1"
+                            >
+                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 5. Business Constraint Status Banner */}
+                      {rec.constraints?.valid ? (
+                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-mono flex items-center gap-2">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>All business safety constraints satisfied (Cost floor $\ge 5\%$, Max price volatility $\le 25\%$).</span>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-mono flex items-start gap-2">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold block">Constraint Alert:</span>
+                            <span>{rec.constraints?.violations?.join(', ') || rec.status_message}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 6. Interactive What-If Simulation Comparison */}
+                      {sim && (
+                        <div className="p-3 rounded-lg bg-black/50 border border-white/[0.08] space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 font-bold flex items-center gap-1">
+                              <Activity className="w-3 h-3" /> Simulation Comparison (Baseline vs Recommended)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSimulatedRecs((prev) => ({
+                                  ...prev,
+                                  [rec.id]: !isSimOpen,
+                                }))
+                              }
+                              className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 transition-all cursor-pointer"
+                            >
+                              {isSimOpen ? 'Hide Simulation' : 'Simulate Recommendation'}
+                            </button>
+                          </div>
+
+                          {isSimOpen && (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-[11px] font-mono">
+                                <thead>
+                                  <tr className="border-b border-white/[0.06] text-slate-400 text-[9px] uppercase tracking-wider">
+                                    <th className="pb-1.5 font-medium">Metric</th>
+                                    <th className="pb-1.5 font-medium">Current Baseline</th>
+                                    <th className="pb-1.5 font-medium">Recommended</th>
+                                    <th className="pb-1.5 font-medium text-right">Variance Impact</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.04]">
+                                  <tr>
+                                    <td className="py-1 text-slate-400">Unit Price</td>
+                                    <td className="py-1 text-slate-300">₹{sim.baseline.price.toLocaleString()}</td>
+                                    <td className="py-1 text-amber-300 font-bold">₹{sim.recommended.price.toLocaleString()}</td>
+                                    <td className="py-1 text-right font-bold text-slate-300">
+                                      {rec.price_change_pct != null ? `${rec.price_change_pct > 0 ? '+' : ''}${rec.price_change_pct}%` : '—'}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="py-1 text-slate-400">Daily Demand</td>
+                                    <td className="py-1 text-slate-300">{sim.baseline.demand} units</td>
+                                    <td className="py-1 text-cyan-300 font-bold">{sim.recommended.demand} units</td>
+                                    <td className={`py-1 text-right font-bold ${
+                                      (sim.demand_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-amber-400'
+                                    }`}>
+                                      {sim.demand_change_pct != null ? `${sim.demand_change_pct > 0 ? '+' : ''}${sim.demand_change_pct}%` : '—'}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="py-1 text-slate-400">Daily Revenue</td>
+                                    <td className="py-1 text-slate-300">₹{sim.baseline.revenue.toLocaleString()}</td>
+                                    <td className="py-1 text-slate-200 font-bold">₹{sim.recommended.revenue.toLocaleString()}</td>
+                                    <td className={`py-1 text-right font-bold ${
+                                      (sim.revenue_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-amber-400'
+                                    }`}>
+                                      {sim.revenue_change_pct != null ? `${sim.revenue_change_pct > 0 ? '+' : ''}${sim.revenue_change_pct}%` : '—'}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="py-1 text-slate-400">Daily Gross Profit</td>
+                                    <td className="py-1 text-slate-300">₹{sim.baseline.profit?.toLocaleString() || '—'}</td>
+                                    <td className="py-1 text-emerald-400 font-bold">₹{sim.recommended.profit?.toLocaleString() || '—'}</td>
+                                    <td className={`py-1 text-right font-bold ${
+                                      (sim.profit_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-amber-400'
+                                    }`}>
+                                      {sim.profit_change_pct != null ? `${sim.profit_change_pct > 0 ? '+' : ''}${sim.profit_change_pct}%` : '—'}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td className="py-1 text-slate-400">Profit Margin %</td>
+                                    <td className="py-1 text-slate-300">{sim.baseline.margin_pct != null ? `${sim.baseline.margin_pct}%` : '—'}</td>
+                                    <td className="py-1 text-amber-300 font-bold">{sim.recommended.margin_pct != null ? `${sim.recommended.margin_pct}%` : '—'}</td>
+                                    <td className="py-1 text-right text-slate-400">
+                                      {sim.baseline.margin_pct != null && sim.recommended.margin_pct != null
+                                        ? `${(sim.recommended.margin_pct - sim.baseline.margin_pct > 0 ? '+' : '')}${(sim.recommended.margin_pct - sim.baseline.margin_pct).toFixed(1)}% pts`
+                                        : '—'}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 7. Four-Way Data Provenance Footer */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[9px] font-mono text-slate-400">
+                        <div className="flex items-center gap-1 text-purple-300 truncate">
+                          <Camera className="w-2.5 h-2.5 shrink-0" />
+                          <span>Image: Comp Price</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-indigo-300 truncate">
+                          <Database className="w-2.5 h-2.5 shrink-0" />
+                          <span>DB: Price, Cost, Stock</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-amber-300 truncate">
+                          <TrendingUp className="w-2.5 h-2.5 shrink-0" />
+                          <span>Model: Elasticity (Module 3)</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-emerald-300 truncate">
+                          <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                          <span>Opt: Profit Engine</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 9: JSON TELEMETRY VIEW
               ========================================================================= */}
           {activeTab === 'json' && (
             <div className="flex flex-col gap-2">
@@ -1772,6 +2102,8 @@ export function VisualIntelligence() {
               <span>Comp Intel: {visionResult.processing_stats?.competitor_intelligence_time_ms || 0}ms</span>
               <span>•</span>
               <span>Context: {visionResult.processing_stats?.pricemind_context_time_ms || 0}ms</span>
+              <span>•</span>
+              <span className="text-amber-300 font-bold">Optimization: {visionResult.processing_stats?.optimization_time_ms || 0}ms</span>
             </div>
           )}
         </div>
