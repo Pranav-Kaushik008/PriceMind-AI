@@ -23,78 +23,38 @@ import {
   Zap,
   HelpCircle,
   Eye,
-  Sliders,
-  Play,
-  RotateCcw,
+  FileText,
+  Tag,
+  Boxes,
+  Clock,
   ArrowRight,
-  Send,
-  MessageSquare,
+  ShieldCheck,
+  Sliders,
+  History,
+  Store,
+  Building2,
+  Video,
+  VideoOff,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip as RechartsTooltip,
-  ReferenceLine,
-} from 'recharts';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/ToastProvider';
 
-// ── Chart Telemetry Data ──────────────────────────────────────────────────────
-const REVENUE_CHART_DATA = [
-  { date: 'Oct 1', actual: 1.8, forecast: null },
-  { date: 'Oct 4', actual: 2.2, forecast: null },
-  { date: 'Oct 8', actual: 2.8, forecast: null },
-  { date: 'Oct 12', actual: 3.5, forecast: null },
-  { date: 'Oct 15', actual: 4.2, forecast: 4.2 }, // Today cutoff
-  { date: 'Oct 18', actual: null, forecast: 4.4 },
-  { date: 'Oct 22', actual: null, forecast: 4.7 },
-  { date: 'Oct 25', actual: null, forecast: 5.0 },
-  { date: 'Oct 29', actual: null, forecast: 5.4 },
-];
-
-const PROFIT_CHART_DATA = [
-  { date: 'Oct 1', actual: 0.7, forecast: null },
-  { date: 'Oct 4', actual: 0.9, forecast: null },
-  { date: 'Oct 8', actual: 1.1, forecast: null },
-  { date: 'Oct 12', actual: 1.4, forecast: null },
-  { date: 'Oct 15', actual: 1.65, forecast: 1.65 },
-  { date: 'Oct 18', actual: null, forecast: 1.75 },
-  { date: 'Oct 22', actual: null, forecast: 1.9 },
-  { date: 'Oct 25', actual: null, forecast: 2.05 },
-  { date: 'Oct 29', actual: null, forecast: 2.2 },
-];
-
-const UNITS_CHART_DATA = [
-  { date: 'Oct 1', actual: 12, forecast: null },
-  { date: 'Oct 4', actual: 15, forecast: null },
-  { date: 'Oct 8', actual: 18, forecast: null },
-  { date: 'Oct 12', actual: 24, forecast: null },
-  { date: 'Oct 15', actual: 28.5, forecast: 28.5 },
-  { date: 'Oct 18', actual: null, forecast: 30 },
-  { date: 'Oct 22', actual: null, forecast: 32.5 },
-  { date: 'Oct 25', actual: null, forecast: 35 },
-  { date: 'Oct 29', actual: null, forecast: 38 },
-];
-
-// ── Default 4-TV Shelf Products (Exact match to provided screenshot) ───────────
+// ── 5 Catalog TVs Dataset (Exact match to provided screenshot) ─────────────────
 const STORE_PRODUCTS = [
   {
     id: 'prod_lg_55',
-    sku: 'SKU-TV-001',
+    sku: 'LG-55UQ75',
     name: 'LG 55" 4K UHD TV',
+    catalogName: 'LG 55" 4K UHD Smart TV',
+    detectedLabel: 'LG 55" TV',
     displayLabel: 'LG TV 0.94',
     detectedPrice: 549.99,
     confidence: 94,
     color: '#22c55e', // Green
-    box: { x: '8%', y: '12%', width: '38%', height: '36%' },
+    box: { x: '5%', y: '6%', width: '42%', height: '42%' },
     tagPos: { left: '16%', top: '38%' },
     yourPrice: 579.99,
     diffPercent: -5.2,
@@ -106,18 +66,19 @@ const STORE_PRODUCTS = [
     liftUnits: '+185 units',
     revenueDelta: '+$22.4K',
     profitDelta: '+$8.9K',
-    explanation:
-      'The recommended price of $539.99 is 6.9% lower than your current price ($579.99) and strategically undercuts the competitor price of $549.99. Given an elasticity of -0.38, this price reduction stimulates +185 units/mo sales velocity while securing $8.9K in incremental gross profit.',
+    ocrTag: 'LG UHD TV',
   },
   {
     id: 'prod_samsung_55',
-    sku: 'SKU-TV-002',
-    name: "Samsung 55\" QLED TV",
+    sku: 'SS-55Q60',
+    name: 'Samsung 55" QLED TV',
+    catalogName: 'Samsung 55" QLED 4K TV',
+    detectedLabel: 'Samsung 55" QLED',
     displayLabel: 'Samsung TV 0.96',
     detectedPrice: 599.99,
     confidence: 96,
     color: '#3b82f6', // Blue
-    box: { x: '54%', y: '12%', width: '38%', height: '36%' },
+    box: { x: '52%', y: '6%', width: '42%', height: '42%' },
     tagPos: { left: '62%', top: '38%' },
     yourPrice: 619.99,
     diffPercent: -3.2,
@@ -129,19 +90,20 @@ const STORE_PRODUCTS = [
     liftUnits: '+210 units',
     revenueDelta: '+$28.6K',
     profitDelta: '+$11.4K',
-    explanation:
-      'The recommended price of $589.99 is 4.8% lower than your current price and slightly below the competitor price. Based on the demand elasticity of -0.42, a lower price is expected to increase demand by approximately 210 units per month, resulting in an estimated $11.4K increase in gross profit. This also helps maintain a competitive position in the market.',
+    ocrTag: 'SAMSUNG QLED',
   },
   {
     id: 'prod_sony_55',
-    sku: 'SKU-TV-003',
+    sku: 'SY-55X80L',
     name: 'Sony 55" Bravia TV',
+    catalogName: 'Sony 55" Bravia 4K TV',
+    detectedLabel: 'Sony 55" TV',
     displayLabel: 'Sony TV 0.92',
     detectedPrice: 649.99,
     confidence: 92,
     color: '#ef4444', // Red
-    box: { x: '8%', y: '54%', width: '38%', height: '36%' },
-    tagPos: { left: '16%', top: '80%' },
+    box: { x: '5%', y: '52%', width: '30%', height: '44%' },
+    tagPos: { left: '12%', top: '82%' },
     yourPrice: 679.99,
     diffPercent: -4.4,
     elasticity: -0.52,
@@ -152,19 +114,20 @@ const STORE_PRODUCTS = [
     liftUnits: '+160 units',
     revenueDelta: '+$19.8K',
     profitDelta: '+$7.6K',
-    explanation:
-      'The recommended price of $639.99 is 5.9% lower than current price and captures strong high-tier demand from competitors. Elasticity of -0.52 shows strong response to small price decreases, projecting +160 units monthly lift and $7.6K profit growth.',
+    ocrTag: 'SONY BRAVIA',
   },
   {
     id: 'prod_tcl_55',
-    sku: 'SKU-TV-004',
+    sku: 'TC-55P635',
     name: 'TCL 55" 4K TV',
+    catalogName: 'TCL 55" 4K UHD TV',
+    detectedLabel: 'TCL 55" TV',
     displayLabel: 'TCL TV 0.91',
     detectedPrice: 499.99,
     confidence: 91,
     color: '#a855f7', // Purple
-    box: { x: '54%', y: '54%', width: '38%', height: '36%' },
-    tagPos: { left: '62%', top: '80%' },
+    box: { x: '37%', y: '52%', width: '30%', height: '44%' },
+    tagPos: { left: '44%', top: '82%' },
     yourPrice: 529.99,
     diffPercent: -5.7,
     elasticity: -0.65,
@@ -175,43 +138,119 @@ const STORE_PRODUCTS = [
     liftUnits: '+280 units',
     revenueDelta: '+$31.2K',
     profitDelta: '+$12.8K',
-    explanation:
-      'TCL operates in a highly price-sensitive tier (E = -0.65). Adjusting to $489.99 comfortably defends against the $499.99 competitor shelf price, expanding monthly unit volume by +280 units and growing gross profit by $12.8K.',
+    ocrTag: 'TCL 4K TV',
   },
+  {
+    id: 'prod_hisense_55',
+    sku: 'HS-55A6H',
+    name: 'Hisense 55" UHD TV',
+    catalogName: 'Hisense 55" UHD 4K TV',
+    detectedLabel: 'Hisense 55" TV',
+    displayLabel: 'Hisense TV 0.89',
+    detectedPrice: 459.99,
+    confidence: 89,
+    color: '#f97316', // Orange
+    box: { x: '69%', y: '52%', width: '28%', height: '44%' },
+    tagPos: { left: '76%', top: '82%' },
+    yourPrice: 489.99,
+    diffPercent: -6.1,
+    elasticity: -0.71,
+    sales30d: 1100,
+    availability: 'In Stock',
+    recommendedPrice: 449.99,
+    priceChangePct: -8.2,
+    liftUnits: '+240 units',
+    revenueDelta: '+$24.5K',
+    profitDelta: '+$10.2K',
+    ocrTag: 'Hisense UHD',
+  },
+];
+
+const DETECTED_TEXT_ITEMS = [
+  { id: 't1', text: '$549.99', subtext: 'Price - USD', conf: 0.98, type: 'price', color: 'yellow' },
+  { id: 't2', text: '$599.99', subtext: 'Price - USD', conf: 0.97, type: 'price', color: 'yellow' },
+  { id: 't3', text: '$649.99', subtext: 'Price - USD', conf: 0.96, type: 'price', color: 'yellow' },
+  { id: 't4', text: '$499.99', subtext: 'Price - USD', conf: 0.95, type: 'price', color: 'yellow' },
+  { id: 't5', text: '$459.99', subtext: 'Price - USD', conf: 0.94, type: 'price', color: 'yellow' },
+  { id: 't6', text: '$439.99', subtext: 'Price - USD (Old)', conf: 0.91, type: 'price', color: 'yellow' },
+  { id: 't7', text: 'LG UHD TV', subtext: 'Text', conf: 0.95, type: 'text', color: 'slate' },
+  { id: 't8', text: 'SAMSUNG QLED', subtext: 'Text', conf: 0.93, type: 'text', color: 'slate' },
+  { id: 't9', text: 'SONY BRAVIA', subtext: 'Text', conf: 0.92, type: 'text', color: 'slate' },
+  { id: 't10', text: 'TCL 4K TV', subtext: 'Text', conf: 0.91, type: 'text', color: 'slate' },
+  { id: 't11', text: 'Hisense UHD', subtext: 'Text', conf: 0.89, type: 'text', color: 'slate' },
+  { id: 't12', text: '55 Inch Class', subtext: 'Text', conf: 0.88, type: 'text', color: 'slate' },
+  { id: 't13', text: 'Smart Google TV', subtext: 'Text', conf: 0.87, type: 'text', color: 'slate' },
+  { id: 't14', text: 'Rollback Deal', subtext: 'Text', conf: 0.86, type: 'text', color: 'slate' },
 ];
 
 export function VisualIntelligence() {
   const toast = useToast();
   const { setActivePage } = useAppStore();
 
-  // ── State ───────────────────────────────────────────────────────────────────
-  const [chartMetric, setChartMetric] = useState('revenue'); // 'revenue' | 'profit' | 'units'
+  // ── States ──────────────────────────────────────────────────────────────────
+  const [inputMode, setInputMode] = useState('upload'); // 'upload' | 'camera'
   const [selectedProductId, setSelectedProductId] = useState('prod_samsung_55');
-  const [uploadedFileName, setUploadedFileName] = useState('competitor_store.jpg');
+  const [imageFilter, setImageFilter] = useState('all'); // 'all' | 'objects' | 'text'
+  const [textFilter, setTextFilter] = useState('all'); // 'all' | 'prices' | 'other'
+  const [uploadedFileName, setUploadedFileName] = useState('store_shelf.jpg');
   const [uploadedFileSize, setUploadedFileSize] = useState('2.4 MB');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progressPct, setProgressPct] = useState(75);
-  const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
-  const [customQuestion, setCustomQuestion] = useState('');
-  const [dynamicExplanation, setDynamicExplanation] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // File input & webcam
+  // Camera States
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Selected Product
   const selectedProduct =
     STORE_PRODUCTS.find((p) => p.id === selectedProductId) || STORE_PRODUCTS[1];
 
-  // Current explanation
-  const currentExplanationText =
-    dynamicExplanation || selectedProduct.explanation;
+  // Stop camera tracks cleanly
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  // Sync camera stream to video tag
+  useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream, isCameraActive]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleSelectProduct = (prodId) => {
-    setSelectedProductId(prodId);
-    setDynamicExplanation(null);
+  const handleSelectProduct = (id) => {
+    setSelectedProductId(id);
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      setInputMode('camera');
+      toast.success('Live Camera Active', 'Point your camera at competitor store shelves.');
+    } catch (err) {
+      toast.error('Camera Access Error', 'Please grant webcam permission.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+    setInputMode('upload');
   };
 
   const handleFileUpload = (e) => {
@@ -224,59 +263,26 @@ export function VisualIntelligence() {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`
     );
+    toast.info('Image Selected', `${file.name} ready for computer vision.`);
+  };
 
-    // Simulate pipeline transition
-    setIsProcessing(true);
-    setProgressPct(25);
-    setTimeout(() => setProgressPct(60), 300);
+  const runAnalysis = () => {
+    setIsAnalyzing(true);
+    toast.info('Running Pipeline', 'Executing YOLOv8, EasyOCR, and Catalog Matching...');
     setTimeout(() => {
-      setProgressPct(100);
-      setIsProcessing(false);
-      toast.success('Analysis Complete', `Successfully extracted 4 products from ${file.name}`);
-    }, 800);
+      setIsAnalyzing(false);
+      toast.success('Analysis Complete', 'Detected 5 products and 14 text regions.');
+    }, 900);
   };
 
-  const handleAskFollowUp = async (question) => {
-    if (!question) return;
-    setIsFollowUpOpen(false);
-
-    try {
-      const payload = {
-        context: {
-          product: { name: selectedProduct.name, sku: selectedProduct.sku },
-          pricing_context: {
-            current_price: selectedProduct.yourPrice,
-            competitor_price: selectedProduct.detectedPrice,
-            price_elasticity: selectedProduct.elasticity,
-          },
-          optimization_result: {
-            recommended_price: selectedProduct.recommendedPrice,
-            price_change_pct: selectedProduct.priceChangePct,
-            expected_demand: 210,
-            expected_profit: 11400,
-          },
-        },
-        user_question: question,
-      };
-
-      const res = await apiClient.explainVisionAnalysis(payload);
-      if (res && res.explanation) {
-        setDynamicExplanation(res.explanation.why_recommended);
-        toast.success('Grounded Answer Received', 'AI analyzed the question with PriceMind models.');
-      } else {
-        setDynamicExplanation(
-          `Regarding "${question}": PriceMind's optimizer indicates that a recommended price of $${selectedProduct.recommendedPrice} balances volume expansion with margin floor protection. Demand sensitivity of ${selectedProduct.elasticity} generates optimal gross profit.`
-        );
-      }
-    } catch (_) {
-      setDynamicExplanation(
-        `Regarding "${question}": PriceMind's optimizer indicates that a recommended price of $${selectedProduct.recommendedPrice} balances volume expansion with margin floor protection. Demand sensitivity of ${selectedProduct.elasticity} generates optimal gross profit.`
-      );
-    }
-  };
+  const filteredTextItems = DETECTED_TEXT_ITEMS.filter((item) => {
+    if (textFilter === 'prices') return item.type === 'price';
+    if (textFilter === 'other') return item.type === 'text';
+    return true;
+  });
 
   return (
-    <div className="flex flex-col gap-5 w-full font-sans max-w-[1600px] mx-auto pb-12 select-none">
+    <div className="flex flex-col gap-4 w-full font-sans max-w-[1640px] mx-auto pb-12 select-none">
       <input
         ref={fileInputRef}
         type="file"
@@ -286,328 +292,271 @@ export function VisualIntelligence() {
       />
 
       {/* =======================================================================
-          TOP SECTION: PRICING OVERVIEW & REVENUE CHARTS
+          TOP BAR: TITLE, SUBTITLE & ANALYSIS HISTORY
           ======================================================================= */}
-      <div className="flex flex-col gap-4">
-        {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Pricing Overview
+            Visual Intelligence
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Understand your sales performance, identify opportunities, and make data-driven decisions.
+            Analyze products, prices, and retail images using Computer Vision and AI.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsHistoryModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.1] text-xs font-medium transition-colors cursor-pointer self-start sm:self-auto"
+        >
+          <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <span>Analysis History</span>
+        </button>
+      </div>
 
-        {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Card 1: Revenue */}
-          <div className="p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                <DollarSign className="w-5 h-5" />
+      {/* =======================================================================
+          TOP SECTION: UPLOAD / CAMERA & ANALYSIS SUMMARY
+          ======================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* Left Column (6 cols): Upload Image / Live Camera Box */}
+        <div className="lg:col-span-6 flex flex-col gap-2.5">
+          {/* Mode Tabs */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { stopCamera(); setInputMode('upload'); }}
+              className={`p-2.5 rounded-xl border flex items-center gap-2.5 text-left transition-all cursor-pointer ${
+                inputMode === 'upload'
+                  ? 'bg-blue-600/20 border-blue-500/60 shadow-md'
+                  : 'bg-[#0D1527]/90 border-white/[0.08] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white flex-shrink-0">
+                <Upload className="w-4 h-4" />
               </div>
-              <div>
-                <span className="text-xs text-slate-400 font-medium block">Revenue</span>
-                <span className="text-xl font-bold text-white tracking-tight">$12.5M</span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">vs. previous 30 days</span>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-white block">Upload Image</span>
+                <span className="text-[10px] text-slate-400 truncate block">
+                  Upload a shelf image from a competitor store
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-0.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>5.5%</span>
-            </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={isCameraActive ? stopCamera : startCamera}
+              className={`p-2.5 rounded-xl border flex items-center gap-2.5 text-left transition-all cursor-pointer ${
+                inputMode === 'camera'
+                  ? 'bg-blue-600/20 border-blue-500/60 shadow-md'
+                  : 'bg-[#0D1527]/90 border-white/[0.08] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center text-slate-300 flex-shrink-0">
+                <Camera className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-white block">Live Camera</span>
+                <span className="text-[10px] text-slate-400 truncate block">
+                  {isCameraActive ? 'Camera active (Click to stop)' : 'Capture an image using your camera'}
+                </span>
+              </div>
+            </button>
           </div>
 
-          {/* Card 2: Gross Profit */}
-          <div className="p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-slate-400 font-medium block">Gross Profit</span>
-                <span className="text-xl font-bold text-white tracking-tight">$4.9M</span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">vs. previous 30 days</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-0.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>9.7%</span>
-            </div>
-          </div>
-
-          {/* Card 3: Profit Margin */}
-          <div className="p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-slate-400 font-medium block">Profit Margin</span>
-                <span className="text-xl font-bold text-white tracking-tight">39.0%</span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">vs. previous 30 days</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-0.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>1.5 pp</span>
-            </div>
-          </div>
-
-          {/* Card 4: Units Sold */}
-          <div className="p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-                <Package className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-medium block">Units Sold</span>
+          {/* Upload Dropzone + Preview Card */}
+          <div className="p-3.5 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] flex-1 flex flex-col justify-between gap-3 shadow-lg">
+            {inputMode === 'camera' && isCameraActive ? (
+              <div className="w-full aspect-[16/9] bg-black rounded-lg overflow-hidden relative border border-white/[0.1]">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.success('Snapshot Captured', 'Analyzing camera frame...');
+                      stopCamera();
+                      runAnalysis();
+                    }}
+                    className="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg"
+                  >
+                    Capture & Analyze
+                  </button>
                 </div>
-                <span className="text-xl font-bold text-white tracking-tight">84.2K</span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">vs. previous 30 days</span>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-0.5 text-xs font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
-                <TrendingDown className="w-3.5 h-3.5" />
-                <span>2.2%</span>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                {/* Left Dropzone */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-4 rounded-lg border-2 border-dashed border-white/[0.12] hover:border-blue-500/50 bg-white/[0.01] hover:bg-white/[0.03] transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1.5 min-h-[140px]"
+                >
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-[11px] text-slate-300 font-medium">
+                    Drag and drop an image here
+                  </span>
+                  <span className="text-[9px] text-slate-500">or</span>
+                  <button
+                    type="button"
+                    className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow"
+                  >
+                    Choose Image
+                  </button>
+                  <span className="text-[8px] text-slate-500 mt-1">
+                    Supported formats: JPG, PNG, WEBP (Max 10 MB)
+                  </span>
+                </div>
+
+                {/* Right Image Thumbnail Preview */}
+                <div className="flex flex-col gap-2">
+                  <div className="relative rounded-lg overflow-hidden border border-white/[0.1] bg-slate-950 aspect-[16/10]">
+                    {/* Simulated 4-TV Shelf Preview */}
+                    <div className="w-full h-full bg-slate-900 grid grid-cols-2 gap-1 p-1">
+                      <div className="bg-emerald-950/40 rounded border border-emerald-500/30 flex items-center justify-center text-[8px] text-slate-300 font-mono relative">
+                        LG TV
+                        <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-0.5 rounded-sm">$549.99</span>
+                      </div>
+                      <div className="bg-blue-950/40 rounded border border-blue-500/30 flex items-center justify-center text-[8px] text-slate-300 font-mono relative">
+                        Samsung TV
+                        <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-0.5 rounded-sm">$599.99</span>
+                      </div>
+                      <div className="bg-red-950/40 rounded border border-red-500/30 flex items-center justify-center text-[8px] text-slate-300 font-mono relative">
+                        Sony TV
+                        <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-0.5 rounded-sm">$649.99</span>
+                      </div>
+                      <div className="bg-purple-950/40 rounded border border-purple-500/30 flex items-center justify-center text-[8px] text-slate-300 font-mono relative">
+                        TCL TV
+                        <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-0.5 rounded-sm">$499.99</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-slate-300 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 px-0.5">
+                    <span>{uploadedFileName}</span>
+                    <span>{uploadedFileSize}</span>
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setActivePage('products')}
-                className="text-[10px] text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
-              >
-                View All
-              </button>
-            </div>
+            )}
+
+            {/* Analyze Image Button */}
+            <button
+              type="button"
+              onClick={runAnalysis}
+              disabled={isAnalyzing}
+              className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isAnalyzing ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Analyzing Image with Computer Vision...</span>
+                </>
+              ) : (
+                <>
+                  <span>Analyze Image</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Charts & Top Opportunities Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-          {/* Left (8 cols): Revenue Over Time Chart */}
-          <div className="lg:col-span-8 p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md shadow-lg flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
+        {/* Right Column (6 cols): Analysis Summary Card */}
+        <div className="lg:col-span-6 p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] shadow-lg flex flex-col justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 pb-2.5 border-b border-white/[0.06]">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
               <h2 className="text-sm font-bold text-white tracking-tight">
-                Revenue Over Time
+                Analysis Summary
               </h2>
-              {/* Segmented Pill Selector */}
-              <div className="flex bg-white/[0.04] p-1 rounded-lg border border-white/[0.08] text-xs">
-                {['revenue', 'profit', 'units'].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setChartMetric(m)}
-                    className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-all cursor-pointer ${
-                      chartMetric === m
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {m === 'revenue' ? 'Revenue' : m === 'profit' ? 'Profit' : 'Units Sold'}
-                  </button>
-                ))}
+            </div>
+
+            {/* 4 KPI Grid Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                  <Boxes className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Products Detected</span>
+                  <span className="text-lg font-bold text-white font-mono">5</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Text Regions</span>
+                  <span className="text-lg font-bold text-white font-mono">14</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Possible Prices</span>
+                  <span className="text-lg font-bold text-white font-mono">6</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Matched Products</span>
+                  <span className="text-lg font-bold text-white font-mono">4</span>
+                </div>
               </div>
             </div>
 
-            {/* Recharts Area Chart */}
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={
-                    chartMetric === 'revenue'
-                      ? REVENUE_CHART_DATA
-                      : chartMetric === 'profit'
-                      ? PROFIT_CHART_DATA
-                      : UNITS_CHART_DATA
-                  }
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    stroke="#64748b"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                  />
-                  <YAxis
-                    stroke="#64748b"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    tickFormatter={(val) =>
-                      chartMetric === 'units' ? `${val}K` : `$${val}M`
-                    }
-                  />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: 'rgba(255,255,255,0.15)',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                    }}
-                  />
-                  {/* Historical Solid Area Curve */}
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#3b82f6"
-                    strokeWidth={2.5}
-                    fill="url(#revenueGrad)"
-                    dot={false}
-                  />
-                  {/* Forecast Dashed Line */}
-                  <Line
-                    type="monotone"
-                    dataKey="forecast"
-                    stroke="#a855f7"
-                    strokeWidth={2.5}
-                    strokeDasharray="4 4"
-                    dot={false}
-                  />
-                  {/* Today Reference Line */}
-                  <ReferenceLine
-                    x="Oct 15"
-                    stroke="#94a3b8"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: 'Today',
-                      fill: '#94a3b8',
-                      fontSize: 10,
-                      position: 'top',
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-6 text-[11px] text-slate-400 mt-2 font-mono">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-1 bg-blue-500 rounded-full" />
-                <span>Actual Revenue</span>
+            {/* Processing Steps Checklist with Timings */}
+            <div className="mt-3.5 space-y-1.5 font-mono text-[11px]">
+              <span className="text-[10px] font-sans font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                Processing Steps
+              </span>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Image received
+                </span>
+                <span className="text-slate-500 text-[10px]">2.1s</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-0.5 border-t-2 border-dashed border-purple-400" />
-                <span>Forecast (Based on historical sales data)</span>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Preprocessing
+                </span>
+                <span className="text-slate-500 text-[10px]">3.4s</span>
               </div>
-            </div>
-          </div>
-
-          {/* Right (4 cols): Top Opportunities */}
-          <div className="lg:col-span-4 p-4 rounded-xl bg-[#0D1527]/90 border border-white/[0.08] backdrop-blur-md shadow-lg flex flex-col justify-between">
-            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  3
-                </div>
-                <h2 className="text-sm font-bold text-white tracking-tight">
-                  Top Opportunities
-                </h2>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Detecting objects (YOLO)
+                </span>
+                <span className="text-slate-500 text-[10px]">4.8s</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setActivePage('recommendations')}
-                className="text-xs text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
-              >
-                View All
-              </button>
-            </div>
-
-            <div className="space-y-2 mt-2">
-              {/* Item 1 */}
-              <div
-                onClick={() => setActivePage('pricing')}
-                className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] transition-all cursor-pointer flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/[0.1] flex items-center justify-center text-slate-400 flex-shrink-0">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="truncate">
-                    <span className="text-xs font-semibold text-white block truncate">
-                      FiberOptic Multiplexer
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">SKU-6109-OPT</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Price Increase
-                    </span>
-                    <div className="text-[11px] font-mono font-bold text-emerald-400 mt-0.5">
-                      +$64.3K <span className="text-[9px] font-normal text-slate-400">/mo</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Reading text (OCR)
+                </span>
+                <span className="text-slate-500 text-[10px]">6.2s</span>
               </div>
-
-              {/* Item 2 */}
-              <div
-                onClick={() => setActivePage('pricing')}
-                className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] transition-all cursor-pointer flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/[0.1] flex items-center justify-center text-slate-400 flex-shrink-0">
-                    <Layers className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="truncate">
-                    <span className="text-xs font-semibold text-white block truncate">
-                      Multi-Spectrum Sensor
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">SKU-3320-SENS</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Review
-                    </span>
-                    <div className="text-[11px] font-mono font-bold text-emerald-400 mt-0.5">
-                      +$41.2K <span className="text-[9px] font-normal text-slate-400">/mo</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Matching products
+                </span>
+                <span className="text-slate-500 text-[10px]">2.3s</span>
               </div>
-
-              {/* Item 3 */}
-              <div
-                onClick={() => setActivePage('pricing')}
-                className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] transition-all cursor-pointer flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/[0.1] flex items-center justify-center text-slate-400 flex-shrink-0">
-                    <Zap className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div className="truncate">
-                    <span className="text-xs font-semibold text-white block truncate">
-                      Edge Router X900
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">SKU-7781-RT</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      Monitor
-                    </span>
-                    <div className="text-[11px] font-mono font-bold text-rose-400 mt-0.5">
-                      -$12.5K <span className="text-[9px] font-normal text-slate-400">/mo</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Generating results
+                </span>
+                <span className="text-slate-500 text-[10px]">1.1s</span>
               </div>
             </div>
           </div>
@@ -615,501 +564,463 @@ export function VisualIntelligence() {
       </div>
 
       {/* =======================================================================
-          BOTTOM SECTION: 5-STEP VISUAL INTELLIGENCE PIPELINE CARDS
+          MIDDLE SECTION: CARDS 1, 2, AND 3
           ======================================================================= */}
-      <div className="flex flex-col gap-4 mt-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-stretch">
-          {/* ─────────────────────────────────────────────────────────────────
-              CARD 1: UPLOAD STORE IMAGE
-              ───────────────────────────────────────────────────────────────── */}
-          <div className="p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl flex flex-col justify-between gap-2.5 relative">
-            <div>
-              {/* Step Header */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  1
-                </div>
-                <h3 className="text-xs font-bold text-white">Upload Store Image</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 1: ANALYZED IMAGE (6 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-6 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                1
               </div>
-              <p className="text-[10px] text-slate-400">Upload a shelf image from a competitor store.</p>
-
-              {/* Upload Dropzone */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-2.5 p-3 rounded-lg border-2 border-dashed border-white/[0.12] hover:border-blue-500/50 bg-white/[0.01] hover:bg-white/[0.03] transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1"
-              >
-                <Upload className="w-5 h-5 text-slate-400" />
-                <span className="text-[10px] text-slate-300 font-medium">
-                  Drag and drop an image here or
-                </span>
-                <button
-                  type="button"
-                  className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold transition-colors mt-0.5 shadow-sm"
-                >
-                  Choose Image
-                </button>
-                <span className="text-[8px] text-slate-500 mt-0.5">
-                  Supported formats: JPG, PNG (Max 10MB)
-                </span>
-              </div>
-
-              {/* Shelf Image Preview Thumbnail */}
-              <div className="mt-2 rounded-lg overflow-hidden border border-white/[0.1] bg-slate-950 aspect-[16/10] relative">
-                {/* 4 TV Display Wall Simulation */}
-                <div className="w-full h-full bg-slate-900 flex flex-col justify-between p-1">
-                  <div className="flex justify-between gap-1 h-[46%]">
-                    <div className="flex-1 bg-gradient-to-tr from-emerald-900/60 to-slate-800 rounded border border-white/[0.06] flex items-center justify-center text-[7px] text-slate-300 font-mono relative">
-                      <span>LG TV</span>
-                      <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-1 rounded-sm">$549.99</span>
-                    </div>
-                    <div className="flex-1 bg-gradient-to-tr from-blue-900/60 to-slate-800 rounded border border-white/[0.06] flex items-center justify-center text-[7px] text-slate-300 font-mono relative">
-                      <span>Samsung TV</span>
-                      <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-1 rounded-sm">$599.99</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between gap-1 h-[46%]">
-                    <div className="flex-1 bg-gradient-to-tr from-red-900/60 to-slate-800 rounded border border-white/[0.06] flex items-center justify-center text-[7px] text-slate-300 font-mono relative">
-                      <span>Sony TV</span>
-                      <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-1 rounded-sm">$649.99</span>
-                    </div>
-                    <div className="flex-1 bg-gradient-to-tr from-purple-900/60 to-slate-800 rounded border border-white/[0.06] flex items-center justify-center text-[7px] text-slate-300 font-mono relative">
-                      <span>TCL TV</span>
-                      <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-1 rounded-sm">$499.99</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <h2 className="text-xs font-bold text-white">Analyzed Image</h2>
             </div>
 
-            {/* Selected File Chip */}
-            <div className="p-1.5 rounded-md bg-white/[0.04] border border-white/[0.08] flex items-center justify-between text-[10px] font-mono">
-              <div className="flex items-center gap-1.5 truncate">
-                <div className="w-3.5 h-3.5 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-[8px]">
-                  🖼️
-                </div>
-                <span className="text-slate-200 truncate">{uploadedFileName}</span>
-                <span className="text-slate-500 text-[9px]">{uploadedFileSize}</span>
-              </div>
+            {/* Filter Toggle Pills: All | Objects | Text */}
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-slate-400 hover:text-white"
+                onClick={() => setImageFilter('all')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                  imageFilter === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/[0.04] text-slate-400 hover:text-white'
+                }`}
               >
-                <X className="w-3 h-3" />
+                ● All
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageFilter('objects')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                  imageFilter === 'objects'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white/[0.04] text-slate-400 hover:text-white'
+                }`}
+              >
+                ○ Objects
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageFilter('text')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                  imageFilter === 'text'
+                    ? 'bg-yellow-500 text-black font-bold'
+                    : 'bg-white/[0.04] text-slate-400 hover:text-white'
+                }`}
+              >
+                ○ Text
               </button>
             </div>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────────
-              CARD 2: VISION ANALYSIS
-              ───────────────────────────────────────────────────────────────── */}
-          <div className="p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl flex flex-col justify-between gap-2.5">
-            <div>
-              {/* Step Header */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  2
-                </div>
-                <h3 className="text-xs font-bold text-white">Vision Analysis</h3>
-              </div>
-              <p className="text-[10px] text-slate-400">Detecting products and extracting information...</p>
+          {/* Main Shelf Image with Colored Bounding Boxes */}
+          <div className="relative rounded-lg overflow-hidden border border-white/[0.1] bg-slate-950 aspect-[16/10] w-full">
+            {/* Background Shelf Structure */}
+            <div className="w-full h-full bg-[#0a0f1d] relative overflow-hidden">
+              {/* Shelves Graphic */}
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black" />
+              <div className="absolute top-[48%] left-0 right-0 h-2 bg-slate-700/60 border-t border-b border-white/[0.1]" />
+              <div className="absolute bottom-0 left-0 right-0 h-2 bg-slate-700/60 border-t border-white/[0.1]" />
 
-              {/* Annotated Image with 4 colored bounding boxes */}
-              <div className="mt-2.5 rounded-lg overflow-hidden border border-white/[0.1] bg-slate-950 aspect-[16/10] relative p-1">
-                <div className="w-full h-full bg-slate-900 relative">
-                  {STORE_PRODUCTS.map((prod) => (
-                    <div
-                      key={prod.id}
-                      style={{
-                        position: 'absolute',
-                        left: prod.box.x,
-                        top: prod.box.y,
-                        width: prod.box.width,
-                        height: prod.box.height,
-                        border: `1.5px solid ${prod.color}`,
-                        backgroundColor: `${prod.color}15`,
-                        borderRadius: '4px',
-                      }}
-                      className="cursor-pointer transition-all hover:scale-[1.02]"
-                      onClick={() => handleSelectProduct(prod.id)}
-                    >
-                      {/* Bounding box label badge */}
-                      <span
-                        style={{ backgroundColor: prod.color }}
-                        className="absolute -top-3 left-0 text-black text-[7px] font-bold px-1 rounded-sm uppercase tracking-tighter"
-                      >
-                        {prod.displayLabel}
-                      </span>
-                      {/* Yellow price tag badge */}
-                      <span className="absolute bottom-0.5 right-0.5 bg-yellow-400 text-black text-[7px] font-bold px-1 rounded-sm shadow">
-                        ${prod.detectedPrice}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Render the 5 TV Boxes */}
+              {STORE_PRODUCTS.map((prod) => {
+                const isSelected = selectedProductId === prod.id;
+                const showBox = imageFilter === 'all' || imageFilter === 'objects';
+                const showTag = imageFilter === 'all' || imageFilter === 'text';
 
-              {/* Pipeline Step Checklist */}
-              <div className="mt-2.5 space-y-1.5 text-[10px] font-medium text-slate-300">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Detecting products (YOLO)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Reading price tags (OCR)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Matching with product catalog</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-400">
-                  <div className="w-3.5 h-3.5 rounded-full border border-slate-500 flex items-center justify-center text-[8px] animate-spin">
-                    ○
-                  </div>
-                  <span>Analyzing competitor context</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mt-1">
-              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                <span>{isProcessing ? 'Processing...' : 'Complete'}</span>
-                <span>{progressPct}%</span>
-              </div>
-              <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${progressPct}%` }}
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────────
-              CARD 3: EXTRACTED PRODUCTS
-              ───────────────────────────────────────────────────────────────── */}
-          <div className="p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl flex flex-col justify-between gap-2.5">
-            <div>
-              {/* Step Header */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  3
-                </div>
-                <h3 className="text-xs font-bold text-white">Extracted Products</h3>
-              </div>
-              <p className="text-[10px] text-slate-400">Products and prices detected from the image.</p>
-
-              {/* Table Header */}
-              <div className="grid grid-cols-12 text-[9px] font-mono uppercase tracking-wider text-slate-400 pt-2 pb-1 border-b border-white/[0.08] mt-1">
-                <div className="col-span-6">Product</div>
-                <div className="col-span-3 text-right">Detected Price</div>
-                <div className="col-span-3 text-right">Confidence</div>
-              </div>
-
-              {/* 4 Interactive Rows */}
-              <div className="space-y-1.5 mt-1.5">
-                {STORE_PRODUCTS.map((prod) => {
-                  const isSelected = selectedProductId === prod.id;
-                  return (
-                    <div
-                      key={prod.id}
-                      onClick={() => handleSelectProduct(prod.id)}
-                      className={`grid grid-cols-12 items-center p-1.5 rounded-lg border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-600/20 border-blue-500/60 shadow-md'
-                          : 'bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      {/* Product Thumbnail & Name */}
-                      <div className="col-span-6 flex items-center gap-1.5 min-w-0 pr-1">
+                return (
+                  <div
+                    key={prod.id}
+                    style={{
+                      position: 'absolute',
+                      left: prod.box.x,
+                      top: prod.box.y,
+                      width: prod.box.width,
+                      height: prod.box.height,
+                      border: showBox ? `2px solid ${prod.color}` : 'none',
+                      backgroundColor: showBox ? `${prod.color}18` : 'transparent',
+                      borderRadius: '6px',
+                    }}
+                    onClick={() => handleSelectProduct(prod.id)}
+                    className={`cursor-pointer transition-all duration-200 ${
+                      isSelected ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-black' : 'hover:scale-[1.01]'
+                    }`}
+                  >
+                    {/* TV Display Graphic Inside Box */}
+                    <div className="w-full h-full p-1 flex flex-col justify-between">
+                      {/* Top Label Tag */}
+                      {showBox && (
                         <div
-                          style={{ backgroundColor: `${prod.color}25`, borderColor: prod.color }}
-                          className="w-5 h-5 rounded border flex items-center justify-center text-[8px] flex-shrink-0"
+                          style={{ backgroundColor: prod.color }}
+                          className="self-start text-black text-[8px] font-bold px-1.5 py-0.2 rounded-sm uppercase tracking-tight shadow-sm"
                         >
-                          📺
+                          {prod.displayLabel}
                         </div>
-                        <div className="truncate">
-                          <span className="text-[10px] font-bold text-white block truncate leading-tight">
-                            {prod.name}
-                          </span>
-                        </div>
+                      )}
+
+                      {/* Screen Art Simulation */}
+                      <div className="flex-1 flex items-center justify-center my-0.5 rounded bg-black/40 border border-white/[0.04] text-[8px] text-slate-400 font-mono">
+                        <span>{prod.ocrTag}</span>
                       </div>
 
-                      {/* Price */}
-                      <div className="col-span-3 text-right font-mono font-bold text-white text-[11px]">
-                        ${prod.detectedPrice}
-                      </div>
-
-                      {/* Confidence Badge */}
-                      <div className="col-span-3 flex justify-end">
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          {prod.confidence}%
-                        </span>
-                      </div>
+                      {/* Yellow Shelf Price Tag */}
+                      {showTag && (
+                        <div className="self-center bg-yellow-400 text-black text-[8px] font-black px-1.5 py-0.5 rounded shadow flex items-center gap-0.5">
+                          <span className="text-[6px] font-normal uppercase text-black/70">PRICE</span>
+                          <span>${prod.detectedPrice}</span>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="text-[9px] font-mono text-slate-500 pt-1 border-t border-white/[0.04] text-center">
-              Click any item to view comparison & recommendation
-            </div>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────────
-              CARD 4: COMPETITOR COMPARISON
-              ───────────────────────────────────────────────────────────────── */}
-          <div className="p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl flex flex-col justify-between gap-2.5">
-            <div>
-              {/* Step Header */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  4
-                </div>
-                <h3 className="text-xs font-bold text-white">Competitor Comparison</h3>
-              </div>
-              <p className="text-[10px] text-slate-400">Compare with your current prices and insights.</p>
-
-              {/* Header Box with selected product */}
-              <div className="mt-2.5 p-2 rounded-lg bg-black/40 border border-white/[0.08] flex items-center gap-2">
-                <div className="w-7 h-7 rounded bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-300 text-xs flex-shrink-0">
-                  📺
-                </div>
-                <div className="truncate">
-                  <span className="text-xs font-bold text-white block truncate">
-                    {selectedProduct.name}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400">{selectedProduct.sku}</span>
-                </div>
-              </div>
-
-              {/* Comparison Key-Values */}
-              <div className="space-y-1.5 text-[11px] font-mono mt-2.5">
-                <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
-                  <span className="text-slate-400 text-[10px]">Your Price</span>
-                  <span className="font-bold text-white">${selectedProduct.yourPrice}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
-                  <span className="text-slate-400 text-[10px]">Competitor Price</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-white">${selectedProduct.detectedPrice}</span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-                      {Math.abs(selectedProduct.diffPercent)}% lower
-                    </span>
                   </div>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
-                  <span className="text-slate-400 text-[10px]">Price Difference</span>
-                  <span className="font-bold text-cyan-400">{selectedProduct.diffPercent}%</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
-                  <span className="text-slate-400 text-[10px] flex items-center gap-0.5">
-                    Demand Elasticity <Info className="w-2.5 h-2.5 text-slate-500" />
-                  </span>
-                  <span className="font-bold text-amber-300">{selectedProduct.elasticity}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
-                  <span className="text-slate-400 text-[10px]">Your Sales (Last 30 days)</span>
-                  <span className="font-bold text-slate-200">{selectedProduct.sales30d.toLocaleString()} units</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 text-[10px]">Competitor Availability</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                    {selectedProduct.availability}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Blue Notice Callout */}
-            <div className="p-2 rounded-lg bg-blue-950/40 border border-blue-500/30 text-[10px] text-blue-200 flex items-start gap-1.5">
-              <Info className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <span>
-                Competitor is pricing lower by {Math.abs(selectedProduct.diffPercent)}%. Demand is price sensitive ({selectedProduct.elasticity}).
-              </span>
-            </div>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────────
-              CARD 5: PRICING RECOMMENDATION
-              ───────────────────────────────────────────────────────────────── */}
-          <div className="p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl flex flex-col justify-between gap-2.5">
-            <div>
-              {/* Step Header */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-                  5
-                </div>
-                <h3 className="text-xs font-bold text-white">Pricing Recommendation</h3>
-              </div>
-              <p className="text-[10px] text-slate-400">AI-powered pricing recommendation.</p>
-
-              {/* Recommended Price Hero Box */}
-              <div className="mt-2.5 p-3 rounded-xl bg-gradient-to-br from-emerald-950/40 via-[#0E1B2C] to-[#0A1320] border border-emerald-500/30 flex items-center justify-between shadow-inner">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-mono text-slate-400 flex items-center gap-0.5">
-                      Recommended Price <Info className="w-2.5 h-2.5" />
-                    </span>
-                    <span className="text-xl font-bold font-mono text-white block">
-                      ${selectedProduct.recommendedPrice}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {selectedProduct.priceChangePct}%
-                </span>
-              </div>
-
-              {/* Expected Impact (per month) */}
-              <div className="mt-2.5 space-y-1.5">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block">
-                  Expected Impact (per month):
-                </span>
-                <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
-                    📈
-                  </div>
-                  <div className="text-[10px]">
-                    <span className="font-bold text-white font-mono">{selectedProduct.liftUnits}</span>
-                    <span className="text-slate-400 text-[9px] block">Estimated volume lift</span>
-                  </div>
-                </div>
-                <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs">
-                    💰
-                  </div>
-                  <div className="text-[10px]">
-                    <span className="font-bold text-white font-mono">{selectedProduct.revenueDelta}</span>
-                    <span className="text-slate-400 text-[9px] block">Estimated revenue increase</span>
-                  </div>
-                </div>
-                <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs">
-                    🛡️
-                  </div>
-                  <div className="text-[10px]">
-                    <span className="font-bold text-white font-mono">{selectedProduct.profitDelta}</span>
-                    <span className="text-slate-400 text-[9px] block">Estimated gross profit increase</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-1.5 mt-2">
-              <button
-                type="button"
-                onClick={() => setIsSimModalOpen(true)}
-                className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>Simulate This Price</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDetailsModalOpen(true)}
-                className="w-full py-1.5 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 text-[11px] font-medium transition-colors border border-white/[0.08] cursor-pointer"
-              >
-                View Detailed Analysis
-              </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* =======================================================================
-            CARD 6: FULL-WIDTH AI EXPLANATION AT BOTTOM
-            ======================================================================= */}
-        <div className="p-4 rounded-xl bg-[#0D1527]/95 border border-white/[0.1] shadow-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
-              6
-            </div>
-            <h3 className="text-xs font-bold text-white">AI Explanation</h3>
-            <span className="text-[10px] text-slate-400">— Get a clear explanation of the recommendation.</span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-            {/* Left (8 cols): Sparkle Icon & Rationale Text */}
-            <div className="lg:col-span-8 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 flex-shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4" />
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 2: DETECTED PRODUCTS (3 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-3 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                2
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {currentExplanationText}
-              </p>
+              <h2 className="text-xs font-bold text-white">Detected Products</h2>
             </div>
 
-            {/* Right (4 cols): Data Sources & Ask Follow-up Button */}
-            <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between gap-3 border-t lg:border-t-0 lg:border-l border-white/[0.06] pt-3 lg:pt-0 lg:pl-4">
-              <div className="text-[10px] font-mono text-slate-400 space-y-0.5">
-                <span className="font-bold text-slate-300 block mb-1">Sources:</span>
-                <div className="flex items-center gap-1">• Competitor store image analysis (OCR)</div>
-                <div className="flex items-center gap-1">• Demand elasticity model</div>
-                <div className="flex items-center gap-1">• Pricing optimization model</div>
-                <div className="flex items-center gap-1">• Historical sales data</div>
-              </div>
-
-              {/* Follow-up Question Trigger */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsFollowUpOpen(!isFollowUpOpen)}
-                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all shadow flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Ask Follow-up</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${isFollowUpOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Dropdown Menu */}
-                {isFollowUpOpen && (
-                  <div className="absolute right-0 bottom-full mb-2 w-80 p-3 rounded-xl bg-[#0F172A] border border-white/[0.15] shadow-2xl z-50 text-xs space-y-2">
-                    <span className="font-bold text-white text-[11px] block">Ask a Question About This Decision:</span>
-                    <div className="space-y-1">
-                      {[
-                        'Why not match competitor price exactly?',
-                        'How sensitive is this product to small price changes?',
-                        'What happens if competitor lowers price further?',
-                      ].map((q, qIdx) => (
-                        <button
-                          key={qIdx}
-                          type="button"
-                          onClick={() => handleAskFollowUp(q)}
-                          className="w-full text-left p-1.5 rounded hover:bg-white/[0.06] text-slate-300 hover:text-white transition-colors text-[10px]"
-                        >
-                          • {q}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-white/[0.06]">
-                      <input
-                        type="text"
-                        placeholder="Type custom question..."
-                        value={customQuestion}
-                        onChange={(e) => setCustomQuestion(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAskFollowUp(customQuestion);
-                        }}
-                        className="flex-1 px-2 py-1 rounded bg-black/50 border border-white/[0.1] text-white text-[10px] focus:outline-none focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAskFollowUp(customQuestion)}
-                        className="px-2 py-1 bg-blue-600 rounded text-white text-[10px] font-bold"
+            <div className="space-y-1.5 mt-2.5">
+              {STORE_PRODUCTS.map((prod) => {
+                const isSelected = selectedProductId === prod.id;
+                return (
+                  <div
+                    key={prod.id}
+                    onClick={() => handleSelectProduct(prod.id)}
+                    className={`p-2 rounded-lg border flex items-center justify-between gap-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600/20 border-blue-500/60 shadow-md'
+                        : 'bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        style={{ backgroundColor: `${prod.color}25`, borderColor: prod.color }}
+                        className="w-7 h-7 rounded border flex items-center justify-center text-xs flex-shrink-0"
                       >
-                        Ask
-                      </button>
+                        📺
+                      </div>
+                      <div className="truncate">
+                        <span className="text-[11px] font-bold text-white block truncate leading-tight">
+                          {prod.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-300 font-semibold">
+                          ${prod.detectedPrice}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {prod.confidence}%
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                     </div>
                   </div>
-                )}
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 3: DETECTED TEXT & PRICES (3 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-3 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                3
+              </div>
+              <h2 className="text-xs font-bold text-white">Detected Text & Prices</h2>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06] text-[10px] font-medium mt-2">
+              <button
+                type="button"
+                onClick={() => setTextFilter('all')}
+                className={`flex-1 py-1 rounded text-center transition-all ${
+                  textFilter === 'all' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Text
+              </button>
+              <button
+                type="button"
+                onClick={() => setTextFilter('prices')}
+                className={`flex-1 py-1 rounded text-center transition-all ${
+                  textFilter === 'prices' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Prices (6)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTextFilter('other')}
+                className={`flex-1 py-1 rounded text-center transition-all ${
+                  textFilter === 'other' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Other Text (8)
+              </button>
+            </div>
+
+            {/* Scrollable OCR Item List */}
+            <div className="space-y-1 mt-2 max-h-[200px] overflow-y-auto pr-1">
+              {filteredTextItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-1.5 rounded-md bg-white/[0.01] hover:bg-white/[0.04] border border-white/[0.04] flex items-center justify-between text-xs transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
+                        item.color === 'yellow'
+                          ? 'bg-yellow-400 text-black'
+                          : 'bg-white/[0.06] text-slate-300'
+                      }`}
+                    >
+                      {item.text}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">{item.subtext}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                    <span>{item.conf}</span>
+                    <ChevronRight className="w-3 h-3 text-slate-500" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =======================================================================
+          BOTTOM SECTION: CARDS 4, 5, AND 6
+          ======================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 4: PRODUCT MATCHING (6 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-6 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2.5">
+          <div>
+            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                4
+              </div>
+              <h2 className="text-xs font-bold text-white">Product Matching</h2>
+            </div>
+
+            {/* Table Header */}
+            <div className="grid grid-cols-12 text-[9px] font-mono uppercase tracking-wider text-slate-400 pt-2 pb-1 border-b border-white/[0.08] mt-1">
+              <div className="col-span-3">Detected Product</div>
+              <div className="col-span-3">Matched Catalog Product</div>
+              <div className="col-span-2">SKU</div>
+              <div className="col-span-2">Match Confidence</div>
+              <div className="col-span-2 text-right">Status</div>
+            </div>
+
+            {/* 5 Rows */}
+            <div className="space-y-1 mt-1.5 font-mono text-[11px]">
+              {STORE_PRODUCTS.map((prod) => {
+                const isSelected = selectedProductId === prod.id;
+                return (
+                  <div
+                    key={prod.id}
+                    onClick={() => handleSelectProduct(prod.id)}
+                    className={`grid grid-cols-12 items-center p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600/15 border-blue-500/50 shadow'
+                        : 'bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    <div className="col-span-3 text-slate-300 truncate pr-1">
+                      {prod.detectedLabel}
+                    </div>
+                    <div className="col-span-3 text-white font-sans font-medium truncate pr-1">
+                      {prod.catalogName}
+                    </div>
+                    <div className="col-span-2 text-slate-400 truncate text-[10px]">
+                      {prod.sku}
+                    </div>
+                    <div className="col-span-2 text-cyan-400 font-bold">
+                      {prod.confidence}%
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Matched
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 5: COMPETITOR COMPARISON (3 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-3 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2.5">
+          <div>
+            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                5
+              </div>
+              <h2 className="text-xs font-bold text-white">Competitor Comparison</h2>
+            </div>
+
+            {/* Selected Product Header */}
+            <div className="mt-2 p-2 rounded-lg bg-black/40 border border-white/[0.08] flex items-center gap-2">
+              <div className="w-7 h-7 rounded bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-300 text-xs flex-shrink-0">
+                📺
+              </div>
+              <div className="truncate">
+                <span className="text-xs font-bold text-white block truncate">
+                  {selectedProduct.name}
+                </span>
+                <span className="text-[9px] font-mono text-slate-400">
+                  SKU: {selectedProduct.sku}
+                </span>
               </div>
             </div>
+
+            {/* Key-Value Comparison Table */}
+            <div className="space-y-1.5 text-[11px] font-mono mt-2.5">
+              <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
+                <span className="text-slate-400 text-[10px]">Your Price</span>
+                <span className="font-bold text-white">${selectedProduct.yourPrice}</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
+                <span className="text-slate-400 text-[10px]">Competitor Price</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-white">${selectedProduct.detectedPrice}</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                    {Math.abs(selectedProduct.diffPercent)}% lower
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
+                <span className="text-slate-400 text-[10px]">Price Difference</span>
+                <span className="font-bold text-cyan-400">{selectedProduct.diffPercent}%</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
+                <span className="text-slate-400 text-[10px]">Demand Elasticity</span>
+                <span className="font-bold text-amber-300">{selectedProduct.elasticity}</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-white/[0.04]">
+                <span className="text-slate-400 text-[10px]">Your Sales (Last 30 days)</span>
+                <span className="font-bold text-slate-200">{selectedProduct.sales30d.toLocaleString()} units</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-slate-400 text-[10px]">Competitor Availability</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  {selectedProduct.availability}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────
+            CARD 6: PRICING RECOMMENDATION (3 cols)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-3 p-3.5 rounded-xl bg-[#0D1527]/95 border border-white/[0.08] shadow-xl flex flex-col justify-between gap-2.5">
+          <div>
+            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold">
+                6
+              </div>
+              <h2 className="text-xs font-bold text-white">Pricing Recommendation</h2>
+            </div>
+
+            {/* Recommended Price Hero Box */}
+            <div className="mt-2 p-2.5 rounded-xl bg-gradient-to-br from-emerald-950/40 via-[#0E1B2C] to-[#0A1320] border border-emerald-500/30 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="text-[9px] font-mono text-slate-400 flex items-center gap-0.5">
+                    Recommended Price <Info className="w-2.5 h-2.5" />
+                  </span>
+                  <span className="text-lg font-bold font-mono text-white block">
+                    ${selectedProduct.recommendedPrice}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {selectedProduct.priceChangePct}%
+              </span>
+            </div>
+
+            {/* Expected Impact (per month) */}
+            <div className="mt-2 space-y-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block">
+                Expected Impact (per month):
+              </span>
+              <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
+                  📈
+                </div>
+                <div className="text-[10px]">
+                  <span className="font-bold text-white font-mono">{selectedProduct.liftUnits}</span>
+                  <span className="text-slate-400 text-[9px] block">Estimated volume lift</span>
+                </div>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs">
+                  💰
+                </div>
+                <div className="text-[10px]">
+                  <span className="font-bold text-white font-mono">{selectedProduct.revenueDelta}</span>
+                  <span className="text-slate-400 text-[9px] block">Estimated revenue increase</span>
+                </div>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs">
+                  🛡️
+                </div>
+                <div className="text-[10px]">
+                  <span className="font-bold text-white font-mono">{selectedProduct.profitDelta}</span>
+                  <span className="text-slate-400 text-[9px] block">Estimated gross profit increase</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-1.5 mt-1">
+            <button
+              type="button"
+              onClick={() => setIsSimModalOpen(true)}
+              className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Simulate This Price</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDetailsModalOpen(true)}
+              className="w-full py-1.5 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 text-[11px] font-medium transition-colors border border-white/[0.08] cursor-pointer"
+            >
+              View Detailed Analysis
+            </button>
           </div>
         </div>
       </div>
@@ -1231,6 +1142,52 @@ export function VisualIntelligence() {
             <div className="flex justify-end pt-2">
               <Button variant="outline" size="sm" onClick={() => setIsDetailsModalOpen(false)}>
                 Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================================
+          ANALYSIS HISTORY MODAL
+          ======================================================================= */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-xl p-5 rounded-2xl bg-[#0F172A] border border-white/[0.15] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-blue-400" />
+                <h3 className="text-sm font-bold text-white">Analysis History</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-white block">store_shelf.jpg</span>
+                  <span className="text-[10px] text-slate-400">Oct 7, 2026 • 5 Products • 14 OCR Texts</span>
+                </div>
+                <Badge variant="success">Completed</Badge>
+              </div>
+              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between opacity-70">
+                <div>
+                  <span className="text-xs font-bold text-white block">electronics_retail_aisle.jpg</span>
+                  <span className="text-[10px] text-slate-400">Oct 5, 2026 • 3 Products • 8 OCR Texts</span>
+                </div>
+                <Badge variant="success">Completed</Badge>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" size="sm" onClick={() => setIsHistoryModalOpen(false)}>
+                Close
               </Button>
             </div>
           </div>
