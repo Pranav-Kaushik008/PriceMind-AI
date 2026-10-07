@@ -294,6 +294,22 @@ def analyze_image_bytes(
         print(f"Competitor intelligence error (non-fatal): {comp_err}")
     comp_time_ms = round((time.perf_counter() - start_comp) * 1000, 2)
 
+    # Step 7: Unified PriceMind Context (Phase 2.3)
+    start_ctx = time.perf_counter()
+    pricemind_contexts = []
+    try:
+        from app.services.pricemind_context_service import extract_unified_pricemind_contexts
+        pricemind_contexts = extract_unified_pricemind_contexts(
+            db=db,
+            detected_objects=detected_objects,
+            detected_texts=detected_texts,
+            matched_products=matched_products,
+            competitor_insights=competitor_insights,
+        )
+    except Exception as ctx_err:
+        print(f"PriceMind context extraction error (non-fatal): {ctx_err}")
+    ctx_time_ms = round((time.perf_counter() - start_ctx) * 1000, 2)
+
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)
 
     return VisionPipelineResponse(
@@ -313,15 +329,19 @@ def analyze_image_bytes(
             ocr_time_ms=ocr_time_ms,
             matching_time_ms=match_time_ms,
             competitor_intelligence_time_ms=comp_time_ms,
+            pricemind_context_time_ms=ctx_time_ms,
             total_pipeline_time_ms=total_time_ms,
         ),
         detected_objects_count=len(detected_objects),
         detected_text_count=len(detected_texts),
         matched_products_count=len(matched_products),
         competitor_insights_count=len(competitor_insights),
+        pricemind_contexts_count=len(pricemind_contexts),
         detected_objects=detected_objects,
         detected_text_and_prices=detected_texts,
         matched_products=matched_products,
         competitor_intelligence=competitor_insights,
+        pricemind_contexts=pricemind_contexts,
     )
+
 

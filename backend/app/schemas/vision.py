@@ -89,6 +89,97 @@ class CompetitorComparisonResult(BaseModel):
     competitor_price_provenance: str = "Detected from image"
 
 
+class HistoricalDemandContext(BaseModel):
+    total_units_sold: Optional[int] = None
+    avg_daily_demand: Optional[float] = None
+    recent_30d_units: Optional[int] = None
+    sales_records_count: int = 0
+    historical_revenue: Optional[float] = None
+    demand_trend: Optional[str] = None  # "Growing" | "Stable" | "Declining" | None
+    data_source: str = "Retrieved from PriceMind database (SalesRecord table)"
+
+
+class InventoryContext(BaseModel):
+    inventory_level: Optional[int] = None
+    stock_status: str = "Not available"  # "In Stock" | "Low Stock" | "Out of Stock" | "Not available"
+    cost_price: Optional[float] = None
+    margin_percent: Optional[float] = None
+    data_source: str = "Retrieved from PriceMind database"
+
+
+class ElasticityContext(BaseModel):
+    elasticity: Optional[float] = None
+    elasticity_category: Optional[str] = None  # "elastic" | "inelastic" | "unit_elastic" | None
+    robust_elasticity: Optional[float] = None
+    p_value: Optional[float] = None
+    r_squared: Optional[float] = None
+    reliability: Optional[str] = None
+    interpretation: Optional[str] = None
+    data_source: str = "Model-derived (Module 3 Elasticity)"
+
+
+class DemandForecastContext(BaseModel):
+    predicted_daily_demand: Optional[float] = None
+    forecast_confidence: Optional[float] = None
+    forecast_horizon_days: int = 7
+    data_source: str = "Model-derived (Module 4 Demand Prediction)"
+
+
+class PricingContext(BaseModel):
+    current_price: Optional[float] = None
+    cost_price: Optional[float] = None
+    historical_demand: Optional[HistoricalDemandContext] = None
+    inventory: Optional[InventoryContext] = None
+    elasticity: Optional[ElasticityContext] = None
+    demand_forecast: Optional[DemandForecastContext] = None
+
+
+class VisualAnalysisData(BaseModel):
+    detected_object_id: Optional[str] = None
+    detected_label: str
+    match_confidence: float = 0.0
+    match_status: str = "unmatched"
+    ocr_snippets: List[str] = []
+    data_source: str = "Detected from image"
+
+
+class UnifiedPriceMindContext(BaseModel):
+    id: str
+    product_id: Optional[str] = None
+    sku: Optional[str] = None
+    product_name: str
+    category: Optional[str] = None
+    brand: Optional[str] = None
+    product: Optional[Dict[str, Any]] = None  # Database-derived Product Info
+    visual_analysis: VisualAnalysisData  # Image-derived CV
+    competitor_analysis: CompetitorComparisonResult  # Image-derived Competitor Info & Comparison
+    pricing_context: PricingContext  # Database + Model Derived PriceMind Context
+    data_provenance: Dict[str, List[str]] = Field(
+        default_factory=lambda: {
+            "image_derived": [
+                "Detected competitor price",
+                "OCR text snippets",
+                "YOLO visual detection",
+                "Competitor name",
+                "Promotion & availability",
+            ],
+            "database_derived": [
+                "Product name & SKU",
+                "Catalog current price",
+                "Cost price",
+                "Category & Brand",
+                "Historical sales volume",
+                "Inventory level",
+            ],
+            "model_derived": [
+                "Price elasticity coefficient",
+                "Elasticity category",
+                "Demand prediction & forecast",
+            ],
+        }
+    )
+
+
 class ImageMetadata(BaseModel):
     filename: str
     format: str
@@ -105,6 +196,7 @@ class ProcessingStats(BaseModel):
     ocr_time_ms: float
     matching_time_ms: float = 0.0
     competitor_intelligence_time_ms: float = 0.0
+    pricemind_context_time_ms: float = 0.0
     total_pipeline_time_ms: float
 
 
@@ -116,7 +208,9 @@ class VisionPipelineResponse(BaseModel):
     detected_text_count: int
     matched_products_count: int = 0
     competitor_insights_count: int = 0
+    pricemind_contexts_count: int = 0
     detected_objects: List[DetectedObject] = []
     detected_text_and_prices: List[DetectedTextLabel] = []
     matched_products: List[ProductMatchResult] = []
     competitor_intelligence: List[CompetitorComparisonResult] = []
+    pricemind_contexts: List[UnifiedPriceMindContext] = []

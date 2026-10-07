@@ -42,6 +42,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ShieldCheck,
+  Activity,
+  BarChart3,
+  History,
+  PackageCheck,
+  PackageX,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -105,7 +110,7 @@ export function VisualIntelligence() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [visionResult, setVisionResult] = useState(null);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
-  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'json'
+  const [activeTab, setActiveTab] = useState('objects'); // 'objects' | 'prices' | 'ocr' | 'matches' | 'competitor' | 'context' | 'json'
   const [copiedJson, setCopiedJson] = useState(false);
 
   // Overlay Toggles
@@ -411,6 +416,7 @@ export function VisualIntelligence() {
   const detectedTextRegions = allTextLabels.filter((t) => !t.is_price_tag && t.extracted_price === null);
   const matchedProducts = visionResult?.matched_products || [];
   const competitorInsights = visionResult?.competitor_intelligence || [];
+  const pricemindContexts = visionResult?.pricemind_contexts || [];
 
   const hasLowConfidence = detectedObjects.some((o) => o.confidence < 0.4) || allTextLabels.some((t) => t.confidence < 0.4);
 
@@ -946,6 +952,15 @@ export function VisualIntelligence() {
                 }`}
               >
                 Competitor Intel ({competitorInsights.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('context')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  activeTab === 'context' ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                PriceMind Context ({pricemindContexts.length})
               </button>
               <button
                 type="button"
@@ -1496,7 +1511,232 @@ export function VisualIntelligence() {
           )}
 
           {/* =========================================================================
-              TAB 7: JSON TELEMETRY VIEW
+              TAB 7: PRICEMIND UNIFIED CONTEXT (PHASE 2.3)
+              ========================================================================= */}
+          {activeTab === 'context' && (
+            <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
+              {!visionResult ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <Activity className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>Analyze an image to view unified PriceMind contextual intelligence.</span>
+                </div>
+              ) : pricemindContexts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs gap-2">
+                  <SearchX className="w-8 h-8 text-slate-600 opacity-60" />
+                  <span>No catalog-matched items found for PriceMind contextual enrichment</span>
+                  <span className="text-slate-600 text-[11px]">Upload an image matching active catalog products to view sales, elasticity, and inventory data</span>
+                </div>
+              ) : (
+                pricemindContexts.map((ctx) => {
+                  const pCtx = ctx.pricing_context || {};
+                  const comp = ctx.competitor_analysis || {};
+                  const isLower = comp.comparison_status === 'lower_than_competitor';
+                  const isHigher = comp.comparison_status === 'higher_than_competitor';
+
+                  return (
+                    <div
+                      key={ctx.id}
+                      className="p-4 rounded-xl border bg-white/[0.02] border-white/[0.08] space-y-3.5 transition-all"
+                    >
+                      {/* 1. Header Bar with Product & Metadata */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-white/[0.06]">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-white tracking-tight">
+                              {ctx.product_name}
+                            </span>
+                            {ctx.sku && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                                SKU: {ctx.sku}
+                              </span>
+                            )}
+                            {ctx.category && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/[0.06]">
+                                {ctx.category}
+                              </span>
+                            )}
+                            {ctx.brand && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/[0.06]">
+                                Brand: {ctx.brand}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Match Status Badge */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            Catalog Match ({Math.round(ctx.visual_analysis.match_confidence * 100)}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 2. 4-Box Unified Telemetry Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* QUADRANT 1: PRICING & COMPETITOR */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" /> Pricing & Competitor
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500">Image + DB</span>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Your Price (DB):</span>
+                              <span className="font-mono font-bold text-white">
+                                {pCtx.current_price != null ? `₹${pCtx.current_price.toLocaleString()}` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Detected Competitor:</span>
+                              <span className="font-mono font-bold text-purple-300">
+                                {comp.competitor_price != null ? `₹${comp.competitor_price.toLocaleString()}` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-white/[0.04]">
+                              <span className="text-slate-400 text-[11px]">Price Difference:</span>
+                              <span className={`font-mono font-bold ${isLower ? 'text-emerald-400' : isHigher ? 'text-amber-400' : 'text-slate-400'}`}>
+                                {comp.price_difference_percent != null ? `${comp.price_difference_percent > 0 ? '+' : ''}${comp.price_difference_percent.toFixed(2)}%` : 'Not available'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[9px] font-mono text-slate-500 truncate">
+                            Competitor: {comp.competitor_info?.competitor_name || 'Competitor not identified'}
+                          </div>
+                        </div>
+
+                        {/* QUADRANT 2: INVENTORY & MARGIN */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                              <PackageCheck className="w-3 h-3" /> Inventory & Margin
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500">Database</span>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Stock Level:</span>
+                              <span className="font-mono font-bold text-white">
+                                {pCtx.inventory?.inventory_level != null ? `${pCtx.inventory.inventory_level} units` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Stock Status:</span>
+                              <span className={`text-[10px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                                pCtx.inventory?.stock_status === 'In Stock'
+                                  ? 'bg-emerald-500/10 text-emerald-400'
+                                  : pCtx.inventory?.stock_status === 'Low Stock'
+                                  ? 'bg-amber-500/10 text-amber-400'
+                                  : 'text-slate-400'
+                              }`}>
+                                {pCtx.inventory?.stock_status || 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-white/[0.04]">
+                              <span className="text-slate-400 text-[11px]">Cost & Margin:</span>
+                              <span className="font-mono text-slate-300">
+                                {pCtx.inventory?.margin_percent != null ? `${pCtx.inventory.margin_percent}% margin` : 'Not available'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[9px] font-mono text-slate-500 truncate">
+                            {pCtx.inventory?.data_source || 'Retrieved from PriceMind database'}
+                          </div>
+                        </div>
+
+                        {/* QUADRANT 3: HISTORICAL DEMAND */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                              <BarChart3 className="w-3 h-3" /> Historical Demand
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500">Database</span>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Total Units Sold:</span>
+                              <span className="font-mono font-bold text-cyan-300">
+                                {pCtx.historical_demand?.total_units_sold != null ? `${pCtx.historical_demand.total_units_sold.toLocaleString()} units` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Daily Avg Sales:</span>
+                              <span className="font-mono text-slate-200">
+                                {pCtx.historical_demand?.avg_daily_demand != null ? `${pCtx.historical_demand.avg_daily_demand} / day` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-white/[0.04]">
+                              <span className="text-slate-400 text-[11px]">Demand Trend:</span>
+                              <span className="font-mono font-bold text-slate-200 flex items-center gap-1">
+                                <Activity className="w-2.5 h-2.5 text-cyan-400" />
+                                {pCtx.historical_demand?.demand_trend || 'Not available'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[9px] font-mono text-slate-500 truncate">
+                            {pCtx.historical_demand?.sales_records_count ? `${pCtx.historical_demand.sales_records_count} historical transaction records` : 'No sales records in DB'}
+                          </div>
+                        </div>
+
+                        {/* QUADRANT 4: PRICE ELASTICITY */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/[0.06] flex flex-col justify-between">
+                          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" /> Price Elasticity
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500">Model-derived</span>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Elasticity (E):</span>
+                              <span className="font-mono font-bold text-amber-300">
+                                {pCtx.elasticity?.elasticity != null ? `${pCtx.elasticity.elasticity}` : 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-slate-400 text-[11px]">Classification:</span>
+                              <span className="font-mono text-slate-200 font-bold uppercase text-[10px]">
+                                {pCtx.elasticity?.elasticity_category || 'Not available'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-white/[0.04]">
+                              <span className="text-slate-400 text-[11px]">Model Confidence:</span>
+                              <span className="font-mono text-slate-300">
+                                {pCtx.elasticity?.r_squared != null ? `R² = ${pCtx.elasticity.r_squared}` : 'Not available'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[9px] font-mono text-slate-500 truncate">
+                            {pCtx.elasticity?.interpretation || 'Module 3 statistical elasticity estimate'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Three-Way Data Provenance Footer */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[9px] font-mono text-slate-400">
+                        <div className="flex items-center gap-1 text-purple-300 truncate">
+                          <Camera className="w-3 h-3 shrink-0" />
+                          <span>Image: Competitor Price, OCR, YOLO</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-indigo-300 truncate">
+                          <Database className="w-3 h-3 shrink-0" />
+                          <span>DB: SKU, Current Price, Inventory, Sales</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-amber-300 truncate">
+                          <TrendingUp className="w-3 h-3 shrink-0" />
+                          <span>Model: Elasticity, Sensitivity</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 8: JSON TELEMETRY VIEW
               ========================================================================= */}
           {activeTab === 'json' && (
             <div className="flex flex-col gap-2">
@@ -1530,6 +1770,8 @@ export function VisualIntelligence() {
               <span>Matching: {visionResult.processing_stats?.matching_time_ms || 0}ms</span>
               <span>•</span>
               <span>Comp Intel: {visionResult.processing_stats?.competitor_intelligence_time_ms || 0}ms</span>
+              <span>•</span>
+              <span>Context: {visionResult.processing_stats?.pricemind_context_time_ms || 0}ms</span>
             </div>
           )}
         </div>
