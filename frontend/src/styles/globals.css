@@ -250,8 +250,31 @@ html.light .bg-neutral-950 {
 }
 
 /* ── Text overrides ──────────────────────────────────────────────────────── */
-html.light .text-white {
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white,
+html.light p.text-white,
+html.light span.text-white:not(button *):not([class*="badge"] *):not([class*="pill"] *) {
   color: var(--pm-text-primary) !important;
+}
+
+/* Explicitly preserve crisp white text on all buttons, badges, and accent backgrounds */
+html.light button,
+html.light button *,
+html.light [class*="bg-indigo"],
+html.light [class*="bg-indigo"] *,
+html.light [class*="from-indigo"],
+html.light [class*="from-indigo"] *,
+html.light [class*="bg-emerald-600"],
+html.light [class*="bg-emerald-600"] *,
+html.light [class*="bg-purple-600"],
+html.light [class*="bg-purple-600"] *,
+html.light [class*="bg-blue-600"],
+html.light [class*="bg-blue-600"] *,
+html.light .pm-btn-primary,
+html.light .pm-btn-primary * {
+  color: #FFFFFF !important;
 }
 
 html.light .text-slate-100,
