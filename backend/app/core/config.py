@@ -56,7 +56,13 @@ class Settings(BaseSettings):
 
     # ── Generative AI & Explanation (Module 10 & Phase 3.2) ─────────────────
     GOOGLE_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.0-flash"
+    AGENT_LLM_PROVIDER: str = "google"
+
+    @property
+    def active_gemini_key(self) -> Optional[str]:
+        return self.GOOGLE_API_KEY or self.GEMINI_API_KEY or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
     model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 

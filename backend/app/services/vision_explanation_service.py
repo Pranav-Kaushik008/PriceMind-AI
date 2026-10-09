@@ -334,7 +334,7 @@ def generate_vision_explanation(
     Ensures 100% numerical integrity and fallback protection.
     """
     sources = extract_verified_sources(context)
-    key = api_key or settings.GOOGLE_API_KEY or os.environ.get("GOOGLE_API_KEY")
+    key = api_key or settings.active_gemini_key
     model = model_name or getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
 
     explanation_sections = None
