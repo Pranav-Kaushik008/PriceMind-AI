@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
  * Supports: primary, secondary, subtle, outline, ghost, positive, negative, warning
  * Sizes: xs, sm, md, lg
  * States: loading, disabled, icon-only, active
+ * Theme-aware: all variants adapt to light/dark mode via CSS token classes.
  */
 export function Button({
   children,
@@ -37,28 +38,29 @@ export function Button({
   };
 
   const variants = {
+    // Primary — uses pm-accent token so it adapts to light/dark
     primary:
-      'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm border border-indigo-400/30 font-semibold shadow-[0_0_12px_rgba(99,102,241,0.25)]',
+      'bg-pm-accent hover:bg-pm-accentHover text-white shadow-sm border border-pm-accentBorder font-semibold',
     secondary:
-      'bg-white/[0.05] hover:bg-white/[0.08] text-white border border-white/[0.10] shadow-sm',
+      'bg-pm-subtle hover:bg-pm-hover text-pm-text border border-pm-border shadow-sm',
     subtle:
-      'bg-white/[0.03] hover:bg-white/[0.06] text-slate-300 hover:text-white border border-white/[0.06]',
+      'bg-pm-subtle hover:bg-pm-hover text-pm-textSecondary hover:text-pm-text border border-pm-borderSubtle',
     outline:
-      'bg-transparent hover:bg-white/[0.05] text-white border border-white/[0.12] hover:border-white/[0.25]',
+      'bg-transparent hover:bg-pm-hover text-pm-text border border-pm-border hover:border-pm-borderStrong',
     ghost:
-      'bg-transparent hover:bg-white/[0.05] text-slate-400 hover:text-white border border-transparent',
+      'bg-transparent hover:bg-pm-hover text-pm-textMuted hover:text-pm-text border border-transparent',
     positive:
-      'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold shadow-sm border border-emerald-400/40',
+      'bg-emerald-500 hover:bg-emerald-400 text-white font-semibold shadow-sm border border-emerald-400/40',
     positiveSubtle:
-      'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-medium',
+      'bg-pm-positiveBg hover:bg-emerald-500/20 text-pm-positiveText border border-pm-positiveBorder font-medium',
     negative:
       'bg-rose-600 hover:bg-rose-500 text-white shadow-sm border border-rose-500/40 font-semibold',
     negativeSubtle:
-      'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-medium',
+      'bg-pm-negativeBg hover:bg-rose-500/20 text-pm-negativeText border border-pm-negativeBorder font-medium',
     warning:
-      'bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold shadow-sm border border-amber-400/40',
+      'bg-amber-500 hover:bg-amber-400 text-white font-semibold shadow-sm border border-amber-400/40',
     warningSubtle:
-      'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-medium',
+      'bg-pm-warningBg hover:bg-amber-500/20 text-pm-warningText border border-pm-warningBorder font-medium',
   };
 
   const iconSizes = {
@@ -104,7 +106,7 @@ export function ButtonGroup({ children, className = '' }) {
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.03] p-0.5 gap-0.5',
+        'inline-flex items-center rounded-lg border border-pm-border bg-pm-subtle p-0.5 gap-0.5',
         className
       )}
       role="group"

@@ -400,3 +400,28 @@ html.light ::-webkit-scrollbar-track {
 html.light ::-webkit-scrollbar-thumb {
   background: var(--pm-border-strong);
 }
+
+/* ── Gradient primary buttons → flat accent in light mode ───────────────── */
+html.light [class*="from-indigo-600"][class*="to-indigo"],
+html.light [class*="from-indigo-500"][class*="to-indigo"],
+html.light [class*="bg-indigo-600"],
+html.light [class*="bg-indigo-700"] {
+  background: var(--pm-accent) !important;
+  background-image: none !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25) !important;
+}
+
+html.light [class*="from-indigo-600"][class*="to-indigo"]:hover,
+html.light [class*="from-indigo-500"][class*="to-indigo"]:hover,
+html.light [class*="bg-indigo-600"]:hover,
+html.light [class*="bg-indigo-700"]:hover {
+  background: var(--pm-accent-hover) !important;
+  background-image: none !important;
+}
+
+/* ── Neon / glow shadows → softer in light mode ──────────────────────────── */
+html.light [class*="shadow-[0_0_15px_rgba(99,102,241"],
+html.light [class*="shadow-[0_0_20px_rgba(99,102,241"],
+html.light [class*="shadow-[0_0_12px_rgba(99,102,241"] {
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.20) !important;
+}
