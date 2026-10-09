@@ -440,20 +440,27 @@ export const apiClient = {
 
   // ── 15. Visual Intelligence & In-Store OCR ───────────────────────────────
   async analyzeShelfImage(formData) {
-    const token = getAuthToken();
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('pricemind_token') : null;
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/vision/analyze`, {
+      const res = await fetch(`${API_BASE}/vision/analyze`, {
         method: 'POST',
         headers,
         body: formData,
       });
-      if (!res.ok) throw new Error(`Vision analysis failed with HTTP ${res.status}`);
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          const errData = await res.json();
+          errDetail = errData?.detail;
+        } catch {}
+        throw new Error(errDetail || `Vision analysis failed with HTTP ${res.status}`);
+      }
       return await res.json();
     } catch (err) {
-      console.warn('Vision backend call error, returning simulated pipeline result', err);
+      console.warn('Vision backend call error:', err);
       return null;
     }
   },

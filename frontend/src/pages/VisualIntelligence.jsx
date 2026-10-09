@@ -283,11 +283,16 @@ export function VisualIntelligence() {
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       setImagePreviewUrl(dataUrl);
       setCameraBase64(dataUrl);
+      setSelectedFile(null);
       setUploadedFileName('camera_capture.jpg');
       setUploadedFileSize('1.2 MB');
+      setProductsList([]);
+      setTextItems([]);
+      setSelectedProductId(null);
       stopCamera();
       setInputMode('upload');
-      toast.success('Snapshot Captured', 'Image loaded ready for analysis.');
+      toast.info('Snapshot Captured', 'Analyzing captured frame with Gemini Vision...');
+      executeAnalysis({ imageBase64: dataUrl });
     } catch (e) {
       toast.error('Capture Failed', 'Could not snapshot frame.');
     }
@@ -307,70 +312,84 @@ export function VisualIntelligence() {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`
     );
-    toast.info('Image Selected', `${file.name} loaded.`);
+    // Reset prior items so we don't display mismatched boxes on a new image
+    setProductsList([]);
+    setTextItems([]);
+    setSelectedProductId(null);
+    toast.info('Image Loaded', `Analyzing ${file.name} with Gemini Vision...`);
+    executeAnalysis({ file });
   };
 
   // Real backend CV analysis execution
-  const runAnalysis = async () => {
+  const executeAnalysis = async ({ file = null, imageBase64 = null } = {}) => {
     setIsAnalyzing(true);
-    toast.info('Running Vision Engine', 'Executing YOLOv8, EasyOCR, and PriceMind Optimizer...');
 
     try {
       const formData = new FormData();
-      if (selectedFile) {
-        formData.append('file', selectedFile);
-      } else if (cameraBase64) {
-        formData.append('image_base64', cameraBase64);
+      const activeFile = file || selectedFile;
+      const activeB64 = imageBase64 || cameraBase64;
+
+      if (activeFile) {
+        formData.append('file', activeFile);
+      } else if (activeB64) {
+        formData.append('image_base64', activeB64);
       } else {
         formData.append('sample_id', 'retail_shelf_1');
       }
 
       const res = await apiClient.analyzeShelfImage(formData);
       if (res && res.status === 'success') {
-        // Map detected objects
+        // Map detected objects dynamically
         if (res.detected_objects && res.detected_objects.length > 0) {
-          const colors = ['#22c55e', '#3b82f6', '#ef4444', '#a855f7', '#f97316', '#06b6d4'];
+          const colors = ['#22c55e', '#3b82f6', '#ef4444', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
           const mapped = res.detected_objects.map((obj, i) => {
-            const priceTag = res.detected_text_and_prices?.find((t) => t.is_price_tag);
-            const detPrice = priceTag?.extracted_price || (499.99 + i * 50);
-            const yourBase = Math.round(detPrice * 1.05 * 100) / 100;
-            const recPrice = Math.round(detPrice * 0.98 * 100) / 100;
-            const diffPct = Math.round(((detPrice - yourBase) / yourBase) * 1000) / 10;
-            const priceChgPct = Math.round(((recPrice - yourBase) / yourBase) * 1000) / 10;
+            const attr = obj.attributes || {};
+            const comp = res.competitor_intelligence?.find((c) => c.product_id === `prod_${i + 1}` || c.detected_label === obj.label);
+            const rec = res.pricing_recommendations?.find((r) => r.product_id === `prod_${i + 1}` || r.id?.includes(`${i + 1}`));
+
+            const detPrice = attr.detected_price ?? comp?.competitor_price ?? 49.99;
+            const yourBase = attr.your_price ?? comp?.your_price ?? Math.round(detPrice * 1.05 * 100) / 100;
+            const recPrice = attr.recommended_price ?? rec?.recommended_price ?? Math.round(detPrice * 0.98 * 100) / 100;
+            const diffPct = attr.diff_percent ?? comp?.price_difference_percent ?? Math.round(((detPrice - yourBase) / yourBase) * 1000) / 10;
+            const priceChgPct = rec?.price_change_pct ?? Math.round(((recPrice - yourBase) / yourBase) * 1000) / 10;
+            const elasticityVal = attr.elasticity ?? -0.45;
 
             return {
               id: obj.id || `prod_${i + 1}`,
-              sku: `SKU-${obj.label.substring(0, 3).toUpperCase()}-${100 + i}`,
+              sku: attr.sku || `SKU-${obj.label.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, 'X')}-${100 + i}`,
               name: obj.label,
-              catalogName: `${obj.label} (Catalog Matched)`,
+              catalogName: attr.catalog_name || `${obj.label} (Catalog Match)`,
               detectedLabel: obj.label,
-              displayLabel: `${obj.label} ${obj.confidence.toFixed(2)}`,
+              displayLabel: `${obj.label} ${(obj.confidence <= 1 ? obj.confidence : obj.confidence / 100).toFixed(2)}`,
               detectedPrice: detPrice,
-              confidence: Math.round(obj.confidence * 100),
-              color: colors[i % colors.length],
+              confidence: Math.round(obj.confidence <= 1 ? obj.confidence * 100 : obj.confidence),
+              color: attr.color || colors[i % colors.length],
               box: {
-                x: `${obj.box.x_percent}%`,
-                y: `${obj.box.y_percent}%`,
-                width: `${obj.box.width_percent}%`,
-                height: `${obj.box.height_percent}%`,
+                x: `${obj.box?.x_percent ?? 5}%`,
+                y: `${obj.box?.y_percent ?? 5}%`,
+                width: `${obj.box?.width_percent ?? 30}%`,
+                height: `${obj.box?.height_percent ?? 30}%`,
               },
               yourPrice: yourBase,
               diffPercent: diffPct,
-              elasticity: -0.42 - i * 0.05,
+              elasticity: elasticityVal,
               sales30d: 950 + i * 150,
-              availability: 'In Stock',
+              availability: comp?.competitor_info?.availability || 'In Stock',
               recommendedPrice: recPrice,
               priceChangePct: priceChgPct,
-              liftUnits: `+${160 + i * 30} units`,
-              revenueDelta: `+$${(20 + i * 3).toFixed(1)}K`,
-              profitDelta: `+$${(8 + i * 1.5).toFixed(1)}K`,
+              liftUnits: rec?.financial_impact?.volume_lift_units || `+${160 + i * 30} units`,
+              revenueDelta: rec?.financial_impact?.revenue_delta || `+$${(20 + i * 3).toFixed(1)}K`,
+              profitDelta: rec?.financial_impact?.profit_delta || `+$${(8 + i * 1.5).toFixed(1)}K`,
               ocrTag: obj.label,
-              explanation: `Detected ${obj.label} with competitor price $${detPrice}. PriceMind optimizer recommends $${recPrice} to maximize unit velocity and profit.`,
+              explanation: attr.explanation || rec?.status_message || `Detected ${obj.label} at $${detPrice}. Recommended target $${recPrice} maximizes velocity and margins.`,
             };
           });
 
           setProductsList(mapped);
           setSelectedProductId(mapped[0].id);
+        } else {
+          setProductsList([]);
+          setSelectedProductId(null);
         }
 
         if (res.detected_text_and_prices && res.detected_text_and_prices.length > 0) {
@@ -383,6 +402,8 @@ export function VisualIntelligence() {
             color: t.is_price_tag ? 'yellow' : 'slate',
           }));
           setTextItems(ocrItems);
+        } else {
+          setTextItems([]);
         }
 
         if (res.processing_stats) {
@@ -395,17 +416,19 @@ export function VisualIntelligence() {
           });
         }
 
-        toast.success('Live Pipeline Completed', `Detected ${res.detected_objects_count} objects and ${res.detected_text_count} text regions.`);
+        toast.success('Analysis Complete', `Detected ${res.detected_objects_count} objects and ${res.detected_text_count} text items in image.`);
       } else {
-        toast.success('Analysis Complete', 'Detected 5 products and 14 text regions.');
+        toast.info('Analysis Complete', 'No objects detected in the current frame.');
       }
     } catch (err) {
-      console.warn('API pipeline call returned default telemetry:', err);
-      toast.info('Analysis Processed', 'Image telemetry and price optimization updated.');
+      console.warn('API pipeline call error:', err);
+      toast.error('Analysis Failed', 'Could not process image through vision engine.');
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  const runAnalysis = () => executeAnalysis();
 
   const filteredTextItems = textItems.filter((item) => {
     if (textFilter === 'prices') return item.type === 'price';
@@ -831,6 +854,26 @@ export function VisualIntelligence() {
                 </div>
               );
             })}
+
+            {/* In-canvas Analysis / Empty Overlay */}
+            {productsList.length === 0 && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-4 text-center z-20">
+                {isAnalyzing ? (
+                  <div className="flex flex-col items-center gap-2 text-white">
+                    <RefreshCw className="w-6 h-6 animate-spin text-indigo-400" />
+                    <span className="text-xs font-semibold">Gemini Vision is inspecting image objects & price tags...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 text-slate-300">
+                    <Sparkles className="w-5 h-5 text-indigo-400" />
+                    <span className="text-xs font-semibold text-white">Ready for Vision Analysis</span>
+                    <span className="text-[11px] text-slate-400 max-w-xs">
+                      Click &quot;Analyze Image &amp; Optimize Prices&quot; to detect objects, text &amp; prices.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -846,46 +889,53 @@ export function VisualIntelligence() {
               <h2 className="text-xs font-bold text-pm-text">Detected Products</h2>
             </div>
 
-            <div className="space-y-1.5 mt-2.5">
-              {productsList.map((prod) => {
-                const isSelected = selectedProductId === prod.id;
-                return (
-                  <div
-                    key={prod.id}
-                    onClick={() => handleSelectProduct(prod.id)}
-                    className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-pm-accentSubtle border-pm-accent/50 shadow-sm'
-                        : 'bg-pm-subtle border-pm-borderSubtle hover:bg-pm-hover hover:border-pm-border'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        style={{ backgroundColor: `${prod.color}25`, borderColor: prod.color }}
-                        className="w-7 h-7 rounded-lg border flex items-center justify-center text-xs flex-shrink-0 shadow-xs"
-                      >
-                        📺
+            {productsList.length === 0 ? (
+              <div className="py-8 text-center text-xs text-pm-textMuted flex flex-col items-center gap-2">
+                <Box className="w-6 h-6 text-pm-textDim opacity-60" />
+                <span>{isAnalyzing ? 'Detecting items in image...' : 'No objects detected yet'}</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5 mt-2.5">
+                {productsList.map((prod) => {
+                  const isSelected = selectedProductId === prod.id;
+                  return (
+                    <div
+                      key={prod.id}
+                      onClick={() => handleSelectProduct(prod.id)}
+                      className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-pm-accentSubtle border-pm-accent/50 shadow-sm'
+                          : 'bg-pm-subtle border-pm-borderSubtle hover:bg-pm-hover hover:border-pm-border'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          style={{ backgroundColor: `${prod.color}25`, borderColor: prod.color }}
+                          className="w-7 h-7 rounded-lg border flex items-center justify-center text-xs flex-shrink-0 shadow-xs text-pm-text"
+                        >
+                          <Package className="w-3.5 h-3.5" style={{ color: prod.color }} />
+                        </div>
+                        <div className="truncate">
+                          <span className="text-[11px] font-bold text-pm-text block truncate leading-tight">
+                            {prod.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-pm-textSecondary font-semibold">
+                            ${prod.detectedPrice}
+                          </span>
+                        </div>
                       </div>
-                      <div className="truncate">
-                        <span className="text-[11px] font-bold text-pm-text block truncate leading-tight">
-                          {prod.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-pm-textSecondary font-semibold">
-                          ${prod.detectedPrice}
-                        </span>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
-                        {prod.confidence}%
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-pm-textDim" />
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                          {prod.confidence}%
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-pm-textDim" />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -934,29 +984,36 @@ export function VisualIntelligence() {
 
             {/* Scrollable OCR Item List */}
             <div className="space-y-1 mt-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-              {filteredTextItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-1.5 rounded-lg bg-pm-subtle hover:bg-pm-hover border border-pm-borderSubtle flex items-center justify-between text-xs transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
-                        item.color === 'yellow'
-                          ? 'bg-yellow-400 text-black shadow-xs'
-                          : 'bg-pm-surface text-pm-textSecondary border border-pm-borderSubtle'
-                      }`}
-                    >
-                      {item.text}
-                    </span>
-                    <span className="text-[10px] text-pm-textMuted truncate">{item.subtext}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-pm-textDim">
-                    <span>{item.conf}</span>
-                    <ChevronRight className="w-3 h-3 text-pm-textDim" />
-                  </div>
+              {filteredTextItems.length === 0 ? (
+                <div className="py-8 text-center text-xs text-pm-textMuted flex flex-col items-center gap-1.5">
+                  <FileText className="w-5 h-5 text-pm-textDim opacity-60" />
+                  <span>{isAnalyzing ? 'Scanning OCR text...' : 'No text labels detected'}</span>
                 </div>
-              ))}
+              ) : (
+                filteredTextItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-1.5 rounded-lg bg-pm-subtle hover:bg-pm-hover border border-pm-borderSubtle flex items-center justify-between text-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
+                          item.color === 'yellow'
+                            ? 'bg-yellow-400 text-black shadow-xs'
+                            : 'bg-pm-surface text-pm-textSecondary border border-pm-borderSubtle'
+                        }`}
+                      >
+                        {item.text}
+                      </span>
+                      <span className="text-[10px] text-pm-textMuted truncate">{item.subtext}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-pm-textDim">
+                      <span>{item.conf}</span>
+                      <ChevronRight className="w-3 h-3 text-pm-textDim" />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -989,38 +1046,44 @@ export function VisualIntelligence() {
 
             {/* Table Rows */}
             <div className="space-y-1 mt-1.5 font-mono text-[11px]">
-              {productsList.map((prod) => {
-                const isSelected = selectedProductId === prod.id;
-                return (
-                  <div
-                    key={prod.id}
-                    onClick={() => handleSelectProduct(prod.id)}
-                    className={`grid grid-cols-12 items-center p-2 rounded-xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-pm-accentSubtle border-pm-accent/50 shadow-xs'
-                        : 'bg-pm-subtle border-pm-borderSubtle hover:bg-pm-hover'
-                    }`}
-                  >
-                    <div className="col-span-3 text-pm-textSecondary truncate pr-1">
-                      {prod.detectedLabel}
+              {productsList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-pm-textMuted">
+                  {isAnalyzing ? 'Matching detected items to catalog...' : 'No matched products yet'}
+                </div>
+              ) : (
+                productsList.map((prod) => {
+                  const isSelected = selectedProductId === prod.id;
+                  return (
+                    <div
+                      key={prod.id}
+                      onClick={() => handleSelectProduct(prod.id)}
+                      className={`grid grid-cols-12 items-center p-2 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-pm-accentSubtle border-pm-accent/50 shadow-xs'
+                          : 'bg-pm-subtle border-pm-borderSubtle hover:bg-pm-hover'
+                      }`}
+                    >
+                      <div className="col-span-3 text-pm-textSecondary truncate pr-1">
+                        {prod.detectedLabel}
+                      </div>
+                      <div className="col-span-3 text-pm-text font-sans font-medium truncate pr-1">
+                        {prod.catalogName}
+                      </div>
+                      <div className="col-span-2 text-pm-textDim truncate text-[10px]">
+                        {prod.sku}
+                      </div>
+                      <div className="col-span-2 text-pm-accent font-bold">
+                        {prod.confidence}%
+                      </div>
+                      <div className="col-span-2 text-right">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                          Matched
+                        </span>
+                      </div>
                     </div>
-                    <div className="col-span-3 text-pm-text font-sans font-medium truncate pr-1">
-                      {prod.catalogName}
-                    </div>
-                    <div className="col-span-2 text-pm-textDim truncate text-[10px]">
-                      {prod.sku}
-                    </div>
-                    <div className="col-span-2 text-pm-accent font-bold">
-                      {prod.confidence}%
-                    </div>
-                    <div className="col-span-2 text-right">
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
-                        Matched
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -1037,55 +1100,66 @@ export function VisualIntelligence() {
               <h2 className="text-xs font-bold text-pm-text">Competitor Comparison</h2>
             </div>
 
-            {/* Selected Product Header */}
-            <div className="mt-2 p-2 rounded-xl bg-pm-subtle border border-pm-border flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500 text-xs flex-shrink-0">
-                📺
-              </div>
-              <div className="truncate">
-                <span className="text-xs font-bold text-pm-text block truncate">
-                  {selectedProduct.name}
-                </span>
-                <span className="text-[9px] font-mono text-pm-textDim">
-                  SKU: {selectedProduct.sku}
-                </span>
-              </div>
-            </div>
-
-            {/* Key-Value Comparison Table */}
-            <div className="space-y-1.5 text-[11px] font-mono mt-2.5">
-              <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
-                <span className="text-pm-textMuted text-[10px]">Your Price</span>
-                <span className="font-bold text-pm-text">${selectedProduct.yourPrice}</span>
-              </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
-                <span className="text-pm-textMuted text-[10px]">Competitor Price</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-pm-text">${selectedProduct.detectedPrice}</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 font-bold border border-cyan-500/30">
-                    {Math.abs(selectedProduct.diffPercent)}% lower
-                  </span>
+            {selectedProduct ? (
+              <>
+                {/* Selected Product Header */}
+                <div className="mt-2 p-2 rounded-xl bg-pm-subtle border border-pm-border flex items-center gap-2">
+                  <div
+                    style={{ backgroundColor: `${selectedProduct.color}25`, borderColor: selectedProduct.color }}
+                    className="w-7 h-7 rounded-lg border flex items-center justify-center text-xs flex-shrink-0"
+                  >
+                    <Tag className="w-3.5 h-3.5" style={{ color: selectedProduct.color }} />
+                  </div>
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-pm-text block truncate">
+                      {selectedProduct.name}
+                    </span>
+                    <span className="text-[9px] font-mono text-pm-textDim">
+                      SKU: {selectedProduct.sku}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Key-Value Comparison Table */}
+                <div className="space-y-1.5 text-[11px] font-mono mt-2.5">
+                  <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
+                    <span className="text-pm-textMuted text-[10px]">Your Price</span>
+                    <span className="font-bold text-pm-text">${selectedProduct.yourPrice}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
+                    <span className="text-pm-textMuted text-[10px]">Competitor Price</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-pm-text">${selectedProduct.detectedPrice}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 font-bold border border-cyan-500/30">
+                        {Math.abs(selectedProduct.diffPercent)}% {selectedProduct.diffPercent <= 0 ? 'lower' : 'higher'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
+                    <span className="text-pm-textMuted text-[10px]">Price Difference</span>
+                    <span className="font-bold text-cyan-500 dark:text-cyan-400">{selectedProduct.diffPercent}%</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
+                    <span className="text-pm-textMuted text-[10px]">Demand Elasticity</span>
+                    <span className="font-bold text-amber-500 dark:text-amber-300">{selectedProduct.elasticity}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
+                    <span className="text-pm-textMuted text-[10px]">Your Sales (Last 30 days)</span>
+                    <span className="font-bold text-pm-textSecondary">{selectedProduct.sales30d.toLocaleString()} units</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-pm-textMuted text-[10px]">Competitor Availability</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold border border-emerald-500/30">
+                      {selectedProduct.availability}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-12 text-center text-xs text-pm-textMuted">
+                Select an item to view comparison
               </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
-                <span className="text-pm-textMuted text-[10px]">Price Difference</span>
-                <span className="font-bold text-cyan-500 dark:text-cyan-400">{selectedProduct.diffPercent}%</span>
-              </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
-                <span className="text-pm-textMuted text-[10px]">Demand Elasticity</span>
-                <span className="font-bold text-amber-500 dark:text-amber-300">{selectedProduct.elasticity}</span>
-              </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-pm-borderSubtle">
-                <span className="text-pm-textMuted text-[10px]">Your Sales (Last 30 days)</span>
-                <span className="font-bold text-pm-textSecondary">{selectedProduct.sales30d.toLocaleString()} units</span>
-              </div>
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-pm-textMuted text-[10px]">Competitor Availability</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold border border-emerald-500/30">
-                  {selectedProduct.availability}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -1101,78 +1175,86 @@ export function VisualIntelligence() {
               <h2 className="text-xs font-bold text-pm-text">Pricing Recommendation</h2>
             </div>
 
-            {/* Recommended Price Hero Box */}
-            <div className="mt-2 p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/10 via-pm-surface to-pm-subtle border border-emerald-500/30 flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <span className="text-[9px] font-mono text-pm-textMuted flex items-center gap-0.5">
-                    Recommended Price <Info className="w-2.5 h-2.5" />
+            {selectedProduct ? (
+              <>
+                {/* Recommended Price Hero Box */}
+                <div className="mt-2 p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/10 via-pm-surface to-pm-subtle border border-emerald-500/30 flex items-center justify-between shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-pm-textMuted flex items-center gap-0.5">
+                        Recommended Price <Info className="w-2.5 h-2.5" />
+                      </span>
+                      <span className="text-lg font-bold font-mono text-pm-text block">
+                        ${selectedProduct.recommendedPrice}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                    {selectedProduct.priceChangePct}%
                   </span>
-                  <span className="text-lg font-bold font-mono text-pm-text block">
-                    ${selectedProduct.recommendedPrice}
+                </div>
+
+                {/* Expected Impact (per month) */}
+                <div className="mt-2 space-y-1.5">
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-pm-textDim block">
+                    Expected Impact (per month):
                   </span>
+                  <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 flex items-center justify-center text-xs">
+                      📈
+                    </div>
+                    <div className="text-[10px]">
+                      <span className="font-bold text-pm-text font-mono">{selectedProduct.liftUnits}</span>
+                      <span className="text-pm-textMuted text-[9px] block">Estimated volume lift</span>
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-xs">
+                      💰
+                    </div>
+                    <div className="text-[10px]">
+                      <span className="font-bold text-pm-text font-mono">{selectedProduct.revenueDelta}</span>
+                      <span className="text-pm-textMuted text-[9px] block">Estimated revenue increase</span>
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-purple-500/15 text-purple-500 dark:text-purple-400 flex items-center justify-center text-xs">
+                      🛡️
+                    </div>
+                    <div className="text-[10px]">
+                      <span className="font-bold text-pm-text font-mono">{selectedProduct.profitDelta}</span>
+                      <span className="text-pm-textMuted text-[9px] block">Estimated gross profit increase</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
-                {selectedProduct.priceChangePct}%
-              </span>
-            </div>
 
-            {/* Expected Impact (per month) */}
-            <div className="mt-2 space-y-1.5">
-              <span className="text-[9px] font-mono uppercase tracking-wider text-pm-textDim block">
-                Expected Impact (per month):
-              </span>
-              <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 flex items-center justify-center text-xs">
-                  📈
+                {/* Action Buttons */}
+                <div className="space-y-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSimModalOpen(true)}
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold text-xs transition-all shadow-[0_2px_6px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.4)] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Simulate This Price</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailsModalOpen(true)}
+                    className="w-full py-1.5 px-3 rounded-xl bg-pm-subtle hover:bg-pm-hover text-pm-textSecondary hover:text-pm-text text-[11px] font-medium transition-colors border border-pm-border cursor-pointer"
+                  >
+                    View Detailed Analysis
+                  </button>
                 </div>
-                <div className="text-[10px]">
-                  <span className="font-bold text-pm-text font-mono">{selectedProduct.liftUnits}</span>
-                  <span className="text-pm-textMuted text-[9px] block">Estimated volume lift</span>
-                </div>
+              </>
+            ) : (
+              <div className="py-12 text-center text-xs text-pm-textMuted">
+                Select a product to view pricing recommendations
               </div>
-              <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-xs">
-                  💰
-                </div>
-                <div className="text-[10px]">
-                  <span className="font-bold text-pm-text font-mono">{selectedProduct.revenueDelta}</span>
-                  <span className="text-pm-textMuted text-[9px] block">Estimated revenue increase</span>
-                </div>
-              </div>
-              <div className="p-2 rounded-xl bg-pm-subtle border border-pm-borderSubtle flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-purple-500/15 text-purple-500 dark:text-purple-400 flex items-center justify-center text-xs">
-                  🛡️
-                </div>
-                <div className="text-[10px]">
-                  <span className="font-bold text-pm-text font-mono">{selectedProduct.profitDelta}</span>
-                  <span className="text-pm-textMuted text-[9px] block">Estimated gross profit increase</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-1.5 mt-2">
-            <button
-              type="button"
-              onClick={() => setIsSimModalOpen(true)}
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold text-xs transition-all shadow-[0_2px_6px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.4)] flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span>Simulate This Price</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsDetailsModalOpen(true)}
-              className="w-full py-1.5 px-3 rounded-xl bg-pm-subtle hover:bg-pm-hover text-pm-textSecondary hover:text-pm-text text-[11px] font-medium transition-colors border border-pm-border cursor-pointer"
-            >
-              View Detailed Analysis
-            </button>
+            )}
           </div>
         </div>
       </div>
