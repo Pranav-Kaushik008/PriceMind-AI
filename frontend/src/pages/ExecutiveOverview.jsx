@@ -548,7 +548,7 @@ export function ExecutiveOverview() {
             size="sm"
             icon={Upload}
             onClick={() => setIsImportModalOpen(true)}
-            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+            className="text-xs"
           >
             Import / Replace CSV
           </Button>

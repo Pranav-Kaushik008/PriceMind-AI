@@ -38,9 +38,9 @@ export function Button({
   };
 
   const variants = {
-    // Primary — uses pm-accent token so it adapts to light/dark
+    // Primary — sleek vibrant gradient with subtle highlight
     primary:
-      'bg-pm-accent hover:bg-pm-accentHover text-white shadow-sm border border-pm-accentBorder font-semibold',
+      'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold border border-indigo-400/40 shadow-[0_2px_6px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.4)] transition-all',
     secondary:
       'bg-pm-subtle hover:bg-pm-hover text-pm-text border border-pm-border shadow-sm',
     subtle:

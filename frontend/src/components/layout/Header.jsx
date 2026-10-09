@@ -192,15 +192,11 @@ export function Header() {
           <Search className="w-3.5 h-3.5" />
         </button>
 
-        {/* AI Copilot Quick Action — theme-aware, no harsh glow in light mode */}
+        {/* AI Copilot Quick Action */}
         <button
           type="button"
           onClick={() => setActivePage('assistant')}
-          className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-3.5 text-[11px] font-semibold rounded-lg transition-all cursor-pointer ${
-            isLight
-              ? 'bg-pm-accent hover:bg-pm-accentHover text-white border border-pm-accentBorder shadow-sm'
-              : 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-[0_0_15px_rgba(99,102,241,0.35)] hover:shadow-[0_0_20px_rgba(99,102,241,0.55)]'
-          }`}
+          className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3.5 text-[11px] font-semibold rounded-lg bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border border-indigo-400/40 shadow-[0_2px_8px_rgba(99,102,241,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_4px_14px_rgba(99,102,241,0.5)] transition-all cursor-pointer"
         >
           <Zap className="w-3.5 h-3.5 fill-white" />
           <span>Copilot</span>
