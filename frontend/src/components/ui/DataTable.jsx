@@ -58,9 +58,10 @@ export function DataTable({
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
       }
-      return sortDirection === 'asc'
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
+      const sa = String(aVal).toLowerCase();
+      const sb = String(bVal).toLowerCase();
+      if (sa === sb) return 0;
+      return sa > sb ? (sortDirection === 'asc' ? 1 : -1) : (sortDirection === 'asc' ? -1 : 1);
     });
   }, [data, sortField, sortDirection]);
 

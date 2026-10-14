@@ -127,15 +127,32 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
             }
 
             // Resilient field normalization supporting standard, M5, Walmart, and Kaggle formats
-            const skuCode =
+            // Build a COMPOSITE SKU key to handle datasets (like M5) where the same item appears
+            // in multiple stores/dates — ensuring every row gets a unique identity in the catalog.
+            const baseId =
               raw.skuCode ||
               raw.sku ||
               raw.external_product_id ||
               raw.item_id ||
               raw.itemid ||
               raw.id ||
-              raw.product_id ||
-              `SKU-${i.toString().padStart(4, '0')}`;
+              raw.product_id;
+
+            // Detect dimensional qualifiers that make a row unique beyond just the item id
+            const dimStore = raw.store_id || raw.store || raw.store_code || raw.warehouse || raw.market || '';
+            const dimDate = raw.date || raw.week || raw.period || raw.wm_yr_wk || '';
+
+            let skuCode;
+            if (baseId) {
+              // Append store dimension if present and different from baseId (avoids duplication like "FOODS_1_001_CA_1")
+              const storeSuffix = dimStore && dimStore !== baseId ? `_${dimStore}` : '';
+              // Append date/week dimension if present (further uniquifies time-series rows)
+              const dateSuffix = dimDate ? `_${dimDate}` : '';
+              skuCode = `${baseId}${storeSuffix}${dateSuffix}`;
+            } else {
+              // No recognizable ID column — use row index to guarantee uniqueness
+              skuCode = `SKU-${i.toString().padStart(5, '0')}`;
+            }
 
             const category =
               raw.category ||
@@ -185,7 +202,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
               skuCode,
               name,
               category,
-              channel: raw.channel || raw.store_channel || raw.store_id || raw.store || 'Direct',
+              channel: dimStore || raw.channel || raw.store_channel || 'Direct',
               currentPrice,
               costPrice,
               inventoryStock,

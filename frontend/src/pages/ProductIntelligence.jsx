@@ -138,22 +138,36 @@ export function ProductIntelligence() {
 
   // Enriched SKU dataset
   const enrichedSKUs = useMemo(() => {
+    // Build O(1) hash map of recommendations instead of O(N^2) linear searching on 30,000+ items
+    const recsMap = new Map();
+    if (Array.isArray(recs)) {
+      for (let i = 0; i < recs.length; i++) {
+        const r = recs[i];
+        if (r.skuCode) recsMap.set(r.skuCode, r);
+        if (r.skuId) recsMap.set(r.skuId, r);
+        if (r.id) recsMap.set(r.id, r);
+      }
+    }
+
+    const queuedSet = new Set(queuedRecommendations);
+
     return rawSKUs.map((sku) => {
-      const rec = recs.find((r) => r.skuCode === sku.skuCode || r.skuId === sku.id);
-      const isPriceUp = (sku.recommendedPrice || sku.currentPrice) > sku.currentPrice;
-      const priceDeltaPct = sku.recommendedPrice
-        ? ((sku.recommendedPrice - sku.currentPrice) / sku.currentPrice) * 100
+      const rec = recsMap.get(sku.skuCode) || recsMap.get(sku.id);
+      const recPrice = sku.recommendedPrice || (rec?.recommendedPrice ? Number(rec.recommendedPrice) : sku.currentPrice);
+      const priceDeltaPct = sku.currentPrice > 0
+        ? ((recPrice - sku.currentPrice) / sku.currentPrice) * 100
         : 0;
 
       const monthlyDemand = (sku.currentVelocity || 35) * 30;
       const forecastMonthlyDemand = Math.round(monthlyDemand * (1 + (rec?.projectedVolumeDeltaPercent || -2.5) / 100));
-      const expectedRevenue = (sku.recommendedPrice || sku.currentPrice) * forecastMonthlyDemand;
-      const expectedProfit = ((sku.recommendedPrice || sku.currentPrice) - sku.costPrice) * forecastMonthlyDemand;
+      const expectedRevenue = recPrice * forecastMonthlyDemand;
+      const expectedProfit = (recPrice - sku.costPrice) * forecastMonthlyDemand;
       const currentProfit = (sku.currentPrice - sku.costPrice) * monthlyDemand;
       const profitLift = Math.max(0, expectedProfit - currentProfit);
 
       return {
         ...sku,
+        recommendedPrice: recPrice,
         recommendation: rec,
         priceDeltaPercent: priceDeltaPct,
         monthlyDemand,
@@ -163,42 +177,44 @@ export function ProductIntelligence() {
         profitLift: rec?.projectedRevenueDelta || profitLift || 28500,
         confidenceScore: rec?.confidenceScore || 93.4,
         status: rec?.status || 'pending',
-        isQueued: queuedRecommendations.includes(rec?.id || sku.id),
+        isQueued: queuedSet.has(rec?.id) || queuedSet.has(sku.id),
       };
     });
   }, [rawSKUs, recs, queuedRecommendations]);
 
   // Filtered dataset
   const filteredData = useMemo(() => {
+    if (!search && selectedCategory === 'all' && selectedChannel === 'all' && selectedElasticity === 'all') {
+      return enrichedSKUs;
+    }
+    const q = search.trim().toLowerCase();
     return enrichedSKUs.filter((sku) => {
-      const matchSearch =
-        search === '' ||
-        sku.skuCode.toLowerCase().includes(search.toLowerCase()) ||
-        sku.name.toLowerCase().includes(search.toLowerCase()) ||
-        sku.category.toLowerCase().includes(search.toLowerCase());
-
-      const matchCategory = selectedCategory === 'all' || sku.category === selectedCategory;
-      const matchChannel = selectedChannel === 'all' || sku.channel === selectedChannel;
-      const matchElasticity =
-        selectedElasticity === 'all' ||
-        (selectedElasticity === 'inelastic' && sku.elasticityScore > -1.0) ||
-        (selectedElasticity === 'elastic' && sku.elasticityScore <= -1.0);
-
-      return matchSearch && matchCategory && matchChannel && matchElasticity;
+      if (q) {
+        const matchSku = sku.skuCode?.toLowerCase().includes(q);
+        const matchName = sku.name?.toLowerCase().includes(q);
+        const matchCat = sku.category?.toLowerCase().includes(q);
+        if (!matchSku && !matchName && !matchCat) return false;
+      }
+      if (selectedCategory !== 'all' && sku.category !== selectedCategory) return false;
+      if (selectedChannel !== 'all' && sku.channel !== selectedChannel) return false;
+      if (selectedElasticity !== 'all') {
+        const isElastic = sku.elasticityScore <= -1.0;
+        if (selectedElasticity === 'elastic' && !isElastic) return false;
+        if (selectedElasticity === 'inelastic' && isElastic) return false;
+      }
+      return true;
     });
   }, [enrichedSKUs, search, selectedCategory, selectedChannel, selectedElasticity]);
 
-  // Categories list
-  const categoryOptions = [
-    { value: 'all', label: 'All Categories' },
-    { value: 'Hardware & Tools', label: 'Hardware & Tools' },
-    { value: 'HVAC & Air Handling', label: 'HVAC & Air Handling' },
-    { value: 'Telecommunications', label: 'Telecommunications' },
-    { value: 'IoT & Sensors', label: 'IoT & Sensors' },
-    { value: 'Computing Infrastructure', label: 'Computing' },
-    { value: 'Fluid Mechanics', label: 'Fluid Mechanics' },
-    { value: 'Robotics', label: 'Robotics' },
-  ];
+  // Dynamic categories list from dataset
+  const categoryOptions = useMemo(() => {
+    const set = new Set();
+    enrichedSKUs.forEach((s) => {
+      if (s.category) set.add(s.category);
+    });
+    const dynamicCats = Array.from(set).map((c) => ({ value: c, label: c }));
+    return [{ value: 'all', label: 'All Categories' }, ...dynamicCats];
+  }, [enrichedSKUs]);
 
   // Table Columns Definition
   const allColumns = [

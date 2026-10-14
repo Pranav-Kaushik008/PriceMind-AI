@@ -1,25 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, status
-from typing import List, Optional
-from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from datetime import UTC, datetime
 
-from app.db.session import get_db
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.core.deps import get_optional_current_user
-from app.models.user import User
-from app.models.product import Product
+from app.db.session import get_db
 from app.models.pricing import PricingRecommendation
+from app.models.product import Product
+from app.models.user import User
 from app.schemas.pricing import RecommendationResponse
 
 router = APIRouter()
 
 
-@router.get("", response_model=List[RecommendationResponse])
-@router.get("/", response_model=List[RecommendationResponse], include_in_schema=False)
+@router.get("", response_model=list[RecommendationResponse])
+@router.get("/", response_model=list[RecommendationResponse], include_in_schema=False)
 def get_recommendations(
-    status: Optional[str] = None,
+    status: str | None = None,
+    limit: int = Query(50000, ge=1, le=100000, description="Max recommendations to return"),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """List pending or applied pricing optimization recommendations scoped to the user's organization."""
     org_id = current_user.organization_id if current_user else None
@@ -31,9 +32,9 @@ def get_recommendations(
     if status and status.lower() != "all":
         q = q.where(PricingRecommendation.status == status.lower())
 
-    recs = list(db.scalars(q.order_by(PricingRecommendation.created_at.desc())))
+    recs = list(db.scalars(q.order_by(PricingRecommendation.created_at.desc()).limit(limit)))
 
-    output: List[RecommendationResponse] = []
+    output: list[RecommendationResponse] = []
     for r in recs:
         p = r.product
         if not p:
@@ -52,7 +53,7 @@ def get_recommendations(
             conf_val = float(cleaned) if cleaned else 94.0
             if conf_val <= 1.0:
                 conf_val = conf_val * 100.0
-        except Exception:
+        except (ValueError, TypeError):
             conf_val = 94.0
 
         output.append(
@@ -99,7 +100,7 @@ def update_recommendation_status(
     rec_id: str,
     new_status: str = Body(..., embed=True),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """Approve, reject, or mark a pricing recommendation as synced."""
     r = db.get(PricingRecommendation, rec_id)
@@ -108,7 +109,7 @@ def update_recommendation_status(
 
     r.status = new_status
     if new_status == "applied":
-        r.applied_at = datetime.utcnow().isoformat()
+        r.applied_at = datetime.now(UTC).isoformat()
     db.commit()
     db.refresh(r)
 

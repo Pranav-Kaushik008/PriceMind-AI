@@ -940,7 +940,9 @@ export function ExecutiveOverview() {
             data={recommendations}
             keyField="id"
             onRowClick={(row) => setSelectedRecommendationForEvidence(row)}
-            pagination={false}
+            pagination={true}
+            pageSize={10}
+            pageSizeOptions={[10, 25, 50]}
           />
         )}
       </div>
