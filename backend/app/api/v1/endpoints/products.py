@@ -4,16 +4,16 @@ backend/app/api/v1/endpoints/products.py
 Product catalog and SKU endpoints.
 """
 
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from typing import List, Optional, Union
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.core.deps import get_optional_current_user
+from app.db.session import get_db
 from app.models.user import User
-from app.services import product_service
-from app.schemas.product import ProductResponse, ProductListResponse, CategoryResponse
 from app.schemas.pricing import SKUResponse
+from app.schemas.product import CategoryResponse, ProductListResponse, ProductResponse
+from app.services import product_service
 
 router = APIRouter()
 
@@ -24,13 +24,13 @@ router = APIRouter()
 )
 @router.get("/", include_in_schema=False)
 def get_products(
-    category: Optional[str] = Query(None, description="Category name filter"),
-    search: Optional[str] = Query(None, description="Search query in name or SKU"),
+    category: str | None = Query(None, description="Category name filter"),
+    search: str | None = Query(None, description="Search query in name or SKU"),
     active_only: bool = Query(True, description="Filter active products only"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=100, description="Page size"),
+    page_size: int = Query(5000, ge=1, le=50000, description="Page size"),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """Retrieve catalog products with pagination, category filter, and tenant isolation."""
     org_id = current_user.organization_id if current_user else None
@@ -71,13 +71,13 @@ def get_products(
     summary="List Products Paginated",
 )
 def get_products_paginated(
-    category: Optional[str] = Query(None, description="Category filter"),
-    search: Optional[str] = Query(None, description="Search term"),
+    category: str | None = Query(None, description="Category filter"),
+    search: str | None = Query(None, description="Search term"),
     active_only: bool = Query(True, description="Active products only"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """Paginated product list returning metadata and totals with tenant isolation."""
     org_id = current_user.organization_id if current_user else None
@@ -88,7 +88,7 @@ def get_products_paginated(
 
 @router.get(
     "/categories",
-    response_model=List[CategoryResponse],
+    response_model=list[CategoryResponse],
     summary="List Product Categories",
 )
 def get_categories(db: Session = Depends(get_db)):
@@ -258,22 +258,23 @@ def get_field_ci(d: dict, *keys, default=""):
     summary="Bulk Ingest SKUs from CSV/JSON (Dynamic Ingestion)",
 )
 def bulk_import_products(
-    items: List[dict],
+    items: list[dict],
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """
     Dynamically ingest custom product/sales records from CSV or JSON.
     Automatically handles arbitrary column naming, ensures categories exist,
     upserts products, and generates AI pricing recommendations scoped to the user's organization.
     """
-    from app.models.product import Product
+    import uuid
+
+    from sqlalchemy import select
+
     from app.models.category import Category
     from app.models.organization import Organization
     from app.models.pricing import PricingRecommendation
-    from app.models.elasticity import ElasticityResult
-    from sqlalchemy import select
-    import uuid
+    from app.models.product import Product
 
     if current_user and current_user.organization_id:
         org_id = current_user.organization_id
@@ -450,16 +451,17 @@ def bulk_import_products(
 )
 def clear_catalog(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """
     Delete all products and their associated pricing recommendations for the current tenant.
     Use this to reset the catalog before uploading a completely new dataset.
     """
-    from app.models.product import Product
-    from app.models.pricing import PricingRecommendation
+    from sqlalchemy import delete, select
+
     from app.models.organization import Organization
-    from sqlalchemy import select, delete
+    from app.models.pricing import PricingRecommendation
+    from app.models.product import Product
 
     if current_user and current_user.organization_id:
         org_id = current_user.organization_id

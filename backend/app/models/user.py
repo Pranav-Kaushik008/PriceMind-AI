@@ -8,10 +8,18 @@ Authentication endpoints are NOT implemented in this module.
 Passwords are stored as hashes — never plaintext.
 """
 
-from sqlalchemy import String, Boolean, ForeignKey
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.organization import Organization
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -29,7 +37,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
     # Relationships
-    organization: Mapped["Organization"] = relationship("Organization", back_populates="users")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="users")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email}>"

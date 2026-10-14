@@ -134,6 +134,7 @@ export const apiClient = {
     const params = new URLSearchParams();
     if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
     if (search) params.append('search', search);
+    params.append('page_size', '10000');
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const data = await fetchJson(`/products${queryString}`);
@@ -456,12 +457,12 @@ export const apiClient = {
           const errData = await res.json();
           errDetail = errData?.detail;
         } catch {}
-        throw new Error(errDetail || `Vision analysis failed with HTTP ${res.status}`);
+        return { status: 'error', error: errDetail || `Backend returned HTTP ${res.status}` };
       }
       return await res.json();
     } catch (err) {
       console.warn('Vision backend call error:', err);
-      return null;
+      return { status: 'error', error: err.message || 'Cannot connect to backend on port 8000.' };
     }
   },
 

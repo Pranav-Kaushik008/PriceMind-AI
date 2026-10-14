@@ -60,6 +60,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
   const [activeTab, setActiveTab] = useState('mapped'); // 'mapped' | 'raw'
   const [searchTerm, setSearchTerm] = useState('');
   const [importMode, setImportMode] = useState('replace'); // 'replace' | 'append'
+  const [importStatusText, setImportStatusText] = useState('');
 
   const toast = useToast();
 
@@ -71,8 +72,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
     setErrorMsg(null);
     setSearchTerm('');
 
-    // Read up to 1MB of text for rich preview
-    const slice = selected.slice(0, 1024 * 1024);
+    // Read the complete CSV file without artificial byte limits
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -89,19 +89,23 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
         const rows = [];
         const rawRows = [];
 
-        // Parse up to 300 rows for smooth instant preview
-        const maxRowsToParse = Math.min(allLines.length, 300);
-        for (let i = 1; i < maxRowsToParse; i++) {
-          const values = parseCSVRow(allLines[i]).map((v) => v.replace(/^["']|["']$/g, '').trim());
+        // Parse ALL valid rows in the CSV file
+        for (let i = 1; i < allLines.length; i++) {
+          const line = allLines[i];
+          if (!line.trim()) continue;
+
+          const values = parseCSVRow(line).map((v) => v.replace(/^["']|["']$/g, '').trim());
           if (values.length === 0 || (values.length === 1 && values[0] === '')) continue;
 
           const raw = {};
-          const maxCols = Math.min(headers.length, 40);
+          const maxCols = Math.min(headers.length, 60);
           for (let col = 0; col < maxCols; col++) {
             const h = headers[col] || `col_${col + 1}`;
             raw[h] = values[col] !== undefined ? values[col] : '';
           }
-          rawRows.push(raw);
+          if (rawRows.length < 150) {
+            rawRows.push(raw);
+          }
 
           // Resilient field normalization supporting standard, M5, Walmart, and Kaggle formats
           const skuCode =
@@ -182,7 +186,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
         setErrorMsg('Failed to parse CSV file: ' + (err.message || 'Ensure valid CSV format.'));
       }
     };
-    reader.readAsText(slice);
+    reader.readAsText(selected);
   };
 
   const handleClearCatalog = async () => {
@@ -205,33 +209,49 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
     if (parsedRows.length === 0) return;
 
     setIsProcessing(true);
+    setImportStatusText('Preparing dataset...');
     try {
       // If mode is 'replace', clear catalog first
       if (importMode === 'replace') {
         try {
+          setImportStatusText('Clearing prior catalog...');
           await apiClient.clearCatalog();
         } catch (clearErr) {
           console.warn('Pre-import catalog clearing notice:', clearErr);
         }
       }
 
-      // Send up to 500 items per batch
-      const batchToSend = parsedRows.slice(0, 500);
-      const result = await apiClient.bulkImportSKUs(batchToSend);
-      if (!result || result.status !== 'success') {
-        throw new Error(result?.message || 'Ingestion returned unsuccessful status from server.');
+      // Process ALL rows in chunks of 1000 items to guarantee smooth network transfer and DB efficiency
+      const BATCH_SIZE = 1000;
+      let totalInserted = 0;
+      let totalUpdated = 0;
+
+      for (let i = 0; i < parsedRows.length; i += BATCH_SIZE) {
+        const chunk = parsedRows.slice(i, i + BATCH_SIZE);
+        const startIdx = i + 1;
+        const endIdx = Math.min(i + BATCH_SIZE, parsedRows.length);
+        setImportStatusText(`Ingesting ${formatNumber(startIdx)}–${formatNumber(endIdx)} of ${formatNumber(parsedRows.length)} SKUs…`);
+
+        const result = await apiClient.bulkImportSKUs(chunk);
+        if (!result || result.status !== 'success') {
+          throw new Error(result?.message || 'Ingestion returned unsuccessful status from server.');
+        }
+        totalInserted += result.inserted || 0;
+        totalUpdated += result.updated || 0;
       }
+
       toast.success(
         importMode === 'replace' ? 'Catalog Replaced Successfully' : 'Catalog Ingested Successfully',
-        result.message || `Ingested ${result.inserted || batchToSend.length} SKUs into live database.`
+        `Processed all ${formatNumber(parsedRows.length)} SKUs (${formatNumber(totalInserted)} new, ${formatNumber(totalUpdated)} updated).`
       );
-      if (onImportSuccess) onImportSuccess(result);
+      if (onImportSuccess) onImportSuccess({ inserted: totalInserted, updated: totalUpdated, total: parsedRows.length });
       onClose();
     } catch (err) {
       console.error('Import error:', err);
       toast.error('Import Failed', err?.message || 'Backend server may be unreachable at http://localhost:8000.');
     } finally {
       setIsProcessing(false);
+      setImportStatusText('');
     }
   };
 
@@ -313,10 +333,10 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
             >
               {isProcessing
-                ? 'Ingesting to SQLite…'
+                ? importStatusText || 'Ingesting to database…'
                 : importMode === 'replace'
-                ? `Replace & Analyze ${parsedRows.length} SKUs`
-                : `Append ${parsedRows.length} SKUs`}
+                ? `Replace & Analyze ${formatNumber(parsedRows.length)} SKUs`
+                : `Append ${formatNumber(parsedRows.length)} SKUs`}
             </Button>
           </div>
         </div>
@@ -525,7 +545,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
 
             {parsedRows.length > 50 && (
               <p className="text-[10px] text-slate-500 text-center">
-                Showing preview of 50 rows • All {parsedRows.length} records will be imported into SQLite
+                Showing preview of first 50 rows • All {formatNumber(parsedRows.length)} records will be imported into database
               </p>
             )}
           </div>

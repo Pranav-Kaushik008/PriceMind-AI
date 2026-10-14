@@ -4,10 +4,19 @@ backend/app/models/product.py
 Product model — corresponds to SKUs in dataset.
 """
 
-from sqlalchemy import String, Float, Integer, Boolean, ForeignKey, UniqueConstraint
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.category import Category
+    from app.models.organization import Organization
 
 
 class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -41,8 +50,8 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
-    organization: Mapped["Organization"] = relationship("Organization", back_populates="products")
-    category: Mapped["Category"] = relationship("Category", back_populates="products")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="products")
+    category: Mapped[Category] = relationship("Category", back_populates="products")
     sales_records: Mapped[list] = relationship("SalesRecord", back_populates="product", lazy="select")
     elasticity_results: Mapped[list] = relationship("ElasticityResult", back_populates="product", lazy="select")
     demand_predictions: Mapped[list] = relationship("DemandPrediction", back_populates="product", lazy="select")

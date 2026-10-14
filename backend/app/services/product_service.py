@@ -4,16 +4,15 @@ backend/app/services/product_service.py
 Service layer for product and category operations.
 """
 
-from typing import Optional, List, Tuple
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
 
-from app.models.product import Product
 from app.models.category import Category
-from app.schemas.product import ProductResponse, ProductListResponse, CategoryResponse
+from app.models.product import Product
+from app.schemas.product import CategoryResponse, ProductListResponse, ProductResponse
 
 
-def get_product_by_id_or_sku(db: Session, identifier: str, organization_id: Optional[str] = None) -> Optional[Product]:
+def get_product_by_id_or_sku(db: Session, identifier: str, organization_id: str | None = None) -> Product | None:
     """Find a product by its UUID or external SKU ID, optionally scoped by organization."""
     q = select(Product).where((Product.id == identifier) | (Product.external_product_id == identifier))
     if organization_id:
@@ -23,15 +22,15 @@ def get_product_by_id_or_sku(db: Session, identifier: str, organization_id: Opti
 
 def list_products(
     db: Session,
-    organization_id: Optional[str] = None,
-    category: Optional[str] = None,
+    organization_id: str | None = None,
+    category: str | None = None,
     active_only: bool = True,
-    search: Optional[str] = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> ProductListResponse:
     """List products with optional tenant isolation, category filter, text search, and pagination."""
-    page_size = max(1, min(page_size, 100))
+    page_size = max(1, min(page_size, 50000))
     page = max(1, page)
 
     q = select(Product)
@@ -39,7 +38,7 @@ def list_products(
         q = q.where(Product.organization_id == organization_id)
 
     if active_only:
-        q = q.where(Product.is_active == True)  # noqa: E712
+        q = q.where(Product.is_active == True)
 
     if category and category.lower() != "all":
         q = q.join(Product.category).where(func.lower(Category.name) == category.lower())
@@ -61,7 +60,7 @@ def list_products(
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
-    items: List[ProductResponse] = []
+    items: list[ProductResponse] = []
     for p in items_raw:
         margin_pct = None
         if p.current_price and p.cost_price and p.current_price > 0:
@@ -95,7 +94,7 @@ def list_products(
     )
 
 
-def list_categories(db: Session) -> List[CategoryResponse]:
+def list_categories(db: Session) -> list[CategoryResponse]:
     cats = list(db.scalars(select(Category).order_by(Category.name)))
     return [
         CategoryResponse(id=c.id, name=c.name, created_at=c.created_at)

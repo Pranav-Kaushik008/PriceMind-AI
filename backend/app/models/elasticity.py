@@ -4,10 +4,18 @@ backend/app/models/elasticity.py
 Elasticity analysis results from Module 3.
 """
 
-from sqlalchemy import String, Float, Integer, ForeignKey, Index
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
 
 
 class ElasticityResult(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -45,7 +53,7 @@ class ElasticityResult(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     model_status: Mapped[str] = mapped_column(String(50), default="SUCCESS", nullable=False)
 
     # Relationship
-    product: Mapped["Product"] = relationship("Product", back_populates="elasticity_results")
+    product: Mapped[Product] = relationship("Product", back_populates="elasticity_results")
 
     def __repr__(self) -> str:
         return f"<ElasticityResult product={self.product_id} elasticity={self.elasticity}>"

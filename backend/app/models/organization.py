@@ -4,10 +4,13 @@ backend/app/models/organization.py
 Organization model — top-level tenant grouping.
 """
 
+from __future__ import annotations
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):

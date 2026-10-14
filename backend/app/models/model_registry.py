@@ -4,11 +4,15 @@ backend/app/models/model_registry.py
 ML model registry — tracks trained model artifacts.
 """
 
-from datetime import datetime, timezone
-from sqlalchemy import String, Float, ForeignKey, Index, UniqueConstraint, Text, Integer, DateTime, JSON
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, DateTime, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class MLModelRegistry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -53,7 +57,7 @@ class OptimizationRun(UUIDPrimaryKeyMixin, Base):
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
     completed_at: Mapped[datetime | None] = mapped_column(

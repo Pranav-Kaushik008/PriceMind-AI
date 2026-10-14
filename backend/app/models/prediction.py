@@ -4,11 +4,19 @@ backend/app/models/prediction.py
 Demand prediction results from Module 4 (ML models).
 """
 
+from __future__ import annotations
+
 from datetime import date
-from sqlalchemy import String, Float, Integer, Date, ForeignKey, Index
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, Float, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
 
 
 class DemandPrediction(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -32,7 +40,7 @@ class DemandPrediction(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     price_at_prediction: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Relationship
-    product: Mapped["Product"] = relationship("Product", back_populates="demand_predictions")
+    product: Mapped[Product] = relationship("Product", back_populates="demand_predictions")
     explanations: Mapped[list] = relationship("SHAPExplanation", back_populates="prediction", lazy="select")
 
     def __repr__(self) -> str:

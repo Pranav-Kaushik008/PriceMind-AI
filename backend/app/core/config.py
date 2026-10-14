@@ -5,8 +5,9 @@ Centralized configuration via environment variables.
 Never hardcode secrets, passwords, or connection strings here.
 """
 
-from pydantic_settings import BaseSettings
+import os
 from typing import List, Optional
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -57,7 +58,7 @@ class Settings(BaseSettings):
     # ── Generative AI & Explanation (Module 10 & Phase 3.2) ─────────────────
     GOOGLE_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-3-flash-preview"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
     AGENT_LLM_PROVIDER: str = "google"
 
     @property

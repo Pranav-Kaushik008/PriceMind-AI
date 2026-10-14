@@ -90,11 +90,12 @@ async def analyze_image_endpoint(
     elif sample_id:
         filename = f"sample_{sample_id}.jpg"
         from PIL import Image, ImageDraw
+        import io
         img = Image.new("RGB", (1280, 720), color=(15, 23, 42))
         draw = ImageDraw.Draw(img)
         draw.rectangle([80, 80, 560, 620], outline=(99, 102, 241), width=4)
         draw.rectangle([680, 80, 1180, 620], outline=(16, 185, 129), width=4)
-        buf = io_import()
+        buf = io.BytesIO()
         img.save(buf, format="JPEG")
         image_bytes = buf.getvalue()
 

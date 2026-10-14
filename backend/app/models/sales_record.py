@@ -7,11 +7,28 @@ These are the daily observations from the project dataset:
   sku_id, date, price, units_sold, revenue, is_promotion, inventory_level, competitor_price
 """
 
+from __future__ import annotations
+
 from datetime import date
-from sqlalchemy import String, Float, Integer, Boolean, Date, ForeignKey, UniqueConstraint, Index
+from typing import TYPE_CHECKING
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
 
 
 class SalesRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -37,7 +54,7 @@ class SalesRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     competitor_price: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Relationship
-    product: Mapped["Product"] = relationship("Product", back_populates="sales_records")
+    product: Mapped[Product] = relationship("Product", back_populates="sales_records")
 
     def __repr__(self) -> str:
         return f"<SalesRecord product={self.product_id} date={self.record_date}>"

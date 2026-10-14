@@ -4,11 +4,19 @@ backend/app/models/forecast.py
 Demand forecast results from Module 5 (time-series forecasting).
 """
 
+from __future__ import annotations
+
 from datetime import date
-from sqlalchemy import String, Float, ForeignKey, Index, UniqueConstraint, Date
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, Float, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
 
 
 class Forecast(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -32,7 +40,7 @@ class Forecast(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     model_version: Mapped[str] = mapped_column(String(100), nullable=False, default="v1")
 
     # Relationship
-    product: Mapped["Product"] = relationship("Product", back_populates="forecasts")
+    product: Mapped[Product] = relationship("Product", back_populates="forecasts")
 
     def __repr__(self) -> str:
         return f"<Forecast product={self.product_id} date={self.forecast_date} pred={self.predicted_demand}>"

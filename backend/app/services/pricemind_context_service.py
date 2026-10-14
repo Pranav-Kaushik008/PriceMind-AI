@@ -13,6 +13,7 @@ Does not fabricate unavailable data or generate pricing recommendations yet.
 
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
+import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc
 

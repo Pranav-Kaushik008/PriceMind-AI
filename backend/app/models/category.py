@@ -4,10 +4,11 @@ backend/app/models/category.py
 Product category model.
 """
 
-from sqlalchemy import String, DateTime
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class Category(UUIDPrimaryKeyMixin, TimestampMixin, Base):

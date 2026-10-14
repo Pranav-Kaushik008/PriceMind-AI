@@ -12,11 +12,19 @@ feature_contributions stored as JSONB (PostgreSQL) / JSON (SQLite):
 }
 """
 
-from sqlalchemy import String, Float, ForeignKey, Index, Text
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import JSON, Float, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import JSON
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.prediction import DemandPrediction
+    from app.models.product import Product
 
 
 class SHAPExplanation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -47,8 +55,8 @@ class SHAPExplanation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     explanation_type: Mapped[str] = mapped_column(String(50), nullable=False, default="local")
 
     # Relationships
-    product: Mapped["Product"] = relationship("Product", back_populates="explanations")
-    prediction: Mapped["DemandPrediction | None"] = relationship(
+    product: Mapped[Product] = relationship("Product", back_populates="explanations")
+    prediction: Mapped[DemandPrediction | None] = relationship(
         "DemandPrediction", back_populates="explanations"
     )
 

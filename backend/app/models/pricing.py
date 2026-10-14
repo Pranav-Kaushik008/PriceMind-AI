@@ -8,11 +8,19 @@ The old SKU, PriceRecommendation, PriceAdjustmentLog, User models are superseded
 by product.py, user.py, organization.py, and this file.
 """
 
-from datetime import datetime, timezone
-from sqlalchemy import String, Float, Boolean, Integer, ForeignKey, Index, Text, DateTime, JSON
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.session import Base
-from app.models.base_mixin import UUIDPrimaryKeyMixin, TimestampMixin
+from app.models.base_mixin import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
 
 
 class PricingRecommendation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -57,7 +65,7 @@ class PricingRecommendation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     applied_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationships
-    product: Mapped["Product"] = relationship("Product", back_populates="pricing_recommendations")
+    product: Mapped[Product] = relationship("Product", back_populates="pricing_recommendations")
 
     def __repr__(self) -> str:
         return f"<PricingRecommendation product={self.product_id} rec={self.recommended_price}>"
@@ -92,7 +100,7 @@ class PricingSimulation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     constraints_satisfied: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationship
-    product: Mapped["Product"] = relationship("Product", back_populates="pricing_simulations")
+    product: Mapped[Product] = relationship("Product", back_populates="pricing_simulations")
 
     def __repr__(self) -> str:
         return f"<PricingSimulation product={self.product_id} price={self.candidate_price}>"
@@ -118,6 +126,6 @@ class PriceAdjustmentLog(UUIDPrimaryKeyMixin, Base):
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )

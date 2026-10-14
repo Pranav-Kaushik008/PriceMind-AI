@@ -135,62 +135,98 @@ def analyze_with_gemini_multimodal_vision(
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=key.strip(), http_options={'client_args': {'verify': False}})
-        model_name = settings.GEMINI_MODEL or "gemini-3-flash-preview"
-
-        prompt = """You are PriceMind AI Enterprise Computer Vision and Retail Pricing Engine.
-Carefully examine this image.
-1. Identify all distinct objects, retail products, diagram components, or items actually visible in this image.
-2. For each detected object, estimate its 2D bounding box normalized percentages: x_percent (0-100), y_percent (0-100), width_percent (0-100), height_percent (0-100).
-3. Read all visible text, headers, and any price tags present in the image.
-4. If real prices are detected in the image, use them; if it is a general product/diagram without explicit price tags, provide realistic retail baseline pricing for that category.
-5. Provide grounded price elasticity and recommended pricing rationale.
-
-Return valid JSON strictly matching this schema:
-{
-  "objects": [
-    {
-      "id": "obj_1",
-      "label": "Accurate item or product name",
-      "catalog_name": "Full item catalog name",
-      "sku": "SKU-PROD-001",
-      "confidence": 0.95,
-      "box": {
-        "x_percent": 10.0,
-        "y_percent": 15.0,
-        "width_percent": 40.0,
-        "height_percent": 35.0
-      },
-      "detected_price": 49.99,
-      "your_price": 54.99,
-      "recommended_price": 48.99,
-      "price_change_pct": -10.9,
-      "elasticity": -0.45,
-      "lift_units": "+180 units",
-      "revenue_delta": "+$18.5K",
-      "profit_delta": "+$7.2K",
-      "availability": "In Stock",
-      "explanation": "Clear business rationale explaining the recommendation based on market positioning and elasticity."
-    }
-  ],
-  "text_labels": [
-    {
-      "text": "Text or price label visible in image",
-      "is_price": false,
-      "extracted_price": null,
-      "confidence": 0.95
-    }
-  ]
-}
-"""
-
-        res = client.models.generate_content(
-            model=model_name,
-            contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        client = genai.Client(
+            api_key=key.strip(),
+            http_options={'client_args': {'verify': False}, 'timeout': 12000}
         )
-        if res and res.text:
-            return json.loads(res.text)
+
+        # Detect correct mime type from image header bytes
+        if image_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+            mime_type = "image/png"
+        elif image_bytes[:4] == b'RIFF' and image_bytes[8:12] == b'WEBP':
+            mime_type = "image/webp"
+        else:
+            mime_type = "image/jpeg"
+
+        prompt = """You are PriceMind AI — an expert retail computer vision and pricing intelligence engine with deep product recognition capabilities.
+
+Your task: Carefully analyze the uploaded image and return ONLY a single valid JSON object. No explanation. No markdown. No code fences. Just raw JSON.
+
+CRITICAL PRODUCT IDENTIFICATION RULES (follow strictly):
+1. NEVER use generic category names like "Cell Phone", "Smartphone", "Laptop", "Bottle", "Shoe", "Watch". These are FORBIDDEN as labels.
+2. ALWAYS identify the SPECIFIC brand and model by:
+   - Reading logos, text, brand marks physically printed/displayed ON the product
+   - Reading any price tags, shelf labels, packaging text visible in the image
+   - Using visual recognition of camera layout, shape, design language, color variants to identify exact model
+3. Label format: "[Brand] [Full Model Name] [Variant/Color if visible]"
+   GOOD: "Samsung Galaxy M42 5G Prism Dot Black", "Apple iPhone 15 Pro Max Titanium", "Sony WH-1000XM5 Wireless Headphones"
+   BAD (FORBIDDEN): "Cell Phone", "Smartphone", "Headphones", "Shoe"
+4. If exact model is uncertain, make your BEST visual inference: "Samsung Galaxy A-series Green" is far better than "Cell Phone"
+5. catalog_name = full official product name as in retail catalogs
+6. sku = brand-based like "SKU-SAMSUNG-GALAXY-M42-5G"
+
+PRICING INSTRUCTIONS:
+- detected_price: read from any visible price tag/sticker; if none, estimate realistic current US market retail price for that specific model
+- recommended_price = 2-8% below detected_price to be competitive
+- your_price = detected_price * 1.05 (your catalog baseline)
+- price_change_pct = ((recommended_price - your_price) / your_price) * 100, rounded 1 decimal
+- All prices in USD ($)
+
+Return exactly this JSON structure (no extra text outside the braces):
+{"objects":[{"id":"obj_1","label":"Samsung Galaxy M42 5G Prism Dot Black","catalog_name":"Samsung Galaxy M42 5G 6GB/128GB Prism Dot Black","sku":"SKU-SAMSUNG-GALAXY-M42-5G","confidence":0.95,"box":{"x_percent":5.0,"y_percent":8.0,"width_percent":45.0,"height_percent":80.0},"detected_price":299.99,"your_price":314.99,"recommended_price":289.99,"price_change_pct":-7.9,"elasticity":-0.52,"lift_units":"+185 units","revenue_delta":"+$18.2K","profit_delta":"+$7.1K","availability":"In Stock","explanation":"Samsung Galaxy M42 5G detected at $299.99. Recommended $289.99 captures additional units."}],"text_labels":[{"text":"Samsung","is_price":false,"extracted_price":null,"confidence":0.98},{"text":"$49.99","is_price":true,"extracted_price":49.99,"confidence":0.96}]}"""
+
+        candidate_models = []
+        for m in ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash", settings.GEMINI_MODEL]:
+            if m and m not in candidate_models:
+                candidate_models.append(m)
+
+        for model_name in candidate_models:
+            try:
+                res = client.models.generate_content(
+                    model=model_name,
+                    contents=[types.Part.from_bytes(data=image_bytes, mime_type=mime_type), prompt],
+                    config=types.GenerateContentConfig(response_mime_type="application/json"),
+                )
+                if res and res.text:
+                    raw = res.text.strip()
+                    if raw.startswith("```"):
+                        raw = re.sub(r'^```[a-z]*\n?', '', raw)
+                        raw = re.sub(r'\n?```$', '', raw.strip()).strip()
+
+                    # 1. Try direct JSON parse
+                    try:
+                        parsed = json.loads(raw)
+                        print(f"[Gemini Vision] Successfully used model: {model_name}")
+                        return parsed
+                    except json.JSONDecodeError:
+                        pass
+
+                    # 2. Try extracting first JSON block (object or array)
+                    depth = 0
+                    start_idx = None
+                    opener = '{'
+                    closer = '}'
+                    for i, ch in enumerate(raw):
+                        if ch in ('{', '['):
+                            if depth == 0:
+                                start_idx = i
+                                opener = ch
+                                closer = '}' if ch == '{' else ']'
+                            if ch == opener:
+                                depth += 1
+                        elif ch == closer:
+                            depth -= 1
+                            if depth == 0 and start_idx is not None:
+                                try:
+                                    parsed = json.loads(raw[start_idx:i+1])
+                                    print(f"[Gemini Vision] Successfully used model: {model_name}")
+                                    return parsed
+                                except json.JSONDecodeError:
+                                    break
+            except Exception as model_err:
+                print(f"[Gemini Vision] Model {model_name} failed: {model_err}. Trying next candidate...")
+                continue
+
     except Exception as e:
         print(f"Gemini Multimodal Vision execution note (falling back to YOLO/EasyOCR): {e}")
 
@@ -231,8 +267,8 @@ def analyze_image_bytes(
 
     detected_objects: List[DetectedObject] = []
     detected_texts: List[DetectedTextLabel] = []
-    matched_products: List[MatchedCatalogProduct] = []
-    competitor_insights: List[CompetitorPriceInsight] = []
+    matched_products: List[ProductMatchResult] = []
+    competitor_insights: List[CompetitorComparisonResult] = []
     pricemind_contexts: List[UnifiedPriceMindContext] = []
     pricing_recommendations: List[VisionPricingRecommendation] = []
 
@@ -246,36 +282,72 @@ def analyze_image_bytes(
     # Step 3: Try Google Gemini Multimodal Vision first for real, dynamic scene analysis
     gemini_data = analyze_with_gemini_multimodal_vision(image_bytes, orig_width, orig_height)
 
-    if gemini_data and gemini_data.get("objects"):
-        start_det = time.perf_counter()
-        raw_objects = gemini_data.get("objects", [])
-        raw_texts = gemini_data.get("text_labels", [])
+    # DEBUG: log what Gemini returned so we can verify field mapping
+    import json as _json
+    print(f"[DEBUG] Gemini raw response: {_json.dumps(gemini_data, indent=2)[:1500] if gemini_data else 'None (falling back to YOLO)'}")
 
-        colors = ["#22c55e", "#3b82f6", "#ef4444", "#a855f7", "#f97316", "#06b6d4"]
+    raw_objects = []
+    raw_texts = []
+    if isinstance(gemini_data, dict):
+        raw_objects = gemini_data.get("objects") or gemini_data.get("products") or gemini_data.get("items") or []
+        raw_texts = gemini_data.get("text_labels") or gemini_data.get("texts") or gemini_data.get("ocr") or []
+    elif isinstance(gemini_data, list):
+        raw_objects = gemini_data
+
+
+    if raw_objects:
+        start_det = time.perf_counter()
+        colors = ["#22c55e", "#3b82f6", "#ef4444", "#a855f7", "#f97316", "#06b6d4", "#ec4899", "#14b8a6"]
 
         for idx, obj in enumerate(raw_objects):
-            b = obj.get("box", {})
-            x_pct = float(b.get("x_percent", 5.0 + idx * 20.0))
-            y_pct = float(b.get("y_percent", 10.0))
-            w_pct = float(b.get("width_percent", 35.0))
-            h_pct = float(b.get("height_percent", 40.0))
+            if not isinstance(obj, dict):
+                continue
+            if "box_2d" in obj and isinstance(obj["box_2d"], (list, tuple)) and len(obj["box_2d"]) >= 4:
+                ymin, xmin, ymax, xmax = [float(v) for v in obj["box_2d"][:4]]
+                x_pct = xmin / 10.0 if xmin > 100.0 else xmin
+                y_pct = ymin / 10.0 if ymin > 100.0 else ymin
+                w_pct = (xmax - xmin) / 10.0 if (xmax - xmin) > 100.0 else (xmax - xmin)
+                h_pct = (ymax - ymin) / 10.0 if (ymax - ymin) > 100.0 else (ymax - ymin)
+            elif isinstance(obj.get("box"), dict):
+                b = obj["box"]
+                x_pct = float(b.get("x_percent", 5.0 + idx * 15.0))
+                y_pct = float(b.get("y_percent", 10.0))
+                w_pct = float(b.get("width_percent", 35.0))
+                h_pct = float(b.get("height_percent", 40.0))
+            else:
+                x_pct = 5.0 + idx * 15.0
+                y_pct = 10.0
+                w_pct = 35.0
+                h_pct = 40.0
+
+            # Normalize if model returned 0-1000 scale instead of 0-100
+            if x_pct > 100.0 or y_pct > 100.0 or w_pct > 100.0 or h_pct > 100.0:
+                x_pct = x_pct / 10.0
+                y_pct = y_pct / 10.0
+                w_pct = w_pct / 10.0
+                h_pct = h_pct / 10.0
+
+            x_pct = max(0.0, min(95.0, x_pct))
+            y_pct = max(0.0, min(95.0, y_pct))
+            w_pct = max(2.0, min(100.0 - x_pct, w_pct))
+            h_pct = max(2.0, min(100.0 - y_pct, h_pct))
 
             x_px = int((x_pct / 100.0) * orig_width)
             y_px = int((y_pct / 100.0) * orig_height)
             w_px = int((w_pct / 100.0) * orig_width)
             h_px = int((h_pct / 100.0) * orig_height)
 
-            label = obj.get("label", f"Detected Item {idx+1}")
+            label = str(obj.get("label") or f"Detected Item {idx+1}")
             conf = float(obj.get("confidence", 0.94))
-            sku = obj.get("sku", f"SKU-{label[:3].upper()}-{100+idx}")
-            catalog_name = obj.get("catalog_name", label)
+            sku = str(obj.get("sku") or f"SKU-{label[:3].upper()}-{100+idx}")
+            catalog_name = str(obj.get("catalog_name") or label)
 
             det_price = float(obj.get("detected_price", 49.99))
-            your_price = float(obj.get("your_price", det_price * 1.05))
-            rec_price = float(obj.get("recommended_price", det_price * 0.98))
+            your_price = float(obj.get("your_price", round(det_price * 1.05, 2)))
+            rec_price = float(obj.get("recommended_price", round(det_price * 0.98, 2)))
             diff_pct = float(obj.get("price_change_pct", -5.0))
             elasticity = float(obj.get("elasticity", -0.45))
-            explanation = obj.get("explanation", "Optimized based on detected item market signals.")
+            explanation = str(obj.get("explanation") or "Optimized based on detected item market signals.")
 
             det_obj = DetectedObject(
                 id=f"gemini_{idx+1:02d}",
@@ -346,7 +418,7 @@ def analyze_image_bytes(
                         is_identified=True,
                         detected_price=det_price,
                         currency_symbol="$",
-                        availability=obj.get("availability", "In Stock"),
+                        availability=str(obj.get("availability", "In Stock")),
                         detection_confidence=conf,
                     ),
                 )
@@ -396,10 +468,20 @@ def analyze_image_bytes(
             )
 
         for i, t in enumerate(raw_texts):
-            raw_text = t.get("text", "")
-            is_price = bool(t.get("is_price", False))
-            price_val = t.get("extracted_price")
-            conf = float(t.get("confidence", 0.95))
+            if isinstance(t, str):
+                raw_text = t
+                is_price, price_val, curr_sym = parse_price_candidate(raw_text)
+                conf = 0.95
+            elif isinstance(t, dict):
+                raw_text = str(t.get("text", ""))
+                is_price = bool(t.get("is_price", False))
+                price_val = t.get("extracted_price")
+                conf = float(t.get("confidence", 0.95))
+            else:
+                continue
+
+            if not raw_text.strip():
+                continue
 
             detected_texts.append(
                 DetectedTextLabel(
