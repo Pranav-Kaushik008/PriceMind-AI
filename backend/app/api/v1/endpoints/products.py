@@ -282,17 +282,32 @@ def bulk_import_products(
         first_org = db.scalar(select(Organization))
         org_id = first_org.id if first_org else None
 
-    # Pre-fetch existing categories and products in tenant to make bulk insert blazing fast (<30ms)
+    # Pre-fetch existing categories in memory
     categories_map = {c.name.lower(): c.id for c in db.scalars(select(Category)).all()}
-    if org_id:
-        existing_products_map = {p.external_product_id: p for p in db.scalars(select(Product).where(Product.organization_id == org_id)).all()}
-    else:
-        existing_products_map = {p.external_product_id: p for p in db.scalars(select(Product)).all()}
-    
-    product_ids = [p.id for p in existing_products_map.values()]
+
+    # Extract SKUs for THIS batch only — avoids loading entire 30,000+ catalog on every chunk
+    batch_skus = []
+    for idx, row in enumerate(items):
+        if isinstance(row, dict):
+            s = get_field_ci(
+                row,
+                "skuCode", "sku", "external_product_id", "id", "product_id", "productid", "item_id", "itemid", "item", "stockcode",
+                default=f"SKU-{idx+1:04d}",
+            )
+            batch_skus.append(s)
+
+    existing_products_map = {}
+    if batch_skus:
+        sku_query = select(Product).where(Product.external_product_id.in_(batch_skus))
+        if org_id:
+            sku_query = sku_query.where(Product.organization_id == org_id)
+        for p in db.scalars(sku_query).all():
+            existing_products_map[p.external_product_id] = p
+
+    batch_product_ids = [p.id for p in existing_products_map.values()]
     existing_recs_map = {}
-    if product_ids:
-        for rec in db.scalars(select(PricingRecommendation).where(PricingRecommendation.product_id.in_(product_ids))).all():
+    if batch_product_ids:
+        for rec in db.scalars(select(PricingRecommendation).where(PricingRecommendation.product_id.in_(batch_product_ids))).all():
             existing_recs_map[rec.product_id] = rec
 
     inserted = 0
