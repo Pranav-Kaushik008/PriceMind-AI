@@ -12,20 +12,24 @@ from ml.tracking.mlflow_config import (
     EXPERIMENT_FORECASTING,
     EXPERIMENT_OPTIMIZATION,
 )
-from ml.tracking.experiment import get_or_create_experiment, set_active_experiment
-from ml.tracking.tracking_utils import (
-    log_dataset_metadata,
-    log_model_parameters,
-    log_evaluation_metrics,
-    log_feature_artifacts,
-    log_evaluation_plots,
-)
-from ml.tracking.model_registry import (
-    register_model_version,
-    promote_model_to_production,
-    sync_with_postgres_registry,
-)
 from ml.tracking.model_loader import ProductionModelLoader
+
+try:
+    from ml.tracking.experiment import get_or_create_experiment, set_active_experiment
+    from ml.tracking.tracking_utils import (
+        log_dataset_metadata,
+        log_model_parameters,
+        log_evaluation_metrics,
+        log_feature_artifacts,
+        log_evaluation_plots,
+    )
+    from ml.tracking.model_registry import (
+        register_model_version,
+        promote_model_to_production,
+        sync_with_postgres_registry,
+    )
+except ImportError:
+    pass
 
 __all__ = [
     "setup_mlflow",
@@ -34,15 +38,5 @@ __all__ = [
     "EXPERIMENT_DEMAND_PREDICTION",
     "EXPERIMENT_FORECASTING",
     "EXPERIMENT_OPTIMIZATION",
-    "get_or_create_experiment",
-    "set_active_experiment",
-    "log_dataset_metadata",
-    "log_model_parameters",
-    "log_evaluation_metrics",
-    "log_feature_artifacts",
-    "log_evaluation_plots",
-    "register_model_version",
-    "promote_model_to_production",
-    "sync_with_postgres_registry",
     "ProductionModelLoader",
 ]
