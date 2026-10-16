@@ -15,10 +15,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ── Detect backend ─────────────────────────────────────────────────────────
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
 
-_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-_is_postgres = "postgresql" in settings.DATABASE_URL
+_is_sqlite = _db_url.startswith("sqlite")
+_is_postgres = "postgres" in _db_url
 
 # ── Engine ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +32,7 @@ if _is_sqlite:
         "connect_args": {"check_same_thread": False},
     }
 else:
-    # PostgreSQL: connection pooling
+    # PostgreSQL (Neon/Production): connection pooling and pre-ping
     _engine_kwargs = {
         "pool_size": settings.DB_POOL_SIZE,
         "max_overflow": settings.DB_MAX_OVERFLOW,
@@ -38,7 +40,7 @@ else:
         "pool_pre_ping": True,      # detect stale connections
     }
 
-engine = create_engine(settings.DATABASE_URL, **_engine_kwargs)
+engine = create_engine(_db_url, **_engine_kwargs)
 
 # ── Session factory ────────────────────────────────────────────────────────
 
