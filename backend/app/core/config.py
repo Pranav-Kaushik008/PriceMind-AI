@@ -6,7 +6,8 @@ Never hardcode secrets, passwords, or connection strings here.
 """
 
 import os
-from typing import List, Optional
+from typing import List, Optional, Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -65,8 +66,56 @@ class Settings(BaseSettings):
     def active_gemini_key(self) -> Optional[str]:
         return self.GOOGLE_API_KEY or self.GEMINI_API_KEY or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
+    # ── Robust Field Validators (Strips stray quotes from environment variables) ──
+    @field_validator(
+        "ACCESS_TOKEN_EXPIRE_MINUTES",
+        "DB_POOL_SIZE",
+        "DB_MAX_OVERFLOW",
+        "DB_POOL_TIMEOUT",
+        mode="before",
+    )
+    @classmethod
+    def parse_int_safe(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            clean = v.strip().strip('"').strip("'")
+            if clean == "":
+                return 0
+            return int(clean)
+        return v
+
+    @field_validator(
+        "DATABASE_URL",
+        "SECRET_KEY",
+        "JWT_SECRET_KEY",
+        "JWT_ALGORITHM",
+        "ENVIRONMENT",
+        "LOG_LEVEL",
+        "PROJECT_NAME",
+        "VERSION",
+        "API_V1_STR",
+        mode="before",
+    )
+    @classmethod
+    def parse_str_safe(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().strip('"').strip("'")
+        return v
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins_safe(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            clean = v.strip().strip('"').strip("'")
+            if clean.startswith("[") and clean.endswith("]"):
+                import json
+                try:
+                    return json.loads(clean)
+                except Exception:
+                    pass
+            return [origin.strip().strip('"').strip("'") for origin in clean.split(",") if origin.strip()]
+        return v
+
     model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 
 settings = Settings()
-
