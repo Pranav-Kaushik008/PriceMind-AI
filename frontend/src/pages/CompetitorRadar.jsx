@@ -20,7 +20,7 @@ import { mockCompetitorTelemetry, mockSKUs } from '../mock/mockData';
 
 // --- Extended Competitor Feeds ------------------------------------------------
 
-const competitorFeeds = [
+const defaultCompetitorFeeds = [
   {
     id: 'cf-1',
     skuCode: 'SKU-8921-PRO',
@@ -119,6 +119,35 @@ const competitorFeeds = [
   },
 ];
 
+function normalizeFeed(feed, skuMap = {}) {
+  const sku = skuMap[feed.skuCode];
+  const ourPrice = Number(feed.ourPrice ?? sku?.currentPrice ?? 389.00);
+  const marketPrice = Number(feed.marketPrice ?? feed.price ?? 400.00);
+  const competitor = feed.competitor || feed.competitorName || 'Market Competitor';
+  const priceDiffPct = feed.priceDiffPct !== undefined
+    ? Number(feed.priceDiffPct)
+    : (ourPrice > 0 ? Number((((marketPrice - ourPrice) / ourPrice) * 100).toFixed(1)) : 0);
+  const stockStatus = feed.stockStatus || (feed.inStock === false ? 'Out of Stock' : 'In Stock');
+  const threatLevel = feed.threatLevel || (priceDiffPct < -5 ? 'Critical' : priceDiffPct < 0 ? 'High' : priceDiffPct < 5 ? 'Medium' : 'Low');
+
+  return {
+    id: feed.id || feed.competitorId || `cf-${Math.random().toString(36).substr(2, 6)}`,
+    skuCode: feed.skuCode || 'SKU-8921-PRO',
+    skuName: feed.skuName || sku?.name || feed.skuCode || 'Industrial Calibrator X1',
+    competitor,
+    marketPrice: isNaN(marketPrice) ? 0 : marketPrice,
+    ourPrice: isNaN(ourPrice) ? 0 : ourPrice,
+    priceDiffPct: isNaN(priceDiffPct) ? 0 : priceDiffPct,
+    status: feed.status || (priceDiffPct < 0 ? 'undercutting' : 'above_us'),
+    stockStatus,
+    shippingSpeed: feed.shippingSpeed || (feed.shippingCost === 0 ? 'Free Shipping' : 'Standard Delivery'),
+    lastScraped: feed.lastScraped || feed.lastUpdated || '12m ago',
+    url: feed.url || 'https://apexindustrial.com',
+    history7d: Number(feed.history7d ?? feed.priceDelta7d ?? 0),
+    threatLevel,
+  };
+}
+
 const priceHistoryData = [
   { date: 'Sep 01', ourPrice: 389, apexPrice: 420, omniPrice: 415, marketAvg: 417.5 },
   { date: 'Sep 04', ourPrice: 389, apexPrice: 420, omniPrice: 415, marketAvg: 417.5 },
@@ -138,7 +167,7 @@ const priceIndexData = [
 
 export function CompetitorRadar() {
   const toast = useToast();
-  const [feeds, setFeeds] = useState(competitorFeeds);
+  const [feeds, setFeeds] = useState(() => defaultCompetitorFeeds.map(f => normalizeFeed(f)));
   const [skus, setSkus] = useState(mockSKUs);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -158,8 +187,14 @@ export function CompetitorRadar() {
           apiClient.getSKUs(),
         ]);
         if (mounted) {
-          if (Array.isArray(skuList) && skuList.length > 0) setSkus(skuList);
-          if (Array.isArray(telemetry) && telemetry.length > 0) setFeeds(telemetry);
+          const skuMap = {};
+          if (Array.isArray(skuList) && skuList.length > 0) {
+            setSkus(skuList);
+            skuList.forEach(s => { if (s.skuCode) skuMap[s.skuCode] = s; });
+          }
+          if (Array.isArray(telemetry) && telemetry.length > 0) {
+            setFeeds(telemetry.map(f => normalizeFeed(f, skuMap)));
+          }
         }
       } catch (err) {
         console.error('CompetitorRadar: error fetching telemetry', err);
@@ -175,8 +210,10 @@ export function CompetitorRadar() {
     setIsSyncing(true);
     try {
       const data = await apiClient.getCompetitorTelemetry();
+      const skuMap = {};
+      skus.forEach(s => { if (s.skuCode) skuMap[s.skuCode] = s; });
       if (data && data.length > 0) {
-        setFeeds(data);
+        setFeeds(data.map(f => normalizeFeed(f, skuMap)));
       }
       toast.success('Crawlers Synchronized', 'Updated real-time competitor price feeds across 24 monitored endpoints.');
     } catch (err) {
@@ -199,7 +236,7 @@ export function CompetitorRadar() {
       `"${(f.competitor || '').replace(/"/g, '""')}"`,
       f.marketPrice,
       f.ourPrice,
-      `${f.priceDiffPct}%`,
+      `${(f.priceDiffPct ?? 0).toFixed(1)}%`,
       f.stockStatus,
       f.threatLevel,
     ]);
@@ -213,7 +250,6 @@ export function CompetitorRadar() {
     toast.success('CSV Exported', `Exported ${filteredFeeds.length} competitor feeds to CSV.`);
   };
 
-  // Only list SKUs that have active competitor radar telemetry (clean and fast, avoiding 2,000 unmonitored raw entries)
   const monitoredSkuOptions = useMemo(() => {
     const map = new Map();
     feeds.forEach((f) => {
@@ -221,21 +257,23 @@ export function CompetitorRadar() {
         map.set(f.skuCode, f.skuName || f.skuCode);
       }
     });
-    // Add any catalog SKUs with competitor prices up to 12 top SKUs
     skus.forEach((s) => {
       if (s.competitorAvgPrice && map.size < 12 && !map.has(s.skuCode)) {
         map.set(s.skuCode, s.name || s.skuCode);
       }
     });
-    return Array.from(map.entries()).map(([code, name]) => ({
-      code,
-      label: `${code} — ${name.length > 28 ? name.slice(0, 28) + '…' : name}`,
-    }));
+    return Array.from(map.entries()).map(([code, rawName]) => {
+      const name = String(rawName || code);
+      return {
+        code,
+        label: `${code} — ${name.length > 28 ? name.slice(0, 28) + '…' : name}`,
+      };
+    });
   }, [feeds, skus]);
 
   const filteredFeeds = useMemo(() => {
     return feeds.filter(f => {
-      if (filterThreat !== 'all' && f.threatLevel?.toLowerCase() !== filterThreat.toLowerCase()) return false;
+      if (filterThreat !== 'all' && (f.threatLevel || '').toLowerCase() !== filterThreat.toLowerCase()) return false;
       if (selectedSku !== 'all' && f.skuCode !== selectedSku) return false;
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
@@ -245,7 +283,7 @@ export function CompetitorRadar() {
     });
   }, [feeds, filterThreat, selectedSku, searchTerm]);
 
-  const undercuttingCount = feeds.filter(f => f.priceDiffPct < 0).length;
+  const undercuttingCount = feeds.filter(f => (f.priceDiffPct ?? 0) < 0).length;
   const criticalThreatCount = feeds.filter(f => f.threatLevel === 'Critical' || f.threatLevel === 'High').length;
 
   const controls = (
@@ -443,7 +481,11 @@ export function CompetitorRadar() {
               </thead>
               <tbody>
                 {filteredFeeds.map((feed) => {
-                  const isUndercut = feed.priceDiffPct < 0;
+                  const priceDiff = typeof feed.priceDiffPct === 'number' && !isNaN(feed.priceDiffPct) ? feed.priceDiffPct : 0;
+                  const isUndercut = priceDiff < 0;
+                  const stockStr = feed.stockStatus || 'In Stock';
+                  const threat = feed.threatLevel || 'Low';
+
                   return (
                     <tr key={feed.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
                       <td className="py-3 px-4">
@@ -462,22 +504,22 @@ export function CompetitorRadar() {
                       </td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums text-xs">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${isUndercut ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'}`}>
-                          {isUndercut ? '' : '+'}{feed.priceDiffPct.toFixed(1)}%
+                          {isUndercut ? '' : '+'}{priceDiff.toFixed(1)}%
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${feed.stockStatus.includes('In Stock') ? 'border-white/[0.10] text-slate-300 bg-white/[0.04]' : 'border-amber-500/30 text-amber-400 bg-amber-500/15'}`}>
-                          {feed.stockStatus}
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${stockStr.includes('In Stock') ? 'border-white/[0.10] text-slate-300 bg-white/[0.04]' : 'border-amber-500/30 text-amber-400 bg-amber-500/15'}`}>
+                          {stockStr}
                         </span>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold ${
-                          feed.threatLevel === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
-                          feed.threatLevel === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
-                          feed.threatLevel === 'Medium' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' :
+                          threat === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
+                          threat === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                          threat === 'Medium' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' :
                           'bg-slate-500/20 text-slate-300 border border-slate-500/40'
                         }`}>
-                          {feed.threatLevel}
+                          {threat}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-[10px] font-mono text-slate-400">
@@ -504,3 +546,5 @@ export function CompetitorRadar() {
     </ModuleShell>
   );
 }
+
+export default CompetitorRadar;

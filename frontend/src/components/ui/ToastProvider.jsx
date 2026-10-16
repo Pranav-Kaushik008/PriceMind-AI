@@ -26,6 +26,7 @@ export function ToastProvider({ children }) {
 
   const toast = {
     show: (opts) => addToast(opts),
+    addToast: (opts) => addToast(opts),
     success: (title, message, opts) => addToast({ type: 'success', title, message, ...opts }),
     error: (title, message, opts) => addToast({ type: 'error', title, message, ...opts }),
     warning: (title, message, opts) => addToast({ type: 'warning', title, message, ...opts }),
@@ -60,6 +61,7 @@ export function useToast() {
     // Fallback if rendered outside provider
     return {
       show: () => {},
+      addToast: () => {},
       success: () => {},
       error: () => {},
       warning: () => {},
