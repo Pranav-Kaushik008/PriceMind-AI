@@ -97,3 +97,13 @@ def root():
         "docs": f"{settings.API_V1_STR}/docs",
         "health": f"{settings.API_V1_STR}/health",
     }
+
+
+@app.get("/health", tags=["System"])
+def health():
+    return {
+        "status": "healthy",
+        "platform": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+    }
+
