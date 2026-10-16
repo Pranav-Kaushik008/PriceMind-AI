@@ -40,7 +40,22 @@ else:
         "pool_pre_ping": True,      # detect stale connections
     }
 
-engine = create_engine(_db_url, **_engine_kwargs)
+try:
+    engine = create_engine(_db_url, **_engine_kwargs)
+except Exception as err:
+    err_str = str(err)
+    if "No module named 'psycopg'" in err_str and _is_postgres:
+        # Fallback to psycopg2 driver
+        alt_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1).replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
+        logger.info(f"[DB] Switching from psycopg to psycopg2 driver: {alt_url}")
+        engine = create_engine(alt_url, **_engine_kwargs)
+    elif "No module named 'psycopg2'" in err_str and _is_postgres:
+        # Fallback to psycopg (v3) driver
+        alt_url = _db_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+        logger.info(f"[DB] Switching from psycopg2 to psycopg driver: {alt_url}")
+        engine = create_engine(alt_url, **_engine_kwargs)
+    else:
+        raise err
 
 # ── Session factory ────────────────────────────────────────────────────────
 
