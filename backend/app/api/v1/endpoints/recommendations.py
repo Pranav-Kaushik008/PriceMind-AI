@@ -108,8 +108,11 @@ def update_recommendation_status(
         raise HTTPException(status_code=404, detail=f"Recommendation {rec_id} not found")
 
     r.status = new_status
-    if new_status == "applied":
-        r.applied_at = datetime.now(UTC).isoformat()
+    if new_status in ("applied", "approved"):
+        if new_status == "applied":
+            r.applied_at = datetime.now(UTC).isoformat()
+        if r.product and r.recommended_price:
+            r.product.current_price = r.recommended_price
     db.commit()
     db.refresh(r)
 
@@ -147,3 +150,41 @@ def update_recommendation_status(
         shapAttribution=[],
         appliedAt=r.applied_at,
     )
+
+
+@router.post("/batch-apply")
+def batch_apply_recommendations(
+    rec_ids: list[str] = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
+    """
+    Batch apply pricing recommendations and update product selling prices in database.
+    Accepts recommendation IDs or product IDs.
+    """
+    if not rec_ids:
+        return {"status": "success", "applied_count": 0, "message": "No recommendations provided"}
+
+    recs = db.scalars(
+        select(PricingRecommendation).where(
+            (PricingRecommendation.id.in_(rec_ids)) | (PricingRecommendation.product_id.in_(rec_ids))
+        )
+    ).all()
+
+    now_iso = datetime.now(UTC).isoformat()
+    applied_count = 0
+    for r in recs:
+        r.status = "applied"
+        r.applied_at = now_iso
+        if r.product and r.recommended_price:
+            r.product.current_price = r.recommended_price
+        applied_count += 1
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "applied_count": applied_count,
+        "message": f"Successfully applied {applied_count} price updates to database and synchronized ERP.",
+    }
+

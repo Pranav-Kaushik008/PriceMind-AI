@@ -127,10 +127,11 @@ export const SearchInput = forwardRef(function SearchInput(
     value,
     onChange,
     onClear,
-    placeholder = 'Search SKUs, categories, or metrics...',
-    shortcut = '⌘K',
-    size = 'md',
+    placeholder = 'Search...',
+    shortcut = null,
+    size = 'sm',
     className = '',
+    inputClassName = '',
     ...props
   },
   ref
@@ -138,8 +139,8 @@ export const SearchInput = forwardRef(function SearchInput(
   const hasValue = Boolean(value && String(value).length > 0);
 
   return (
-    <div className={cn('relative flex items-center w-full', className)}>
-      <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+    <div className={cn('relative flex items-center', className)}>
+      <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
       <input
         ref={ref}
         type="text"
@@ -147,24 +148,27 @@ export const SearchInput = forwardRef(function SearchInput(
         onChange={onChange}
         placeholder={placeholder}
         className={cn(
-          'w-full bg-[#131D31]/90 border border-white/[0.08] hover:border-white/[0.16] focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 rounded-xl text-xs text-white placeholder:text-slate-500 pl-8.5 pr-14 focus:outline-none transition-all duration-200 font-sans shadow-inner',
-          size === 'sm' ? 'h-8' : size === 'lg' ? 'h-10 text-sm' : 'h-9'
+          'w-full bg-[#131D31]/90 hover:bg-[#18233C] border border-white/[0.10] hover:border-white/[0.18] focus:border-indigo-500/70 focus:bg-[#152037] focus:ring-1 focus:ring-indigo-500/40 rounded-lg text-xs text-white placeholder:text-slate-400 pr-8 focus:outline-none transition-all duration-200 font-sans shadow-sm',
+          size === 'sm' ? 'h-8 text-xs' : size === 'lg' ? 'h-10 text-sm' : 'h-9 text-xs',
+          shortcut && !hasValue ? 'pr-14' : 'pr-8',
+          inputClassName
         )}
+        style={{ paddingLeft: '32px' }}
         {...props}
       />
-      <div className="absolute right-2.5 flex items-center gap-1">
+      <div className="absolute right-2 flex items-center gap-1">
         {hasValue && onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none cursor-pointer hover:bg-white/[0.05]"
+            className="text-slate-400 hover:text-white p-0.5 rounded-md focus:outline-none cursor-pointer hover:bg-white/[0.08] transition-colors"
             title="Clear search"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
         {shortcut && !hasValue && (
-          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-white/[0.04] border border-white/[0.08] rounded-md">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white/[0.04] border border-white/[0.08] rounded">
             {shortcut}
           </kbd>
         )}

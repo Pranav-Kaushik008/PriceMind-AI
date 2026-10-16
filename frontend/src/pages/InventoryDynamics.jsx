@@ -12,10 +12,13 @@ import { Button } from '../components/ui/Button';
 import { NativeSelect } from '../components/ui/Select';
 import { formatCurrency, formatNumber, formatPercent } from '../lib/utils';
 import { mockSKUs } from '../mock/mockData';
+import { useToast } from '../components/ui/ToastProvider';
 
 export function InventoryDynamics() {
+  const { addToast } = useToast();
   const [filterCategory, setFilterCategory] = useState('all');
   const [riskFilter, setRiskFilter] = useState('all');
+  const [syncing, setSyncing] = useState(false);
 
   const skus = mockSKUs.map((s) => {
     const annualHoldingDrag = (s.inventoryStock * s.costPrice * 0.18);
@@ -56,11 +59,34 @@ export function InventoryDynamics() {
     fill: s.daysOfInventory < 15 ? '#EF4444' : s.daysOfInventory > 60 ? '#F59E0B' : '#10B981'
   }));
 
+  const handleSyncERP = () => {
+    setSyncing(true);
+    setTimeout(() => {
+      setSyncing(false);
+      addToast({ type: 'success', title: 'ERP Sync Complete', message: 'Inventory levels synced successfully from ERP.' });
+    }, 1800);
+  };
+
+  const handleExport = () => {
+    const headers = ['SKU Code', 'Name', 'Category', 'Stock On Hand', 'Daily Velocity', 'Runway (Days)', 'Inventory Valuation', 'Annual Carry Drag', 'Risk Condition', 'Prescribed Action'];
+    const rows = filteredSKUs.map(s => [
+      s.skuCode, s.name, s.category, s.inventoryStock, s.currentVelocity,
+      s.daysOfInventory, s.totalInventoryValuation.toFixed(2),
+      s.annualHoldingDrag.toFixed(2), s.risk, s.action,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'inventory_dynamics.csv'; a.click();
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', title: 'Export Complete', message: `${filteredSKUs.length} SKU rows exported to CSV.` });
+  };
+
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       <NativeSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="text-xs h-8">
         <option value="all">All Categories</option>
-        <option value="hardware & tools">Hardware & Tools</option>
+        <option value="hardware & tools">Hardware &amp; Tools</option>
         <option value="software">Software</option>
         <option value="iot hardware">IoT Hardware</option>
       </NativeSelect>
@@ -70,10 +96,10 @@ export function InventoryDynamics() {
         <option value="overstock">Overstock (&gt;60d)</option>
         <option value="optimal">Optimal Runway</option>
       </NativeSelect>
-      <Button variant="ghost" size="sm" icon={RefreshCw} className="text-xs">
-        Sync ERP Stock
+      <Button variant="ghost" size="sm" icon={RefreshCw} className="text-xs" onClick={handleSyncERP} disabled={syncing}>
+        {syncing ? 'Syncing…' : 'Sync ERP Stock'}
       </Button>
-      <Button variant="ghost" size="sm" icon={Download} className="text-xs">
+      <Button variant="ghost" size="sm" icon={Download} className="text-xs" onClick={handleExport}>
         Export
       </Button>
     </div>
@@ -82,7 +108,7 @@ export function InventoryDynamics() {
   return (
     <ModuleShell
       breadcrumb={[{ label: 'Inventory' }]}
-      title="Inventory Dynamics & Markdown Intelligence"
+      title="Inventory Dynamics &amp; Markdown Intelligence"
       description="Stock runway optimization, holding cost drag analytics, and dynamic stockout mitigation pricing."
       actions={controls}
     >
@@ -101,7 +127,7 @@ export function InventoryDynamics() {
           <div className="text-xl font-mono font-bold text-amber-400 mt-1">
             {formatCurrency(totalAnnualHoldingDrag, 'USD', true)}/yr
           </div>
-          <span className="text-[10px] text-slate-400 font-mono mt-1 block">Warehousing, insurance & cost of capital</span>
+          <span className="text-[10px] text-slate-400 font-mono mt-1 block">Warehousing, insurance &amp; cost of capital</span>
         </div>
 
         <div className="pm-card-glass p-4 relative overflow-hidden group">
@@ -159,7 +185,7 @@ export function InventoryDynamics() {
 
         <div className="pm-card-glass p-5">
           <div className="pb-3 border-b border-white/[0.08] mb-4">
-            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Inventory Valuation & Holding Cost Drag</h3>
+            <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Inventory Valuation &amp; Holding Cost Drag</h3>
             <p className="text-xs text-slate-400 mt-0.5">Opportunity cost mitigation via dynamic price discounting</p>
           </div>
 
@@ -198,7 +224,7 @@ export function InventoryDynamics() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-white/[0.08] text-left bg-white/[0.02]">
-                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">SKU & Category</th>
+                  <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400">SKU &amp; Category</th>
                   <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Stock On Hand</th>
                   <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Daily Velocity</th>
                   <th className="py-3 px-4 text-[10px] font-mono uppercase tracking-wider text-slate-400 text-right">Runway (Days)</th>

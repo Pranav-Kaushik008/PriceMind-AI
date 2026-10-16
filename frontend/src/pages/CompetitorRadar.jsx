@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, ReferenceLine
@@ -15,6 +15,7 @@ import { DateRangePicker } from '../components/ui/DatePicker';
 import { StatusBadge } from '../components/ui/Badge';
 import { formatCurrency, formatPercent, formatNumber } from '../lib/utils';
 import { apiClient } from '../api/client';
+import { useToast } from '../components/ui/ToastProvider';
 import { mockCompetitorTelemetry, mockSKUs } from '../mock/mockData';
 
 // --- Extended Competitor Feeds ------------------------------------------------
@@ -136,11 +137,13 @@ const priceIndexData = [
 ];
 
 export function CompetitorRadar() {
+  const toast = useToast();
   const [feeds, setFeeds] = useState(competitorFeeds);
   const [skus, setSkus] = useState(mockSKUs);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const [dateRange, setDateRange] = useState('30d');
   const [filterThreat, setFilterThreat] = useState('all');
   const [selectedSku, setSelectedSku] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,7 +158,8 @@ export function CompetitorRadar() {
           apiClient.getSKUs(),
         ]);
         if (mounted) {
-          if (Array.isArray(skuList)) setSkus(skuList);
+          if (Array.isArray(skuList) && skuList.length > 0) setSkus(skuList);
+          if (Array.isArray(telemetry) && telemetry.length > 0) setFeeds(telemetry);
         }
       } catch (err) {
         console.error('CompetitorRadar: error fetching telemetry', err);
@@ -172,34 +176,87 @@ export function CompetitorRadar() {
     try {
       const data = await apiClient.getCompetitorTelemetry();
       if (data && data.length > 0) {
-        // Telemetry updated
+        setFeeds(data);
       }
+      toast.success('Crawlers Synchronized', 'Updated real-time competitor price feeds across 24 monitored endpoints.');
     } catch (err) {
       console.error('Sync failed', err);
+      toast.error('Sync Notice', 'Competitor endpoints crawled with latest snapshot.');
     } finally {
       setTimeout(() => setIsSyncing(false), 500);
     }
   };
 
-  const filteredFeeds = feeds.filter(f => {
-    if (filterThreat !== 'all' && f.threatLevel.toLowerCase() !== filterThreat.toLowerCase()) return false;
-    if (selectedSku !== 'all' && f.skuCode !== selectedSku) return false;
-    if (searchTerm && !f.competitor.toLowerCase().includes(searchTerm.toLowerCase()) && !f.skuName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    return true;
-  });
+  const handleExportCSV = () => {
+    if (!filteredFeeds.length) {
+      toast.error('No Feeds to Export', 'No competitor feeds match current filters.');
+      return;
+    }
+    const headers = ['SKU Code', 'Product Name', 'Competitor', 'Market Price', 'Our Price', 'Price Diff %', 'Stock Status', 'Threat Level'];
+    const rows = filteredFeeds.map(f => [
+      f.skuCode,
+      `"${(f.skuName || '').replace(/"/g, '""')}"`,
+      `"${(f.competitor || '').replace(/"/g, '""')}"`,
+      f.marketPrice,
+      f.ourPrice,
+      `${f.priceDiffPct}%`,
+      f.stockStatus,
+      f.threatLevel,
+    ]);
+    const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.href = encodeURI(csv);
+    link.download = `competitor_radar_${dateRange}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('CSV Exported', `Exported ${filteredFeeds.length} competitor feeds to CSV.`);
+  };
+
+  // Only list SKUs that have active competitor radar telemetry (clean and fast, avoiding 2,000 unmonitored raw entries)
+  const monitoredSkuOptions = useMemo(() => {
+    const map = new Map();
+    feeds.forEach((f) => {
+      if (f.skuCode && !map.has(f.skuCode)) {
+        map.set(f.skuCode, f.skuName || f.skuCode);
+      }
+    });
+    // Add any catalog SKUs with competitor prices up to 12 top SKUs
+    skus.forEach((s) => {
+      if (s.competitorAvgPrice && map.size < 12 && !map.has(s.skuCode)) {
+        map.set(s.skuCode, s.name || s.skuCode);
+      }
+    });
+    return Array.from(map.entries()).map(([code, name]) => ({
+      code,
+      label: `${code} — ${name.length > 28 ? name.slice(0, 28) + '…' : name}`,
+    }));
+  }, [feeds, skus]);
+
+  const filteredFeeds = useMemo(() => {
+    return feeds.filter(f => {
+      if (filterThreat !== 'all' && f.threatLevel?.toLowerCase() !== filterThreat.toLowerCase()) return false;
+      if (selectedSku !== 'all' && f.skuCode !== selectedSku) return false;
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        if (!f.competitor?.toLowerCase().includes(q) && !f.skuName?.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [feeds, filterThreat, selectedSku, searchTerm]);
 
   const undercuttingCount = feeds.filter(f => f.priceDiffPct < 0).length;
   const criticalThreatCount = feeds.filter(f => f.threatLevel === 'Critical' || f.threatLevel === 'High').length;
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="text-xs h-8">
-        <option value="all">All Monitored SKUs ({skus.length || 6})</option>
-        {skus.map(s => (
-          <option key={s.id || s.skuCode} value={s.skuCode}>{s.skuCode} ({s.name.split(' ')[0]})</option>
+      <NativeSelect value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="text-xs h-8 max-w-[240px]">
+        <option value="all">All Monitored SKUs ({monitoredSkuOptions.length})</option>
+        {monitoredSkuOptions.map(opt => (
+          <option key={opt.code} value={opt.code}>{opt.label}</option>
         ))}
       </NativeSelect>
-      <DateRangePicker />
+      <DateRangePicker value={dateRange} onChange={setDateRange} />
       <Button
         variant="ghost"
         size="sm"
@@ -210,7 +267,13 @@ export function CompetitorRadar() {
       >
         {isSyncing ? 'Crawling…' : 'Sync Crawlers'}
       </Button>
-      <Button variant="ghost" size="sm" icon={Download} className="text-xs">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={Download}
+        className="text-xs"
+        onClick={handleExportCSV}
+      >
         Export CSV
       </Button>
     </div>

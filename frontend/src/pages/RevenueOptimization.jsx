@@ -14,11 +14,37 @@ import { DateRangePicker } from '../components/ui/DatePicker';
 import { NativeSelect } from '../components/ui/Select';
 import { formatCurrency, formatNumber } from '../lib/utils';
 import { apiClient } from '../api/client';
+import { useToast } from '../components/ui/ToastProvider';
 
-// ─── Static chart trend data (generated from real product revenue on mount) ────
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function buildTrendData(totalRev) {
+function buildTrendData(totalRev, range = '30d') {
+  if (range === '7d' || range === '24h') {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const base = (totalRev / 52) / 7;
+    return days.map((d, i) => ({
+      month: d,
+      revenue: Math.round(base * (0.9 + i * 0.03 + Math.sin(i * 1.1) * 0.05)),
+      revenueP: Math.round(base * (0.82 + i * 0.02 + Math.sin(i * 1.1) * 0.04)),
+      profit: Math.round(base * 0.42 * (0.9 + i * 0.03 + Math.sin(i * 1.1) * 0.05)),
+      profitP: Math.round(base * 0.38 * (0.82 + i * 0.02)),
+      margin: 39.4 + i * 0.2,
+      marginP: 37.9,
+    }));
+  }
+  if (range === '90d' || range === 'qtd') {
+    const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
+    const base = (totalRev / 4) / 12;
+    return weeks.map((w, i) => ({
+      month: w,
+      revenue: Math.round(base * (0.88 + i * 0.02 + Math.sin(i * 0.8) * 0.04)),
+      revenueP: Math.round(base * (0.80 + i * 0.015)),
+      profit: Math.round(base * 0.42 * (0.88 + i * 0.02)),
+      profitP: Math.round(base * 0.38 * (0.80 + i * 0.015)),
+      margin: 39.4 + i * 0.15,
+      marginP: 37.9,
+    }));
+  }
   const base = totalRev / 12;
   return MONTHS.map((month, i) => ({
     month,
@@ -30,9 +56,6 @@ function buildTrendData(totalRev) {
     marginP: 37.9 + i * 0.20 + Math.sin(i * 0.5) * 0.35,
   }));
 }
-
-// Static placeholder while loading (avoids null check in JSX)
-const FALLBACK_TREND = buildTrendData(48920400);
 
 const FALLBACK_PRODUCTS = [
   { id: 'p1', name: 'Precision Industrial Calibrator X1', category: 'Hardware & Tools', revenue: 4820000, profit: 2012000, margin: 41.7, units: 12380, avgPrice: 389, growth: 14.2 },
@@ -53,40 +76,11 @@ const priceVolumeData = [
   { price: 499, units: 4800,  revenue: 2395200 },
 ];
 
-// Dynamic state store — populated by RevenueOptimization component on mount
-// and read by KPIStrip/ContributionBar/FinancialTable sub-components via module scope.
-let _productData  = FALLBACK_PRODUCTS;
-let _trendData    = FALLBACK_TREND;
-let _totalRevenue = 48920400;
-let _totalProfit  = FALLBACK_PRODUCTS.reduce((s, p) => s + p.profit, 0);
-let _totalUnits   = FALLBACK_PRODUCTS.reduce((s, p) => s + p.units, 0);
-
-// (Dynamic state is initialized inside RevenueOptimization component below)
-
-
-const CS = {
-  grid: { strokeDasharray: '3 3', stroke: 'var(--pm-border-subtle)', vertical: false },
-  xAxis: { stroke: 'transparent', tick: { fontSize: 10, fill: 'var(--pm-text-dim)' } },
-  yAxis: { stroke: 'transparent', tick: { fontSize: 10, fill: 'var(--pm-text-dim)' }, width: 72 },
-  tooltip: {
-    contentStyle: {
-      backgroundColor: 'var(--pm-bg-elevated)',
-      border: '1px solid var(--pm-border-strong)',
-      borderRadius: '4px',
-      fontSize: '11px',
-      color: 'var(--pm-text)',
-    },
-    labelStyle: { color: 'var(--pm-text-muted)', marginBottom: 4 },
-  },
-};
-
 const METRIC_CONFIG = {
   revenue: { label: 'Revenue', color: '#3B82F6', fmt: (v) => formatCurrency(v, 'USD', true), cur: 'revenue', pri: 'revenueP' },
   profit:  { label: 'Gross Profit', color: '#10B981', fmt: (v) => formatCurrency(v, 'USD', true), cur: 'profit', pri: 'profitP' },
   margin:  { label: 'Gross Margin', color: '#F59E0B', fmt: (v) => `${v.toFixed(1)}%`, cur: 'margin', pri: 'marginP' },
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function Delta({ value, suffix = '%' }) {
   const pos = value >= 0;
@@ -103,15 +97,6 @@ function Delta({ value, suffix = '%' }) {
 function SortIcon({ col, sortCol, sortDir }) {
   if (sortCol !== col) return <ChevronUp size={10} className="opacity-20" />;
   return sortDir === 'asc' ? <ChevronUp size={10} className="text-pm-accentText" /> : <ChevronDown size={10} className="text-pm-accentText" />;
-}
-
-function SectionHeader({ title, children }) {
-  return (
-    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-white">{title}</h3>
-      {children && <div className="flex items-center gap-2">{children}</div>}
-    </div>
-  );
 }
 
 function MetricToggle({ value, onChange }) {
@@ -136,13 +121,13 @@ function MetricToggle({ value, onChange }) {
 
 // ─── KPI Strip ────────────────────────────────────────────────────────────────
 
-function KPIStrip() {
+function KPIStrip({ totalRevenue, totalProfit, totalUnits }) {
   const kpis = [
-    { label: 'Total Revenue', value: formatCurrency(_totalRevenue, 'USD', true), delta: 11.4, sub: 'vs prior period' },
-    { label: 'Gross Profit', value: formatCurrency(_totalProfit, 'USD', true), delta: 14.8, sub: 'vs prior period' },
-    { label: 'Avg Gross Margin', value: `${_totalRevenue > 0 ? ((_totalProfit / _totalRevenue) * 100).toFixed(1) : '0.0'}%`, delta: 1.6, sub: '+160 bps vs prior' },
-    { label: 'Units Sold', value: formatNumber(_totalUnits, true), delta: 6.3, sub: 'vs prior period' },
-    { label: 'Avg Selling Price', value: formatCurrency(_totalUnits > 0 ? _totalRevenue / _totalUnits : 0, 'USD', false), delta: 4.8, sub: 'vs prior period' },
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue, 'USD', true), delta: 11.4, sub: 'vs prior period' },
+    { label: 'Gross Profit', value: formatCurrency(totalProfit, 'USD', true), delta: 14.8, sub: 'vs prior period' },
+    { label: 'Avg Gross Margin', value: `${totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0.0'}%`, delta: 1.6, sub: '+160 bps vs prior' },
+    { label: 'Units Sold', value: formatNumber(totalUnits, true), delta: 6.3, sub: 'vs prior period' },
+    { label: 'Avg Selling Price', value: formatCurrency(totalUnits > 0 ? totalRevenue / totalUnits : 0, 'USD', false), delta: 4.8, sub: 'vs prior period' },
   ];
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -162,12 +147,12 @@ function KPIStrip() {
 
 // ─── Trend Chart ──────────────────────────────────────────────────────────────
 
-function TrendChart({ metric, showPrior }) {
+function TrendChart({ metric, showPrior, data }) {
   const cfg = METRIC_CONFIG[metric];
   return (
     <div className="pm-card-glass p-5">
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={_trendData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
           <XAxis dataKey="month" stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} />
           <YAxis stroke="transparent" tick={{ fontSize: 10, fill: '#94A3B8' }} width={72} tickFormatter={cfg.fmt} />
@@ -194,13 +179,13 @@ function TrendChart({ metric, showPrior }) {
 
 // ─── Category Bar ─────────────────────────────────────────────────────────────
 
-function CategoryBar({ metric }) {
+function CategoryBar({ metric, products }) {
   const key = metric === 'margin' ? 'margin' : metric === 'profit' ? 'profit' : 'revenue';
   const fmt = metric === 'margin' ? (v) => `${v.toFixed(1)}%` : (v) => formatCurrency(v, 'USD', true);
   const color = METRIC_CONFIG[metric].color;
-  // Build category aggregates dynamically from live _productData
+  
   const catMap = {};
-  _productData.forEach(p => {
+  products.forEach(p => {
     if (!catMap[p.category]) catMap[p.category] = { category: p.category, revenue: 0, profit: 0, units: 0 };
     catMap[p.category].revenue += p.revenue;
     catMap[p.category].profit  += p.profit;
@@ -268,20 +253,20 @@ function PriceVolumeChart() {
 
 const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
 
-function ContributionBar() {
+function ContributionBar({ products, totalRevenue }) {
   return (
     <div className="pm-card-glass p-5 space-y-4">
       <div className="flex h-3.5 rounded-full overflow-hidden gap-0.5 p-0.5 bg-white/[0.04]">
-        {_productData.map((p, i) => (
-          <div key={p.id} style={{ width: `${_totalRevenue > 0 ? (p.revenue / _totalRevenue) * 100 : 0}%`, backgroundColor: COLORS[i % COLORS.length] }} title={`${p.name}: ${_totalRevenue > 0 ? ((p.revenue / _totalRevenue) * 100).toFixed(1) : 0}%`} className="first:rounded-l-full last:rounded-r-full transition-all hover:opacity-80" />
+        {products.map((p, i) => (
+          <div key={p.id} style={{ width: `${totalRevenue > 0 ? (p.revenue / totalRevenue) * 100 : 0}%`, backgroundColor: COLORS[i % COLORS.length] }} title={`${p.name}: ${totalRevenue > 0 ? ((p.revenue / totalRevenue) * 100).toFixed(1) : 0}%`} className="first:rounded-l-full last:rounded-r-full transition-all hover:opacity-80" />
         ))}
       </div>
       <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {_productData.map((p, i) => (
+        {products.map((p, i) => (
           <div key={p.id} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_6px_rgba(255,255,255,0.2)]" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
             <span className="text-xs text-slate-300 font-medium">{p.name.split(' ').slice(0, 3).join(' ')}</span>
-            <span className="text-[11px] font-mono text-slate-400 tabular-nums">({_totalRevenue > 0 ? ((p.revenue / _totalRevenue) * 100).toFixed(0) : 0}%)</span>
+            <span className="text-[11px] font-mono text-slate-400 tabular-nums">({totalRevenue > 0 ? ((p.revenue / totalRevenue) * 100).toFixed(0) : 0}%)</span>
           </div>
         ))}
       </div>
@@ -302,17 +287,17 @@ const TABLE_COLS = [
   { id: 'growth', label: 'Growth', align: 'right' },
 ];
 
-function FinancialTable() {
+function FinancialTable({ products, totalRevenue, totalProfit, totalUnits }) {
   const [sortCol, setSortCol] = useState('revenue');
   const [sortDir, setSortDir] = useState('desc');
 
   const sorted = useMemo(() => {
-    return [..._productData].sort((a, b) => {
+    return [...products].sort((a, b) => {
       const av = a[sortCol], bv = b[sortCol];
       if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return sortDir === 'asc' ? av - bv : bv - av;
     });
-  }, [sortCol, sortDir]);
+  }, [products, sortCol, sortDir]);
 
   const toggle = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -345,7 +330,7 @@ function FinancialTable() {
               <tr key={row.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
                 <td className="py-3 px-4 max-w-[220px]">
                   <div className="text-xs font-semibold text-white leading-tight truncate">{row.name}</div>
-                  <div className="text-[10px] text-indigo-400 mt-0.5 font-mono">{row.id.toUpperCase()}</div>
+                  <div className="text-[10px] text-indigo-400 mt-0.5 font-mono">{String(row.id).toUpperCase()}</div>
                 </td>
                 <td className="py-3 px-4">
                   <span className="text-[11px] text-slate-300 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.08] whitespace-nowrap">{row.category}</span>
@@ -369,11 +354,11 @@ function FinancialTable() {
           <tfoot>
             <tr className="border-t-2 border-white/[0.12] bg-white/[0.04]">
               <td className="py-3 px-4 text-[11px] font-bold text-white font-mono" colSpan={2}>PORTFOLIO TOTAL</td>
-              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{formatCurrency(_totalRevenue, 'USD', true)}</td>
-              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-emerald-400 whitespace-nowrap">{formatCurrency(_totalProfit, 'USD', true)}</td>
-              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{_totalRevenue > 0 ? ((_totalProfit / _totalRevenue) * 100).toFixed(1) : '0.0'}%</td>
-              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatNumber(_totalUnits, true)}</td>
-              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatCurrency(_totalUnits > 0 ? _totalRevenue / _totalUnits : 0, 'USD', false)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{formatCurrency(totalRevenue, 'USD', true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-emerald-400 whitespace-nowrap">{formatCurrency(totalProfit, 'USD', true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-white whitespace-nowrap">{totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0.0'}%</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatNumber(totalUnits, true)}</td>
+              <td className="py-3 px-4 text-right font-mono tabular-nums text-xs font-bold text-slate-400 whitespace-nowrap">{formatCurrency(totalUnits > 0 ? totalRevenue / totalUnits : 0, 'USD', false)}</td>
               <td className="py-3 px-4 text-right"><Delta value={11.4} /></td>
             </tr>
           </tfoot>
@@ -386,57 +371,119 @@ function FinancialTable() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function RevenueOptimization() {
+  const { addToast } = useToast();
   const [metric, setMetric] = useState('revenue');
   const [showPrior, setShowPrior] = useState(true);
   const [dateRange, setDateRange] = useState('30d');
   const [category, setCategory] = useState('all');
-  const [, forceUpdate] = useState(0);
+  const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+  const [baseRevenue, setBaseRevenue] = useState(48920400);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async (showSuccessToast = false) => {
+    try {
+      const [overview, skuList] = await Promise.all([
+        apiClient.getAnalyticsOverview(),
+        apiClient.getSKUs(),
+      ]);
+      if (overview && overview.total_revenue > 0) {
+        setBaseRevenue(overview.total_revenue);
+      }
+      if (skuList && skuList.length > 0) {
+        const mapped = skuList.map((sku, idx) => {
+          const units = (sku.currentVelocity || 35) * 30 * 12;
+          const revenue = sku.currentPrice * units;
+          const profit = (sku.currentPrice - sku.costPrice) * units;
+          const margin = sku.costPrice > 0 ? ((sku.currentPrice - sku.costPrice) / sku.currentPrice) * 100 : 0;
+          return {
+            id: sku.id || `p${idx}`,
+            name: sku.name,
+            category: sku.category,
+            revenue: Math.round(revenue),
+            profit: Math.round(profit),
+            margin: parseFloat(margin.toFixed(1)),
+            units,
+            avgPrice: sku.currentPrice,
+            growth: sku.projectedUpliftPercent || 5.0,
+          };
+        });
+        setProducts(mapped);
+      }
+      if (showSuccessToast) {
+        addToast({ type: 'success', title: 'Data Refreshed', message: 'Revenue analytics updated with latest metrics.' });
+      }
+    } catch (err) {
+      console.error('RevenueOptimization fetch error:', err);
+      if (showSuccessToast) {
+        addToast({ type: 'error', title: 'Refresh Failed', message: 'Could not fetch latest revenue metrics.' });
+      }
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    async function loadData() {
-      try {
-        const [overview, skuList] = await Promise.all([
-          apiClient.getAnalyticsOverview(),
-          apiClient.getSKUs(),
-        ]);
-        if (!mounted) return;
-        if (overview && overview.total_revenue > 0) {
-          _trendData = buildTrendData(overview.total_revenue);
-          _totalRevenue = overview.total_revenue;
-        }
-        if (skuList && skuList.length > 0) {
-          _productData = skuList.map((sku, idx) => {
-            const units = (sku.currentVelocity || 35) * 30 * 12;
-            const revenue = sku.currentPrice * units;
-            const profit = (sku.currentPrice - sku.costPrice) * units;
-            const margin = sku.costPrice > 0 ? ((sku.currentPrice - sku.costPrice) / sku.currentPrice) * 100 : 0;
-            return { id: sku.id || `p${idx}`, name: sku.name, category: sku.category, revenue: Math.round(revenue), profit: Math.round(profit), margin: parseFloat(margin.toFixed(1)), units, avgPrice: sku.currentPrice, growth: sku.projectedUpliftPercent || 5.0 };
-          });
-          _totalProfit = _productData.reduce((s, p) => s + p.profit, 0);
-          _totalUnits = _productData.reduce((s, p) => s + p.units, 0);
-          _totalRevenue = _productData.reduce((s, p) => s + p.revenue, 0);
-          forceUpdate(n => n + 1);
-        }
-      } catch (err) { console.error('RevenueOptimization fetch error:', err); }
-    }
-    loadData();
-    return () => { mounted = false; };
+    loadData(false);
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData(true);
+    setRefreshing(false);
+  };
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (category === 'all') return products;
+    return products.filter(p =>
+      p.category && (
+        p.category.toLowerCase() === category.toLowerCase() ||
+        p.category.toLowerCase().includes(category.toLowerCase())
+      )
+    );
+  }, [products, category]);
+
+  const totalRevenue = useMemo(() => filteredProducts.reduce((s, p) => s + p.revenue, 0), [filteredProducts]);
+  const totalProfit  = useMemo(() => filteredProducts.reduce((s, p) => s + p.profit, 0), [filteredProducts]);
+  const totalUnits   = useMemo(() => filteredProducts.reduce((s, p) => s + p.units, 0), [filteredProducts]);
+
+  const trendData = useMemo(() => {
+    return buildTrendData(totalRevenue > 0 ? totalRevenue : baseRevenue, dateRange);
+  }, [totalRevenue, baseRevenue, dateRange]);
+
+  const handleExport = () => {
+    const headers = ['Product ID', 'Name', 'Category', 'Revenue', 'Profit', 'Margin %', 'Units Sold', 'Avg Price', 'Growth %'];
+    const rows = filteredProducts.map(p => [
+      p.id, p.name, p.category, p.revenue, p.profit, p.margin, p.units, p.avgPrice, p.growth
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'revenue_financial_analysis.csv'; a.click();
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', title: 'Export Complete', message: `${filteredProducts.length} product rows exported to CSV.` });
+  };
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="text-xs h-8">
         <option value="all">All Categories</option>
-        <option value="software">Software</option>
-        <option value="hardware">Hardware & Tools</option>
-        <option value="iot">IoT Hardware</option>
-        <option value="networking">Networking</option>
+        {categoryOptions.map(cat => (
+          <option key={cat} value={cat.toLowerCase()}>{cat}</option>
+        ))}
       </NativeSelect>
       <DateRangePicker value={dateRange} onChange={setDateRange} />
-      <Button variant="ghost" size="sm" icon={RefreshCw} className="text-xs">Refresh</Button>
-      <Button variant="ghost" size="sm" icon={Download} className="text-xs">Export</Button>
+      <Button variant="ghost" size="sm" icon={RefreshCw} className="text-xs" onClick={handleRefresh} disabled={refreshing}>
+        {refreshing ? 'Refreshing…' : 'Refresh'}
+      </Button>
+      <Button variant="ghost" size="sm" icon={Download} className="text-xs" onClick={handleExport}>
+        Export
+      </Button>
     </div>
   );
 
@@ -448,7 +495,7 @@ export function RevenueOptimization() {
       actions={controls}
     >
       {/* KPI Strip */}
-      <KPIStrip />
+      <KPIStrip totalRevenue={totalRevenue} totalProfit={totalProfit} totalUnits={totalUnits} />
 
       {/* Trend Chart */}
       <div className="mt-8">
@@ -464,7 +511,7 @@ export function RevenueOptimization() {
             <MetricToggle value={metric} onChange={setMetric} />
           </div>
         </div>
-        <TrendChart metric={metric} showPrior={showPrior} />
+        <TrendChart metric={metric} showPrior={showPrior} data={trendData} />
       </div>
 
       {/* Category + Price-Volume */}
@@ -474,7 +521,7 @@ export function RevenueOptimization() {
             <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Revenue by Category</h3>
             <MetricToggle value={metric} onChange={setMetric} />
           </div>
-          <CategoryBar metric={metric} />
+          <CategoryBar metric={metric} products={filteredProducts} />
         </div>
         <div>
           <div className="pb-3 border-b border-white/[0.08] mb-4">
@@ -490,7 +537,7 @@ export function RevenueOptimization() {
         <div className="pb-3 border-b border-white/[0.08] mb-4">
           <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Revenue Contribution — By Product</h3>
         </div>
-        <ContributionBar />
+        <ContributionBar products={filteredProducts} totalRevenue={totalRevenue} />
       </div>
 
       {/* Financial Table */}
@@ -499,8 +546,10 @@ export function RevenueOptimization() {
           <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-indigo-300">Financial Analysis</h3>
           <span className="text-[10px] font-mono text-slate-400">Click column headers to sort</span>
         </div>
-        <FinancialTable />
+        <FinancialTable products={filteredProducts} totalRevenue={totalRevenue} totalProfit={totalProfit} totalUnits={totalUnits} />
       </div>
     </ModuleShell>
   );
 }
+
+export default RevenueOptimization;

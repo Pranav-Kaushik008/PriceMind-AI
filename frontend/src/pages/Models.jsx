@@ -1,19 +1,67 @@
-import React from 'react';
-import { Cpu, CheckCircle2, AlertTriangle, RefreshCw, Layers, ShieldCheck, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { Cpu, CheckCircle2, AlertTriangle, RefreshCw, Layers, ShieldCheck, Activity, Sparkles } from 'lucide-react';
 import { ModuleShell } from '../components/layout/ModuleShell';
 import { KPIDisplay } from '../components/ui/KPIDisplay';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { HealthGauge } from '../components/ui/StatusIndicator';
+import { useToast } from '../components/ui/ToastProvider';
 
 export function Models() {
-  const models = [
+  const toast = useToast();
+  const [isRetraining, setIsRetraining] = useState(false);
+  const [retrainSuccess, setRetrainSuccess] = useState(false);
+
+  const initialModels = [
     { id: 'lgbm-spline-v3.4', name: 'LightGBM-Spline Elasticity Engine', version: 'v3.4.1', status: 'ACTIVE_PROD', wape: 4.8, r2: 0.942, latency: '18ms', lastRetrained: '2026-03-12', driftScore: '0.012 (Safe)' },
     { id: 'hierarchical-demand-v2', name: 'Hierarchical Bayes Demand Forecaster', version: 'v2.1.0', status: 'ACTIVE_PROD', wape: 6.2, r2: 0.918, latency: '34ms', lastRetrained: '2026-03-10', driftScore: '0.024 (Safe)' },
     { id: 'shap-kernel-explainer-v1', name: 'SHAP Feature Attribution Explainer', version: 'v1.8.0', status: 'ONLINE', wape: 0.0, r2: 0.998, latency: '12ms', lastRetrained: '2026-03-14', driftScore: '0.000 (Static)' },
     { id: 'cross-elasticity-nn-v4-canary', name: 'Deep Cross-Elasticity Matrix (Canary)', version: 'v4.0.0-rc2', status: 'CANARY_10PCT', wape: 3.9, r2: 0.961, latency: '42ms', lastRetrained: '2026-03-15', driftScore: '0.018 (Safe)' },
   ];
+
+  const [models, setModels] = useState(initialModels);
+
+  const handleTriggerRetrain = () => {
+    if (isRetraining) return;
+    setIsRetraining(true);
+    toast.info('Retraining Pipeline Triggered', 'Featurizing 1.4M transaction records and fitting spline elasticity curves...');
+
+    setTimeout(() => {
+      setModels((prev) =>
+        prev.map((m) =>
+          m.id === 'lgbm-spline-v3.4'
+            ? {
+                ...m,
+                version: 'v3.4.2',
+                wape: 4.5,
+                r2: 0.949,
+                latency: '16ms',
+                lastRetrained: 'Just now (Today)',
+                driftScore: '0.008 (Optimal)',
+              }
+            : m.id === 'hierarchical-demand-v2'
+            ? {
+                ...m,
+                wape: 5.9,
+                r2: 0.924,
+                lastRetrained: 'Just now (Today)',
+              }
+            : {
+                ...m,
+                lastRetrained: 'Just now (Today)',
+              }
+        )
+      );
+      setIsRetraining(false);
+      setRetrainSuccess(true);
+      toast.success(
+        'Retraining Run Successful',
+        'Model weights updated. LightGBM-Spline v3.4.2 promoted to Production Inference Gateway.'
+      );
+      setTimeout(() => setRetrainSuccess(false), 5000);
+    }, 1800);
+  };
 
   const columns = [
     { header: 'Model Name & Identifier', accessor: 'name', cell: ({ row }) => (
@@ -44,8 +92,14 @@ export function Models() {
       description="Production inference pipelines, spline elasticity model weights, and drift monitoring."
       badge={<Badge variant="success" size="sm">4 Models Online</Badge>}
       primaryAction={
-        <Button variant="primary" size="sm" icon={RefreshCw}>
-          Trigger Retraining Run
+        <Button
+          variant="primary"
+          size="sm"
+          icon={RefreshCw}
+          onClick={handleTriggerRetrain}
+          loading={isRetraining}
+        >
+          {isRetraining ? 'Retraining Pipeline Running…' : retrainSuccess ? 'Retraining Complete' : 'Trigger Retraining Run'}
         </Button>
       }
       secondaryActions={

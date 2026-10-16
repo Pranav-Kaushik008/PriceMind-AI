@@ -136,7 +136,9 @@ export const useAppStore = create((set) => ({
   setSelectedRecommendationForEvidence: (rec) => set({ selectedRecommendationForEvidence: rec }),
 
   // Queued batch execution list for ERP push
-  queuedRecommendations: ['rec-101', 'rec-102'],
+  queuedRecommendations: [],
+  dataRefreshCounter: 0,
+  triggerDataRefresh: () => set((state) => ({ dataRefreshCounter: state.dataRefreshCounter + 1 })),
   toggleQueuedRecommendation: (id) =>
     set((state) => {
       const exists = state.queuedRecommendations.includes(id);
@@ -146,6 +148,10 @@ export const useAppStore = create((set) => ({
           : [...state.queuedRecommendations, id],
       };
     }),
+  queueRecommendations: (ids) =>
+    set((state) => ({
+      queuedRecommendations: Array.from(new Set([...state.queuedRecommendations, ...ids])),
+    })),
   clearQueuedRecommendations: () => set({ queuedRecommendations: [] }),
 
   activeCategoryFilter: 'all',

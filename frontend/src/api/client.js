@@ -227,6 +227,14 @@ export const apiClient = {
     return { ...rec };
   },
 
+  async batchApplyRecommendations(recIds) {
+    return await fetchJson('/recommendations/batch-apply', {
+      method: 'POST',
+      body: JSON.stringify({ rec_ids: recIds }),
+      throwOnError: true,
+    });
+  },
+
   // ── 5. Elasticity & Pricing Curves ─────────────────────────────────────────
   async getElasticityCurve(skuCode) {
     const data = await fetchJson(`/elasticity/${skuCode}/curve`);

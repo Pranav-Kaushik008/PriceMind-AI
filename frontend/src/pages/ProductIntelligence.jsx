@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -67,7 +67,9 @@ export function ProductIntelligence() {
     setActivePage,
     setSelectedRecommendationForEvidence,
     toggleQueuedRecommendation,
+    queueRecommendations,
     queuedRecommendations,
+    dataRefreshCounter,
     currency,
   } = useAppStore();
 
@@ -115,7 +117,7 @@ export function ProductIntelligence() {
     }
     fetchCatalog();
     return () => { isMounted = false; };
-  }, [selectedCategory, search, refreshKey]);
+  }, [selectedCategory, search, refreshKey, dataRefreshCounter]);
 
   // Column Visibility State
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
@@ -135,6 +137,19 @@ export function ProductIntelligence() {
   const toggleColumn = (colKey) => {
     setVisibleColumns((prev) => ({ ...prev, [colKey]: !prev[colKey] }));
   };
+
+  const colMenuRef = useRef(null);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target)) {
+        setIsColMenuOpen(false);
+      }
+    }
+    if (isColMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isColMenuOpen]);
 
   // Enriched SKU dataset
   const enrichedSKUs = useMemo(() => {
@@ -404,7 +419,9 @@ export function ProductIntelligence() {
                 size="sm"
                 icon={Send}
                 onClick={() => {
-                  toast.success('Batch ERP Queue Updated', `Added ${selectedRowKeys.length} SKUs to the dispatch dock.`);
+                  queueRecommendations(selectedRowKeys);
+                  toast.success('Staged for Dispatch', `Added ${selectedRowKeys.length} SKUs to the Batch ERP Dispatch dock.`);
+                  setSelectedRowKeys([]);
                 }}
               >
                 Queue Selected ({selectedRowKeys.length})
@@ -434,7 +451,7 @@ export function ProductIntelligence() {
         </div>
 
         {/* Filter Bar with Search, Category, Channel, Elasticity & Column Visibility */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 pm-card-glass">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 pm-card-glass relative z-30">
           <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[300px]">
             {/* Search Input */}
             <div className="w-64 max-w-full">
@@ -489,7 +506,7 @@ export function ProductIntelligence() {
           </div>
 
           {/* Column Visibility Dropdown */}
-          <div className="relative">
+          <div className="relative z-40" ref={colMenuRef}>
             <Button
               variant="outline"
               size="sm"
@@ -500,7 +517,7 @@ export function ProductIntelligence() {
             </Button>
 
             {isColMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-52 bg-pm-elevated border border-pm-borderStrong rounded shadow-lg z-50 p-2 font-sans text-xs animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 top-full mt-1.5 w-56 bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.15] rounded-xl shadow-2xl z-50 p-2 font-sans text-xs animate-in fade-in zoom-in-95">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-pm-textDim px-2 py-1 mb-1 border-b border-pm-borderSubtle">
                   Toggle Columns
                 </div>

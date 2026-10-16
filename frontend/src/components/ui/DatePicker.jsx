@@ -69,7 +69,7 @@ export function DateRangePicker({
                   key={preset.id}
                   type="button"
                   onClick={() => {
-                    onChange(preset.id);
+                    if (onChange) onChange(preset.id);
                     if (preset.id !== 'custom') setIsOpen(false);
                   }}
                   className={cn(

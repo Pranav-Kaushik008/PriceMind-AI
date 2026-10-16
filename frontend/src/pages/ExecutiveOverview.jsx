@@ -49,6 +49,7 @@ import { ConfidenceIndicator } from '../components/ui/ConfidenceIndicator';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useToast } from '../components/ui/ToastProvider';
 import { DataImportModal } from '../components/ui/DataImportModal';
+import { SearchInput } from '../components/ui/Input';
 
 // ─── Animated counter for KPI values ─────────────────────────────────────────
 function AnimatedValue({ value, className }) {
@@ -97,6 +98,7 @@ export function ExecutiveOverview() {
     setActivePage,
     setSelectedRecommendationForEvidence,
     setSelectedSkuForDrawer,
+    dataRefreshCounter,
     currency,
   } = useAppStore();
 
@@ -120,6 +122,7 @@ export function ExecutiveOverview() {
 
   // Chart toggle
   const [activeMetric, setActiveMetric] = useState('revenue');
+  const [opportunitySearch, setOpportunitySearch] = useState('');
 
   // ── Data loader ──────────────────────────────────────────────────────────────
   const loadData = async (manual = false) => {
@@ -153,7 +156,7 @@ export function ExecutiveOverview() {
     }
   };
 
-  useEffect(() => { loadData(); }, [selectedCategory]);
+  useEffect(() => { loadData(); }, [selectedCategory, dataRefreshCounter]);
 
   const handleRefresh = () => loadData(true);
 
@@ -187,6 +190,19 @@ export function ExecutiveOverview() {
   const grossProfit = Math.round(totalRevenue * (avgMargin / 100));
   const pendingRecs = recommendations.filter((r) => r.status === 'pending');
   const totalProfitLift = pendingRecs.reduce((sum, r) => sum + (r.projectedRevenueDelta || 0), 0);
+
+  // Filtered pricing opportunities based on search term
+  const filteredOpportunities = useMemo(() => {
+    if (!opportunitySearch.trim()) return recommendations;
+    const q = opportunitySearch.trim().toLowerCase();
+    return recommendations.filter((r) => {
+      const name = (r.skuName || '').toLowerCase();
+      const code = (r.skuCode || '').toLowerCase();
+      const cat = (r.category || '').toLowerCase();
+      const chan = (r.channel || '').toLowerCase();
+      return name.includes(q) || code.includes(q) || cat.includes(q) || chan.includes(q);
+    });
+  }, [recommendations, opportunitySearch]);
 
   // Avg competitor price from SKUs
   const avgCompetitorPrice = useMemo(() => {
@@ -907,7 +923,7 @@ export function ExecutiveOverview() {
           4. PRICING OPPORTUNITIES TABLE (live from DB)
           ========================================================================= */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -920,24 +936,38 @@ export function ExecutiveOverview() {
               Review and approve AI-generated price adjustments from your catalog.
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActivePage('pricing')}
-            className="text-xs text-indigo-400 hover:text-white"
-          >
-            Full Workspace ({recommendations.length})
-          </Button>
+          <div className="flex items-center gap-2.5">
+            <SearchInput
+              value={opportunitySearch}
+              onChange={(e) => setOpportunitySearch(e.target.value)}
+              onClear={() => setOpportunitySearch('')}
+              placeholder="Search product or SKU..."
+              size="sm"
+              className="w-48 sm:w-64"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActivePage('pricing')}
+              className="text-xs text-indigo-400 hover:text-white shrink-0"
+            >
+              Full Workspace ({recommendations.length})
+            </Button>
+          </div>
         </div>
 
         {recommendations.length === 0 && !isLoading ? (
           <div className="bg-[#0D1524]/60 border border-white/[0.08] rounded-2xl p-8 text-center text-xs text-slate-500">
             No pricing recommendations yet. Import a product catalog to generate AI pricing intelligence.
           </div>
+        ) : filteredOpportunities.length === 0 ? (
+          <div className="bg-[#0D1524]/60 border border-white/[0.08] rounded-2xl p-8 text-center text-xs text-slate-400">
+            No products match &ldquo;<span className="text-white font-medium">{opportunitySearch}</span>&rdquo;. Try searching by product name, SKU, or category.
+          </div>
         ) : (
           <DataTable
             columns={opportunityColumns}
-            data={recommendations}
+            data={filteredOpportunities}
             keyField="id"
             onRowClick={(row) => setSelectedRecommendationForEvidence(row)}
             pagination={true}
