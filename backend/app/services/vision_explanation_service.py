@@ -245,6 +245,7 @@ def generate_llm_explanation(
     """
     try:
         import certifi
+        import httpx
         os.environ['SSL_CERT_FILE'] = certifi.where()
         from google import genai
         from google.genai import types
@@ -252,7 +253,9 @@ def generate_llm_explanation(
         resolved_model = settings.GEMINI_MODEL or model_name or "gemini-3-flash-preview"
         client = genai.Client(
             api_key=api_key.strip(),
-            http_options={'client_args': {'verify': False}, 'timeout': 12000}
+            http_options=types.HttpOptions(
+                httpx_client=httpx.Client(verify=False, timeout=25.0)
+            )
         )
 
         curr_sym = sources.get("currency_symbol", "$")
@@ -310,7 +313,7 @@ def generate_llm_explanation(
         user_prompt += "Generate the structured JSON explanation following the strict grounding rules."
 
         candidate_models = []
-        for m in ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.8-flash", settings.GEMINI_MODEL, model_name]:
+        for m in ["gemini-3-flash-preview", "gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", settings.GEMINI_MODEL, model_name]:
             if m and m not in candidate_models:
                 candidate_models.append(m)
 

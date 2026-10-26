@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # ── Application ────────────────────────────────────────────────────────
     PROJECT_NAME: str = "PriceMind AI Enterprise API"
-    VERSION: str = "1.0.0"
+    VERSION: str = "1.0.2-gemini3"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"   # development | staging | production
     LOG_LEVEL: str = "INFO"
@@ -93,6 +93,9 @@ class Settings(BaseSettings):
         "PROJECT_NAME",
         "VERSION",
         "API_V1_STR",
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+        "GEMINI_MODEL",
         mode="before",
     )
     @classmethod

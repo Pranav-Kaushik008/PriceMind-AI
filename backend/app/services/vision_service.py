@@ -131,13 +131,16 @@ def analyze_with_gemini_multimodal_vision(
 
     try:
         import certifi
+        import httpx
         os.environ['SSL_CERT_FILE'] = certifi.where()
         from google import genai
         from google.genai import types
 
         client = genai.Client(
             api_key=key.strip(),
-            http_options=types.HttpOptions(timeout=15000),
+            http_options=types.HttpOptions(
+                httpx_client=httpx.Client(verify=False, timeout=30.0)
+            ),
         )
 
         # Detect correct mime type from image header bytes
@@ -176,7 +179,7 @@ Return exactly this JSON structure (no extra text outside the braces):
 {"objects":[{"id":"obj_1","label":"Samsung Galaxy M42 5G Prism Dot Black","catalog_name":"Samsung Galaxy M42 5G 6GB/128GB Prism Dot Black","sku":"SKU-SAMSUNG-GALAXY-M42-5G","confidence":0.95,"box":{"x_percent":5.0,"y_percent":8.0,"width_percent":45.0,"height_percent":80.0},"detected_price":299.99,"your_price":314.99,"recommended_price":289.99,"price_change_pct":-7.9,"elasticity":-0.52,"lift_units":"+185 units","revenue_delta":"+$18.2K","profit_delta":"+$7.1K","availability":"In Stock","explanation":"Samsung Galaxy M42 5G detected at $299.99. Recommended $289.99 captures additional units."}],"text_labels":[{"text":"Samsung","is_price":false,"extracted_price":null,"confidence":0.98},{"text":"$49.99","is_price":true,"extracted_price":49.99,"confidence":0.96}]}"""
 
         candidate_models = []
-        for m in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.8-flash", "gemini-flash-latest", settings.GEMINI_MODEL]:
+        for m in ["gemini-3-flash-preview", "gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", settings.GEMINI_MODEL]:
             if m and m not in candidate_models:
                 candidate_models.append(m)
 
