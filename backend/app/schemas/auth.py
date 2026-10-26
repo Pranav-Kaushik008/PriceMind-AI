@@ -9,7 +9,13 @@ SECURITY: password_hash NEVER appears in any response schema.
 from __future__ import annotations
 
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
+
+try:
+    import email_validator  # noqa: F401
+    from pydantic import EmailStr
+except ImportError:
+    EmailStr = str  # type: ignore[assignment,misc]
 
 
 # ---------------------------------------------------------------------------
