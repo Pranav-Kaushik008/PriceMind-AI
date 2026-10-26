@@ -33,10 +33,24 @@ logger = logging.getLogger("pricemind.api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager to auto-initialize database tables on startup."""
+    """Lifespan context manager to auto-initialize database tables on startup and seed initial catalog."""
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized successfully.")
+        
+        # Auto-seed database if empty
+        try:
+            from app.db.session import SessionLocal
+            from app.models.product import Product
+            with SessionLocal() as db_session:
+                prod_count = db_session.query(Product).count()
+                if prod_count == 0:
+                    logger.info("Database empty, running initial seed...")
+                    from app.db.seed import seed_development_data
+                    seed_development_data(db_session)
+                    logger.info("Database successfully seeded with catalog data.")
+        except Exception as seed_err:
+            logger.warning(f"Database seed note: {seed_err}")
     except Exception as exc:
         logger.warning(f"Database table initialization warning: {exc}")
     yield
