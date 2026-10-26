@@ -8,7 +8,15 @@ import {
   mockModelTelemetry,
 } from '../mock/mockData';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const rawBase = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('render.com')
+    ? 'https://pricemind-ai.onrender.com/api/v1'
+    : 'http://localhost:8000/api/v1')
+).trim().replace(/\/+$/, '');
+
+const API_BASE = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
 
 async function fetchJson(endpoint, options = {}) {
   try {
