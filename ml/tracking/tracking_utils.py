@@ -14,11 +14,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import mlflow
-import mlflow.sklearn
-import mlflow.xgboost
-import mlflow.lightgbm
-from mlflow.models.signature import infer_signature
+try:
+    import mlflow
+    import mlflow.sklearn
+    import mlflow.xgboost
+    import mlflow.lightgbm
+    from mlflow.models.signature import infer_signature
+    HAS_MLFLOW = True
+except ImportError:
+    mlflow = None  # type: ignore[assignment]
+    HAS_MLFLOW = False
+    infer_signature = None  # type: ignore[assignment,misc]
 
 
 def log_dataset_metadata(

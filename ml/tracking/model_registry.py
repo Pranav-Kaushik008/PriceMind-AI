@@ -7,10 +7,19 @@ Model Registry management with MLflow and PostgreSQL synchronization.
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import logging
-import mlflow
-from mlflow.tracking import MlflowClient
 
-from ml.tracking.mlflow_config import setup_mlflow
+try:
+    import mlflow
+    from mlflow.tracking import MlflowClient
+    from ml.tracking.mlflow_config import setup_mlflow
+    HAS_MLFLOW = True
+except ImportError:
+    mlflow = None  # type: ignore[assignment]
+    MlflowClient = None  # type: ignore[assignment,misc]
+    HAS_MLFLOW = False
+
+    def setup_mlflow():  # type: ignore[misc]
+        pass
 
 logger = logging.getLogger(__name__)
 

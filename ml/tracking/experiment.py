@@ -6,15 +6,23 @@ Experiment management utilities.
 
 from typing import Optional
 import logging
-import mlflow
-from mlflow.entities import Experiment
 
-from ml.tracking.mlflow_config import (
-    setup_mlflow,
-    EXPERIMENT_DEMAND_PREDICTION,
-    EXPERIMENT_FORECASTING,
-    EXPERIMENT_OPTIMIZATION,
-)
+try:
+    import mlflow
+    from mlflow.entities import Experiment
+    from ml.tracking.mlflow_config import (
+        setup_mlflow,
+        EXPERIMENT_DEMAND_PREDICTION,
+        EXPERIMENT_FORECASTING,
+        EXPERIMENT_OPTIMIZATION,
+    )
+    HAS_MLFLOW = True
+except ImportError:
+    mlflow = None  # type: ignore[assignment]
+    HAS_MLFLOW = False
+
+    def setup_mlflow():  # type: ignore[misc]
+        pass
 
 logger = logging.getLogger(__name__)
 
