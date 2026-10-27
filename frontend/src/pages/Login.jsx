@@ -280,12 +280,6 @@ export function Login() {
             <span>Create your organization</span>
             <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-400 transition-colors" />
           </button>
-
-          {/* Security footer */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-400 font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>AES-256 GCM · JWT Auth · Enterprise SSO Ready</span>
-          </div>
         </div>
       </div>
     </div>

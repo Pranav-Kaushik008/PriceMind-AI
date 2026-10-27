@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Zap, Lock, Mail, User, Building2, Eye, EyeOff, ArrowRight,
-  ShieldCheck, AlertCircle, ChevronLeft, Check
+  AlertCircle, ChevronLeft, Check
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { apiClient } from '../api/client';
@@ -322,12 +322,6 @@ export function Signup() {
           >
             Sign In to existing workspace
           </button>
-
-          {/* Security footer */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-slate-400 font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Multi-Tenant Isolation · AES-256 GCM · ISO 27001 Ready</span>
-          </div>
         </div>
       </div>
     </div>
