@@ -2,7 +2,7 @@
 backend/app/api/v1/endpoints/vision.py
 --------------------------------------
 Phase 1 Computer Vision & In-Store OCR Endpoints.
-Validates, preprocesses, and analyzes real uploaded images (JPG, PNG, WebP up to 10MB).
+Validates, preprocesses, and analyzes real uploaded images (JPG, PNG, WebP up to 50MB).
 Uses existing authentication architecture if available.
 """
 
@@ -22,7 +22,7 @@ from app.services import vision_service
 
 router = APIRouter()
 
-MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB strict limit
+MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB limit
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 

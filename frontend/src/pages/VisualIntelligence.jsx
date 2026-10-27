@@ -307,9 +307,32 @@ export function VisualIntelligence() {
     }
   };
 
+  const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB frontend guard
+
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // --- Client-side size guard (50 MB) ---
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error(
+        'File Too Large',
+        `"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maximum allowed size is 50 MB. Please compress or resize the image.`
+      );
+      e.target.value = '';
+      return;
+    }
+
+    // --- Validate MIME type before sending ---
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(
+        'Unsupported Format',
+        `"${file.name}" is not supported. Please upload a JPG, PNG, or WEBP image.`
+      );
+      e.target.value = '';
+      return;
+    }
 
     setSelectedFile(file);
     setCameraBase64(null);
@@ -633,7 +656,7 @@ export function VisualIntelligence() {
                     Choose Image
                   </button>
                   <span className="text-[8px] text-pm-textDim mt-1">
-                    Supported formats: JPG, PNG, WEBP (Max 10 MB)
+                    Supported formats: JPG, PNG, WEBP (Max 50 MB)
                   </span>
                 </div>
 
