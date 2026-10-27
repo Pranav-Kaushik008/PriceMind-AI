@@ -377,8 +377,21 @@ export function VisualIntelligence() {
         formData.append('image_base64', activeB64);
       }
 
-      const res = await apiClient.analyzeShelfImage(formData);
-      if (res && res.status === 'success') {
+      // Upload progress handler — shows live % for large files
+      const handleProgress = (pct) => {
+        if (pct < 100) {
+          toast.info('Uploading…', `Sending image to Gemini Vision — ${pct}% uploaded`);
+        }
+      };
+
+      const res = await apiClient.analyzeShelfImage(formData, handleProgress);
+
+      if (!res) {
+        toast.error('Analysis Failed', 'No response from server. Please check your connection and try again.');
+        return;
+      }
+
+      if (res.status === 'success') {
         // Map detected objects dynamically
         if (res.detected_objects && res.detected_objects.length > 0) {
           const colors = ['#22c55e', '#3b82f6', '#ef4444', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
@@ -460,18 +473,19 @@ export function VisualIntelligence() {
         }
 
         toast.success('Analysis Complete', `Detected ${res.detected_objects_count} objects and ${res.detected_text_count} text items in image.`);
-      } else if (res && res.status === 'error') {
+      } else if (res.status === 'error') {
         toast.error('Analysis Failed', res.error || 'Server error occurred during vision analysis.');
       } else {
         toast.info('Analysis Complete', 'No objects detected in the current image.');
       }
     } catch (err) {
       console.warn('API pipeline call error:', err);
-      toast.error('Analysis Failed', 'Could not process image through vision engine.');
+      toast.error('Analysis Failed', err?.message || 'Could not process image through vision engine.');
     } finally {
       setIsAnalyzing(false);
     }
   };
+
 
   const fetchAiExplanation = async (product, pipelineRes = null) => {
     if (!product) return;

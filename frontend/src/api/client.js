@@ -459,30 +459,51 @@ export const apiClient = {
   },
 
   // ── 15. Visual Intelligence & In-Store OCR ───────────────────────────────
-  async analyzeShelfImage(formData) {
+  async analyzeShelfImage(formData, onProgress = null) {
     const token = typeof window !== 'undefined' ? sessionStorage.getItem('pricemind_token') : null;
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    try {
-      const res = await fetch(`${API_BASE}/vision/analyze`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-      if (!res.ok) {
-        let errDetail = null;
-        try {
-          const errData = await res.json();
-          errDetail = errData?.detail;
-        } catch {}
-        return { status: 'error', error: errDetail || `Backend returned HTTP ${res.status}` };
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/vision/analyze`, true);
+
+      // Auth header
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      // 120 second timeout for large images
+      xhr.timeout = 120000;
+
+      // Upload progress callback
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
       }
-      return await res.json();
-    } catch (err) {
-      console.warn('Vision backend call error:', err);
-      return { status: 'error', error: err.message || 'Cannot connect to backend on port 8000.' };
-    }
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data);
+          } else {
+            resolve({ status: 'error', error: data?.detail || `Server error (HTTP ${xhr.status})` });
+          }
+        } catch {
+          resolve({ status: 'error', error: `Unexpected server response (HTTP ${xhr.status})` });
+        }
+      };
+
+      xhr.onerror = () => {
+        resolve({ status: 'error', error: 'Network error — could not reach the backend. Check your connection.' });
+      };
+
+      xhr.ontimeout = () => {
+        resolve({ status: 'error', error: 'Upload timed out after 2 minutes. Try a smaller image or check your internet speed.' });
+      };
+
+      xhr.send(formData);
+    });
   },
 
   async explainVisionAnalysis(context) {
