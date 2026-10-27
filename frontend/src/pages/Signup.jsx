@@ -311,7 +311,7 @@ export function Signup() {
           {/* Divider */}
           <div className="my-5 flex items-center gap-3">
             <div className="flex-1 h-px bg-white/[0.08]" />
-            <span className="text-xs text-slate-500">Already have an account?</span>
+            <span className="text-xs text-slate-300 font-medium">Already have an account?</span>
             <div className="flex-1 h-px bg-white/[0.08]" />
           </div>
 
@@ -324,7 +324,7 @@ export function Signup() {
           </button>
 
           {/* Security footer */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-slate-500 font-mono">
+          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-slate-400 font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>Multi-Tenant Isolation · AES-256 GCM · ISO 27001 Ready</span>
           </div>

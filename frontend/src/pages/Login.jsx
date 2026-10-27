@@ -237,7 +237,7 @@ export function Login() {
                 <button
                   type="button"
                   onClick={() => setForgotPasswordNotice(true)}
-                  className="text-[11px] text-slate-500 hover:text-indigo-400 transition-colors cursor-pointer"
+                  className="text-[11px] text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer font-medium"
                 >
                   Forgot password?
                 </button>
@@ -267,7 +267,7 @@ export function Login() {
           {/* Divider */}
           <div className="my-6 flex items-center gap-3">
             <div className="flex-1 h-px bg-white/[0.08]" />
-            <span className="text-xs text-slate-500">New to PriceMind?</span>
+            <span className="text-xs text-slate-300 font-medium">New to PriceMind?</span>
             <div className="flex-1 h-px bg-white/[0.08]" />
           </div>
 
@@ -282,7 +282,7 @@ export function Login() {
           </button>
 
           {/* Security footer */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-500 font-mono">
+          <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-400 font-mono">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>AES-256 GCM · JWT Auth · Enterprise SSO Ready</span>
           </div>
