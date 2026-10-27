@@ -97,6 +97,7 @@ export function AnalyticalChartContainer({
             onClick={onExportCSV}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.08] transition-all cursor-pointer"
             title="Export chart dataset (.CSV)"
+            aria-label="Export chart dataset (.CSV)"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
@@ -109,6 +110,7 @@ export function AnalyticalChartContainer({
             onClick={() => setIsFullscreen(true)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.08] transition-all cursor-pointer"
             title="Expand chart inspection"
+            aria-label="Expand chart inspection"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>

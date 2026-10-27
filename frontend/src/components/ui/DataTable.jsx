@@ -299,6 +299,7 @@ export function DataTable({
                 disabled={currentPage === 1}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="First page"
+                aria-label="First page"
               >
                 <ChevronsLeft className="w-4 h-4" />
               </button>
@@ -308,6 +309,7 @@ export function DataTable({
                 disabled={currentPage === 1}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Previous page"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -317,6 +319,7 @@ export function DataTable({
                 disabled={currentPage === totalPages}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Next page"
+                aria-label="Next page"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -326,6 +329,7 @@ export function DataTable({
                 disabled={currentPage === totalPages}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
                 title="Last page"
+                aria-label="Last page"
               >
                 <ChevronsRight className="w-4 h-4" />
               </button>

@@ -85,6 +85,7 @@ export function CommandPalette() {
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(false)}
+            aria-label="Close command palette"
             className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] cursor-pointer"
           >
             <X className="w-4 h-4" />

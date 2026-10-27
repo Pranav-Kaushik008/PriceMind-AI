@@ -163,6 +163,7 @@ export const SearchInput = forwardRef(function SearchInput(
             onClick={onClear}
             className="text-slate-400 hover:text-white p-0.5 rounded-md focus:outline-none cursor-pointer hover:bg-white/[0.08] transition-colors"
             title="Clear search"
+            aria-label="Clear search"
           >
             <X className="w-3.5 h-3.5" />
           </button>

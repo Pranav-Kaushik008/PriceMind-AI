@@ -188,6 +188,7 @@ export function Header() {
           onClick={() => setCommandPaletteOpen(true)}
           className="md:hidden p-2 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-colors cursor-pointer"
           title="Search (⌘K)"
+          aria-label="Search (⌘K)"
         >
           <Search className="w-3.5 h-3.5" />
         </button>
@@ -257,6 +258,7 @@ export function Header() {
           onClick={toggleTheme}
           className="p-2 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-colors cursor-pointer"
           title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
@@ -268,6 +270,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            aria-label="User account menu"
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-pm-hover transition-colors cursor-pointer select-none"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center font-bold text-[11px] text-white shadow-sm">

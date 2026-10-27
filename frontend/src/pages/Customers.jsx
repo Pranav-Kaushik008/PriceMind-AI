@@ -166,7 +166,12 @@ export function Customers() {
                 <h2 className="text-sm font-bold text-white">New Custom Segment</h2>
                 <p className="text-[11px] text-slate-400 mt-0.5">Define a new customer pricing cohort</p>
               </div>
-              <button onClick={() => setShowNewSegmentModal(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setShowNewSegmentModal(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>

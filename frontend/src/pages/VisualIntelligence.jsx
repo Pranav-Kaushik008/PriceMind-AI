@@ -664,6 +664,7 @@ export function VisualIntelligence() {
                         }}
                         className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-slate-300 hover:text-white cursor-pointer"
                         title="Clear image"
+                        aria-label="Clear image"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1359,6 +1360,7 @@ export function VisualIntelligence() {
                 type="button"
                 onClick={() => setIsSimModalOpen(false)}
                 className="text-pm-textMuted hover:text-pm-text cursor-pointer p-1 rounded-lg hover:bg-pm-hover"
+                aria-label="Close simulation modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1428,6 +1430,7 @@ export function VisualIntelligence() {
                 type="button"
                 onClick={() => setIsDetailsModalOpen(false)}
                 className="text-pm-textMuted hover:text-pm-text cursor-pointer p-1 rounded-lg hover:bg-pm-hover"
+                aria-label="Close details modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1548,6 +1551,7 @@ export function VisualIntelligence() {
                 type="button"
                 onClick={() => setIsApiGuideOpen(false)}
                 className="text-pm-textMuted hover:text-pm-text cursor-pointer p-1 rounded-lg hover:bg-pm-hover"
+                aria-label="Close API guide modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1603,6 +1607,7 @@ export function VisualIntelligence() {
                 type="button"
                 onClick={() => setIsHistoryModalOpen(false)}
                 className="text-pm-textMuted hover:text-pm-text cursor-pointer p-1 rounded-lg hover:bg-pm-hover"
+                aria-label="Close history modal"
               >
                 <X className="w-4 h-4" />
               </button>

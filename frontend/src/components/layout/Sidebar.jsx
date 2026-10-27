@@ -272,6 +272,7 @@ export function Sidebar() {
               onClick={toggleSidebarCollapsed}
               className="p-1.5 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-all cursor-pointer border border-transparent hover:border-pm-border"
               title="Collapse sidebar"
+              aria-label="Collapse sidebar"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -283,6 +284,7 @@ export function Sidebar() {
               onClick={toggleSidebarCollapsed}
               className="p-1.5 rounded-lg text-pm-textMuted hover:text-pm-text hover:bg-pm-hover transition-all cursor-pointer"
               title="Expand sidebar"
+              aria-label="Expand sidebar"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -329,6 +331,7 @@ export function Sidebar() {
               : 'opacity-40 hover:opacity-100 scale-95'
           )}
           title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isSidebarCollapsed ? (
             <ChevronRight className="w-3 h-3 text-indigo-400" />
