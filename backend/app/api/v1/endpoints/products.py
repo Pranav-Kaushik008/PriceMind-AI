@@ -285,22 +285,21 @@ def bulk_import_products(
     # Pre-fetch existing categories in memory
     categories_map = {c.name.lower(): c.id for c in db.scalars(select(Category)).all()}
 
-    # Extract SKUs for THIS batch only — avoids loading entire 30,000+ catalog on every chunk
+    # Extract SKUs for THIS batch only — avoids loading entire catalog on every chunk
     batch_skus = []
     for idx, row in enumerate(items):
         if isinstance(row, dict):
-            s = get_field_ci(
+            s = str(get_field_ci(
                 row,
                 "skuCode", "sku", "external_product_id", "id", "product_id", "productid", "item_id", "itemid", "item", "stockcode",
                 default=f"SKU-{idx+1:04d}",
-            )
+            )).strip()[:100]
             batch_skus.append(s)
 
     existing_products_map = {}
     if batch_skus:
+        # Check by external_product_id globally to satisfy uq_products_external_id constraint
         sku_query = select(Product).where(Product.external_product_id.in_(batch_skus))
-        if org_id:
-            sku_query = sku_query.where(Product.organization_id == org_id)
         for p in db.scalars(sku_query).all():
             existing_products_map[p.external_product_id] = p
 
@@ -317,26 +316,26 @@ def bulk_import_products(
         if not isinstance(row, dict):
             continue
 
-        sku = get_field_ci(
+        sku = str(get_field_ci(
             row,
             "skuCode", "sku", "external_product_id", "id", "product_id", "productid", "item_id", "itemid", "item", "stockcode",
             default=f"SKU-{idx+1:04d}"
-        )
-        name = get_field_ci(
+        )).strip()[:100]
+        name = str(get_field_ci(
             row,
             "name", "product_name", "productname", "description", "title", "item_name",
             default=f"Product {sku}"
-        )
-        category_name = get_field_ci(
+        )).strip()[:255]
+        category_name = str(get_field_ci(
             row,
             "category", "category_name", "product_category", "dept", "department", "type", "cat",
             default="General"
-        )
-        channel = get_field_ci(
+        )).strip()[:255]
+        channel = str(get_field_ci(
             row,
             "channel", "store_channel", "store", "warehouse", "region", "market",
             default="Direct"
-        )
+        )).strip()[:100]
 
         raw_price = get_field_ci(
             row,
@@ -381,10 +380,12 @@ def bulk_import_products(
             categories_map[cat_key] = cat_id
             category_id = cat_id
 
-        # Find existing product within this tenant from cache
+        # Find existing product from cache
         p = existing_products_map.get(sku)
         if p:
             p.name = name
+            if org_id:
+                p.organization_id = org_id
             p.category_id = category_id
             p.store_channel = channel
             p.current_price = current_price
@@ -484,9 +485,11 @@ def clear_catalog(
         first_org = db.scalar(select(Organization))
         org_id = first_org.id if first_org else None
 
-    # Find product IDs for this tenant
+    # Find product IDs for this tenant (or unassigned seeded products)
     if org_id:
-        product_ids_q = select(Product.id).where(Product.organization_id == org_id)
+        product_ids_q = select(Product.id).where(
+            (Product.organization_id == org_id) | (Product.organization_id.is_(None))
+        )
     else:
         product_ids_q = select(Product.id)
 
@@ -503,7 +506,9 @@ def clear_catalog(
     # Delete products
     if org_id:
         prods_deleted = db.execute(
-            delete(Product).where(Product.organization_id == org_id)
+            delete(Product).where(
+                (Product.organization_id == org_id) | (Product.organization_id.is_(None))
+            )
         ).rowcount
     else:
         prods_deleted = db.execute(delete(Product)).rowcount

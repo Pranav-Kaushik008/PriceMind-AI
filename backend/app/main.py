@@ -20,6 +20,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -75,6 +76,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Allow large JSON payloads (up to 50 MB) — needed for bulk CSV imports on Render
+# Render's reverse proxy has a 100 MB limit; this middleware is belt-and-suspenders.
+class LargeBodyMiddleware(BaseHTTPMiddleware):
+    MAX_BODY = 50 * 1024 * 1024  # 50 MB
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method in ("POST", "PUT", "PATCH"):
+            content_length = request.headers.get("content-length")
+            if content_length and int(content_length) > self.MAX_BODY:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": f"Request body too large. Maximum allowed is 50 MB."},
+                )
+        return await call_next(request)
+
+app.add_middleware(LargeBodyMiddleware)
 
 
 @app.middleware("http")

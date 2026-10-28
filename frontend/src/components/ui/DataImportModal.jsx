@@ -126,74 +126,64 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
               rawRows.push(raw);
             }
 
-            // Resilient field normalization supporting standard, M5, Walmart, and Kaggle formats
-            // Build a COMPOSITE SKU key to handle datasets (like M5) where the same item appears
-            // in multiple stores/dates — ensuring every row gets a unique identity in the catalog.
-            const baseId =
-              raw.skuCode ||
-              raw.sku ||
-              raw.external_product_id ||
-              raw.item_id ||
-              raw.itemid ||
-              raw.id ||
-              raw.product_id;
+            // Case-insensitive & punctuation-insensitive normalized key lookup
+            const normMap = {};
+            for (const key of Object.keys(raw)) {
+              const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+              normMap[cleanKey] = raw[key];
+            }
 
-            // Detect dimensional qualifiers that make a row unique beyond just the item id
-            const dimStore = raw.store_id || raw.store || raw.store_code || raw.warehouse || raw.market || '';
-            const dimDate = raw.date || raw.week || raw.period || raw.wm_yr_wk || '';
+            const getVal = (...candidateKeys) => {
+              for (const k of candidateKeys) {
+                const ck = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (normMap[ck] !== undefined && normMap[ck] !== null && String(normMap[ck]).trim() !== '') {
+                  return String(normMap[ck]).trim();
+                }
+              }
+              return '';
+            };
+
+            // Resilient field normalization supporting standard, M5, Walmart, Kaggle, UCI Online Retail
+            const baseId = getVal(
+              'skuCode', 'sku', 'external_product_id', 'item_id', 'itemid', 'id', 'product_id', 'productid',
+              'stockcode', 'stock_code', 'code', 'product_code', 'asin', 'model', 'partnumber', 'sku_code'
+            );
+
+            // Detect dimensional qualifiers
+            const dimStore = getVal('store_id', 'store', 'store_code', 'warehouse', 'market', 'channel');
+            const dimDate = getVal('date', 'week', 'period', 'wm_yr_wk', 'month', 'year');
 
             let skuCode;
             if (baseId) {
-              // Append store dimension if present and different from baseId (avoids duplication like "FOODS_1_001_CA_1")
               const storeSuffix = dimStore && dimStore !== baseId ? `_${dimStore}` : '';
-              // Append date/week dimension if present (further uniquifies time-series rows)
               const dateSuffix = dimDate ? `_${dimDate}` : '';
-              skuCode = `${baseId}${storeSuffix}${dateSuffix}`;
+              skuCode = `${baseId}${storeSuffix}${dateSuffix}`.slice(0, 95);
             } else {
-              // No recognizable ID column — use row index to guarantee uniqueness
               skuCode = `SKU-${i.toString().padStart(5, '0')}`;
             }
 
-            const category =
-              raw.category ||
-              raw.category_name ||
-              raw.cat_id ||
-              raw.dept_id ||
-              raw.department ||
-              raw.dept ||
-              'General';
+            const category = (getVal('category', 'category_name', 'cat_id', 'dept_id', 'department', 'dept', 'type', 'cat') || 'General').slice(0, 100);
 
-            const name =
-              raw.name ||
-              raw.product_name ||
-              raw.item_name ||
-              raw.description ||
-              `${skuCode} (${category})`;
+            const name = (getVal('name', 'product_name', 'item_name', 'description', 'title', 'productname', 'itemname') || `${skuCode} (${category})`).slice(0, 200);
 
-            let currentPrice = parseFloat(
-              String(raw.currentPrice || raw.price || raw.sell_price || raw.unit_price || raw.sales || raw.weekly_sales || '').replace(/[\$,]/g, '')
-            );
+            const rawPriceStr = getVal('currentPrice', 'price', 'sell_price', 'unit_price', 'sales', 'weekly_sales', 'unitprice', 'sellingprice', 'retail_price');
+            let currentPrice = parseFloat(rawPriceStr.replace(/[\$,]/g, ''));
             if (isNaN(currentPrice) || currentPrice <= 0) {
               const hash = skuCode.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
               currentPrice = Math.round((25.0 + (hash % 160)) * 100) / 100;
             }
 
-            let costPrice = parseFloat(
-              String(raw.costPrice || raw.cost || raw.cogs || raw.unit_cost || '').replace(/[\$,]/g, '')
-            );
+            const rawCostStr = getVal('costPrice', 'cost', 'cogs', 'unit_cost', 'cost_price', 'wholesale_price', 'buy_price');
+            let costPrice = parseFloat(rawCostStr.replace(/[\$,]/g, ''));
             if (isNaN(costPrice) || costPrice <= 0) {
               costPrice = Math.round(currentPrice * 0.58 * 100) / 100;
             }
 
-            const inventoryStock =
-              parseInt(
-                String(raw.inventoryStock || raw.inventory || raw.inventory_level || raw.stock || raw.quantity || raw.qty || raw.units_sold || '350').replace(/,/g, ''),
-                10
-              ) || 350;
+            const rawInventoryStr = getVal('inventoryStock', 'inventory', 'inventory_level', 'stock', 'quantity', 'qty', 'units_sold', 'order_demand', 'units');
+            const inventoryStock = parseInt(rawInventoryStr.replace(/,/g, ''), 10) || 350;
 
-            const competitorAvgPrice =
-              parseFloat(String(raw.competitorAvgPrice || raw.competitor_price || raw.market_price || '').replace(/[\$,]/g, '')) ||
-              Math.round(currentPrice * 1.05 * 100) / 100;
+            const rawCompStr = getVal('competitorAvgPrice', 'competitor_price', 'market_price', 'comp_price', 'benchmark_price');
+            const competitorAvgPrice = parseFloat(rawCompStr.replace(/[\$,]/g, '')) || Math.round(currentPrice * 1.05 * 100) / 100;
 
             const marginPercent =
               currentPrice > 0 ? Math.round(((currentPrice - costPrice) / currentPrice) * 1000) / 10 : 0;
@@ -202,7 +192,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
               skuCode,
               name,
               category,
-              channel: dimStore || raw.channel || raw.store_channel || 'Direct',
+              channel: (dimStore || getVal('channel', 'store_channel') || 'Direct').slice(0, 95),
               currentPrice,
               costPrice,
               inventoryStock,
@@ -252,7 +242,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
     setImportProgressPercent(0);
     setImportStatusText('Preparing dataset...');
 
-    const isLarge = parsedRows.length > 1000;
+    const isLarge = parsedRows.length > 200;
 
     try {
       // If mode is 'replace', clear catalog first
@@ -265,10 +255,10 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
         }
       }
 
-      // Adaptive batching:
-      // If dataset <= 1,000 SKUs: single instant batch (< 100ms) for blazing quick site update!
-      // If dataset > 1,000 SKUs: 2,500 items per batch to maximize DB throughput without payload lag
-      const BATCH_SIZE = parsedRows.length <= 1000 ? parsedRows.length : 2500;
+      // Adaptive batching — kept small to stay under Render's 1 MB reverse-proxy body limit.
+      // Each 200-item batch is ~20 KB JSON, well within all proxy/CDN limits.
+      // On localhost the limit doesn't apply but small batches are still fast there.
+      const BATCH_SIZE = 200;
       let totalInserted = 0;
       let totalUpdated = 0;
 
@@ -314,7 +304,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
       onClose();
     } catch (err) {
       console.error('Import error:', err);
-      toast.error('Import Failed', err?.message || 'Backend server may be unreachable at http://localhost:8000.');
+      toast.error('Import Failed', err?.message || 'Could not reach the backend. Please check your connection and try again.');
     } finally {
       setIsProcessing(false);
       setImportStatusText('');
@@ -502,7 +492,7 @@ export function DataImportModal({ isOpen, onClose, onImportSuccess }) {
         )}
 
         {/* Informative Note for High-Volume Datasets */}
-        {parsedRows.length > 2500 && !isProcessing && (
+        {parsedRows.length > 200 && !isProcessing && (
           <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Info size={14} className="flex-shrink-0 text-cyan-400" />
