@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_optional_current_user
 from app.db.session import get_db
@@ -25,14 +25,19 @@ def get_recommendations(
     """List pending or applied pricing optimization recommendations scoped to the user's organization."""
     org_id = current_user.organization_id if current_user else None
 
-    q = select(PricingRecommendation).join(PricingRecommendation.product)
+    q = (
+        select(PricingRecommendation)
+        .options(
+            joinedload(PricingRecommendation.product).joinedload(Product.category)
+        )
+    )
     if org_id:
-        q = q.where(Product.organization_id == org_id)
+        q = q.join(PricingRecommendation.product).where(Product.organization_id == org_id)
 
     if status and status.lower() != "all":
         q = q.where(PricingRecommendation.status == status.lower())
 
-    recs = list(db.scalars(q.order_by(PricingRecommendation.created_at.desc()).limit(limit)))
+    recs = list(db.scalars(q.order_by(PricingRecommendation.created_at.desc()).limit(limit)).unique())
 
     output: list[RecommendationResponse] = []
     for r in recs:

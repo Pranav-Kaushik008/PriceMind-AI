@@ -5,7 +5,7 @@ Service layer for product and category operations.
 """
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.category import Category
 from app.models.product import Product
@@ -14,7 +14,7 @@ from app.schemas.product import CategoryResponse, ProductListResponse, ProductRe
 
 def get_product_by_id_or_sku(db: Session, identifier: str, organization_id: str | None = None) -> Product | None:
     """Find a product by its UUID or external SKU ID, optionally scoped by organization."""
-    q = select(Product).where((Product.id == identifier) | (Product.external_product_id == identifier))
+    q = select(Product).options(joinedload(Product.category)).where((Product.id == identifier) | (Product.external_product_id == identifier))
     if organization_id:
         q = q.where(Product.organization_id == organization_id)
     return db.scalar(q)
@@ -33,7 +33,7 @@ def list_products(
     page_size = max(1, min(page_size, 50000))
     page = max(1, page)
 
-    q = select(Product)
+    q = select(Product).options(joinedload(Product.category))
     if organization_id:
         q = q.where(Product.organization_id == organization_id)
 
@@ -56,7 +56,7 @@ def list_products(
 
     # Paginate
     offset = (page - 1) * page_size
-    items_raw = list(db.scalars(q.order_by(Product.external_product_id).offset(offset).limit(page_size)))
+    items_raw = list(db.scalars(q.order_by(Product.external_product_id).offset(offset).limit(page_size)).unique())
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
