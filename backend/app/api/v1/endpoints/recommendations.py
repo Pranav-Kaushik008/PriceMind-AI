@@ -14,11 +14,25 @@ from app.schemas.pricing import RecommendationResponse
 router = APIRouter()
 
 
+DEFAULT_GUARDRAIL_CHECKS = {
+    "marginFloorPassed": True,
+    "competitorIndexWithinBounds": True,
+    "inventoryDepletionSafe": True,
+    "brandErosionRiskLow": True,
+}
+
+DEFAULT_SHAP_ATTRIBUTION = [
+    {"feature": "Competitor Price Index Spread", "impactPercent": 4.2, "description": "Market competitor pricing room available."},
+    {"feature": "Empirical Inelasticity Demand Zone", "impactPercent": 2.8, "description": "Low buyer sensitivity enables margin extraction."},
+    {"feature": "Inventory Runway Buffer", "impactPercent": 0.9, "description": "Optimal inventory runway avoids markdown urgency."},
+]
+
+
 @router.get("", response_model=list[RecommendationResponse])
 @router.get("/", response_model=list[RecommendationResponse], include_in_schema=False)
 def get_recommendations(
     status: str | None = None,
-    limit: int = Query(50000, ge=1, le=100000, description="Max recommendations to return"),
+    limit: int = Query(100000, ge=1, le=100000, description="Max recommendations to return"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
@@ -81,18 +95,9 @@ def get_recommendations(
                 status=r.status,
                 primaryDriver="Non-Linear Elasticity Optimization",
                 rationale=r.rationale or f"Algorithmic dynamic pricing optimization recommendation for {p.name}.",
-                guardrailChecks={
-                    "marginFloorPassed": True,
-                    "competitorIndexWithinBounds": True,
-                    "inventoryDepletionSafe": True,
-                    "brandErosionRiskLow": True,
-                },
+                guardrailChecks=DEFAULT_GUARDRAIL_CHECKS,
                 elasticityAtPoint=r.elasticity or -1.15,
-                shapAttribution=[
-                    {"feature": "Competitor Price Index Spread", "impactPercent": 4.2, "description": "Market competitor pricing room available."},
-                    {"feature": "Empirical Inelasticity Demand Zone", "impactPercent": 2.8, "description": "Low buyer sensitivity enables margin extraction."},
-                    {"feature": "Inventory Runway Buffer", "impactPercent": 0.9, "description": "Optimal inventory runway avoids markdown urgency."},
-                ],
+                shapAttribution=DEFAULT_SHAP_ATTRIBUTION,
                 appliedAt=r.applied_at,
             )
         )

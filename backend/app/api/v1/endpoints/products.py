@@ -28,7 +28,7 @@ def get_products(
     search: str | None = Query(None, description="Search query in name or SKU"),
     active_only: bool = Query(True, description="Filter active products only"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(5000, ge=1, le=50000, description="Page size"),
+    page_size: int = Query(50000, ge=1, le=100000, description="Page size"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):

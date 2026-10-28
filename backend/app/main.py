@@ -19,6 +19,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -93,6 +94,7 @@ class LargeBodyMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 app.add_middleware(LargeBodyMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.middleware("http")

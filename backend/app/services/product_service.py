@@ -30,7 +30,7 @@ def list_products(
     page_size: int = 20,
 ) -> ProductListResponse:
     """List products with optional tenant isolation, category filter, text search, and pagination."""
-    page_size = max(1, min(page_size, 50000))
+    page_size = max(1, min(page_size, 100000))
     page = max(1, page)
 
     q = select(Product).options(joinedload(Product.category))
