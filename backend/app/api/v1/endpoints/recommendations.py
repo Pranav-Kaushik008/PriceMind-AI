@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_optional_current_user
@@ -34,14 +34,16 @@ DEFAULT_SHAP_ATTRIBUTION = [
 @router.get("/", include_in_schema=False)
 def get_recommendations(
     status: str | None = None,
-    limit: int = Query(100000, ge=1, le=100000, description="Max recommendations to return"),
+    search: str | None = Query(None, description="Search query in product name or SKU code"),
+    category: str | None = Query(None, description="Filter by category"),
+    limit: int = Query(2500, ge=1, le=100000, description="Max recommendations to return"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
     """List pending or applied pricing optimization recommendations scoped to the user's organization."""
     org_id = current_user.organization_id if current_user else None
 
-    # Ultra-lean flat column query: eliminates ORM & Pydantic overhead, uses <20MB RAM for 30k+ rows
+    # Ultra-lean flat column query: eliminates ORM & Pydantic overhead, uses <20MB RAM for 60k+ rows
     q = (
         select(
             PricingRecommendation.id,
@@ -72,6 +74,16 @@ def get_recommendations(
 
     if status and status.lower() != "all":
         q = q.where(PricingRecommendation.status == status.lower())
+
+    if search:
+        pattern = f"%{search.lower()}%"
+        q = q.where(
+            func.lower(Product.name).like(pattern)
+            | func.lower(Product.external_product_id).like(pattern)
+        )
+
+    if category and category.lower() != "all":
+        q = q.where(func.lower(Category.name) == category.lower())
 
     rows = db.execute(q.order_by(PricingRecommendation.created_at.desc()).limit(limit)).all()
 

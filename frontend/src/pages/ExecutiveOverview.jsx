@@ -133,7 +133,7 @@ export function ExecutiveOverview() {
       const [kpis, overview, recs, skuList, cats] = await Promise.all([
         apiClient.getExecutiveKPIs(),
         apiClient.getAnalyticsOverview(),
-        apiClient.getRecommendations(),
+        apiClient.getRecommendations(undefined, undefined, selectedCategory !== 'all' ? selectedCategory : undefined),
         apiClient.getSKUs(selectedCategory !== 'all' ? selectedCategory : undefined),
         apiClient.getCategories ? apiClient.getCategories() : Promise.resolve([]),
       ]);
@@ -174,6 +174,7 @@ export function ExecutiveOverview() {
   const totalRevenue = analyticsOverview?.total_revenue || 0;
   const totalProducts = analyticsOverview?.total_products || 0;
   const totalRecs = analyticsOverview?.total_recommendations || recommendations.length;
+  const totalPendingCount = analyticsOverview?.total_recommendations || pendingRecs.length;
   const avgPrice = analyticsOverview?.average_price || 0;
   const totalSalesRecords = analyticsOverview?.total_sales_records || 0;
 
@@ -302,12 +303,12 @@ export function ExecutiveOverview() {
     },
     {
       label: 'Active Opportunities',
-      value: `${pendingRecs.length} Pending`,
+      value: `${formatNumber(totalPendingCount)} Pending`,
       sub: totalProfitLift > 0
         ? `+${formatCurrency(totalProfitLift, currency, true)}/mo estimated lift`
         : 'Import products to generate',
-      isPositive: pendingRecs.length > 0,
-      live: pendingRecs.length > 0,
+      isPositive: totalPendingCount > 0,
+      live: totalPendingCount > 0,
     },
     {
       label: 'Catalog Coverage',
@@ -849,8 +850,8 @@ export function ExecutiveOverview() {
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-slate-300">Pending Approvals</span>
-                  <span className={`font-mono font-bold text-xs ${pendingRecs.length > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
-                    {pendingRecs.length > 0 ? `${pendingRecs.length} Awaiting` : '—'}
+                  <span className={`font-mono font-bold text-xs ${totalPendingCount > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                    {totalPendingCount > 0 ? `${formatNumber(totalPendingCount)} Awaiting` : '—'}
                   </span>
                 </div>
               </div>
@@ -951,7 +952,7 @@ export function ExecutiveOverview() {
               onClick={() => setActivePage('pricing')}
               className="text-xs text-indigo-400 hover:text-white shrink-0"
             >
-              Full Workspace ({recommendations.length})
+              Full Workspace ({formatNumber(totalRecs)})
             </Button>
           </div>
         </div>

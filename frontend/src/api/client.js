@@ -142,7 +142,7 @@ export const apiClient = {
     const params = new URLSearchParams();
     if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
     if (search) params.append('search', search);
-    params.append('page_size', '100000');
+    params.append('page_size', '2500');
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const data = await fetchJson(`/products${queryString}`);
@@ -204,10 +204,12 @@ export const apiClient = {
   },
 
   // ── 4. Pricing Recommendations ─────────────────────────────────────────────
-  async getRecommendations(statusFilter) {
+  async getRecommendations(statusFilter, search = null, category = null) {
     const paramStr = new URLSearchParams();
     if (statusFilter && statusFilter !== 'all') paramStr.append('status', statusFilter);
-    paramStr.append('limit', '100000');
+    if (search) paramStr.append('search', search);
+    if (category && category !== 'all') paramStr.append('category', category);
+    paramStr.append('limit', '2500');
     const param = `?${paramStr.toString()}`;
     const data = await fetchJson(`/recommendations${param}`);
     if (data && Array.isArray(data)) return data.map(normalizeRec);
