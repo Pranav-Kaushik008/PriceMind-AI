@@ -123,11 +123,6 @@ def get_recommendations(
             "confidenceScore": conf_val,
             "urgency": "immediate",
             "status": r.status,
-            "primaryDriver": "Non-Linear Elasticity Optimization",
-            "rationale": r.rationale or f"Algorithmic dynamic pricing optimization recommendation for {r.sku_name}.",
-            "guardrailChecks": DEFAULT_GUARDRAIL_CHECKS,
-            "elasticityAtPoint": r.elasticity or -1.15,
-            "shapAttribution": DEFAULT_SHAP_ATTRIBUTION,
             "appliedAt": r.applied_at,
         })
 

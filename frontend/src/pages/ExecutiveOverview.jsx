@@ -134,7 +134,7 @@ export function ExecutiveOverview() {
         apiClient.getExecutiveKPIs(),
         apiClient.getAnalyticsOverview(),
         apiClient.getRecommendations(undefined, undefined, selectedCategory !== 'all' ? selectedCategory : undefined),
-        apiClient.getSKUs(selectedCategory !== 'all' ? selectedCategory : undefined),
+        apiClient.getSKUs(selectedCategory !== 'all' ? selectedCategory : undefined, null, 250),
         apiClient.getCategories ? apiClient.getCategories() : Promise.resolve([]),
       ]);
 
