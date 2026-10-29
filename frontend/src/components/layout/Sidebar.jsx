@@ -262,7 +262,7 @@ export function Sidebar() {
                   Engine Active
                 </span>
                 <span className="text-[9px] font-mono text-emerald-400/90 truncate block">
-                  v1.4.2 · Production
+                  v1.4.5 · Production
                 </span>
               </div>
             </div>
