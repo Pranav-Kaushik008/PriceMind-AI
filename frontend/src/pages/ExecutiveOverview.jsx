@@ -173,10 +173,13 @@ export function ExecutiveOverview() {
   // ── Computed values from REAL backend data ───────────────────────────────────
   const totalRevenue = analyticsOverview?.total_revenue || 0;
   const totalProducts = analyticsOverview?.total_products || 0;
-  const totalRecs = analyticsOverview?.total_recommendations || recommendations.length;
-  const totalPendingCount = analyticsOverview?.total_recommendations || pendingRecs.length;
   const avgPrice = analyticsOverview?.average_price || 0;
   const totalSalesRecords = analyticsOverview?.total_sales_records || 0;
+
+  // pendingRecs MUST be declared before totalPendingCount which references it
+  const pendingRecs = recommendations.filter((r) => r.status === 'pending');
+  const totalPendingCount = analyticsOverview?.total_recommendations || pendingRecs.length;
+  const totalRecs = analyticsOverview?.total_recommendations || recommendations.length;
 
   // Use backend-computed average_margin first, then fallback to recommendation data
   const avgMargin = useMemo(() => {
@@ -189,7 +192,6 @@ export function ExecutiveOverview() {
   }, [analyticsOverview, recommendations]);
 
   const grossProfit = Math.round(totalRevenue * (avgMargin / 100));
-  const pendingRecs = recommendations.filter((r) => r.status === 'pending');
   const totalProfitLift = pendingRecs.reduce((sum, r) => sum + (r.projectedRevenueDelta || 0), 0);
 
   // Filtered pricing opportunities based on search term
@@ -375,7 +377,15 @@ export function ExecutiveOverview() {
       forecastKey: 'unitsForecast',
       color: '#06B6D4',
     },
-  }[activeMetric];
+  }[activeMetric] || {
+    title: 'Revenue Trajectory',
+    subtitle: 'Derived from your live product catalog pricing',
+    unitFormatter: (val) => totalRevenue > 1000000 ? `$${(val / 1000000).toFixed(1)}M` : `$${(val / 1000).toFixed(0)}k`,
+    valFormatter: (val) => formatCurrency(val, currency),
+    actualKey: 'revenueActual',
+    forecastKey: 'revenueForecast',
+    color: '#6366F1',
+  };
 
   // ── Recommended actions from real recs ────────────────────────────────────────
   const recommendedActions = useMemo(() => {
