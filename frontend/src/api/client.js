@@ -142,7 +142,7 @@ export const apiClient = {
     const params = new URLSearchParams();
     if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
     if (search) params.append('search', search);
-    params.append('page_size', '2500');
+    params.append('page_size', '50000');
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     const data = await fetchJson(`/products${queryString}`);
@@ -209,7 +209,7 @@ export const apiClient = {
     if (statusFilter && statusFilter !== 'all') paramStr.append('status', statusFilter);
     if (search) paramStr.append('search', search);
     if (category && category !== 'all') paramStr.append('category', category);
-    paramStr.append('limit', '2500');
+    paramStr.append('limit', '50000');
     const param = `?${paramStr.toString()}`;
     const data = await fetchJson(`/recommendations${param}`);
     if (data && Array.isArray(data)) return data.map(normalizeRec);

@@ -36,7 +36,7 @@ def get_recommendations(
     status: str | None = None,
     search: str | None = Query(None, description="Search query in product name or SKU code"),
     category: str | None = Query(None, description="Filter by category"),
-    limit: int = Query(2500, ge=1, le=100000, description="Max recommendations to return"),
+    limit: int = Query(50000, ge=1, le=100000, description="Max recommendations to return"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
