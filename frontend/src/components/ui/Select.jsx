@@ -61,7 +61,12 @@ export function Select({
     if (!isOpen) setSearchQuery('');
   }, [isOpen, searchable]);
 
-  const selectedOption = options.find((opt) => (typeof opt === 'object' ? opt.value === value : opt === value));
+  const selectedOption = options.find((opt) => {
+    if (typeof opt === 'object' && opt !== null) {
+      return String(opt.value) === String(value);
+    }
+    return String(opt) === String(value);
+  });
   const selectedLabel = selectedOption ? (typeof selectedOption === 'object' ? selectedOption.label : selectedOption) : null;
 
   // Filter options by search query when searchable
@@ -133,20 +138,20 @@ export function Select({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute top-full left-0 mt-1 w-full bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-2xl z-50 flex flex-col"
-          style={{ maxHeight: '16rem' }}
+          className="absolute top-full left-0 mt-1 min-w-full w-max max-w-[min(100vw-2rem,36rem)] bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-2xl z-50 flex flex-col"
+          style={{ maxHeight: '18rem' }}
         >
           {/* Search input for large lists */}
           {searchable && (
             <div className="px-2 pt-2 pb-1 border-b border-white/[0.08] flex-shrink-0">
               <div className="flex items-center gap-2 bg-white/[0.05] rounded-lg px-2.5 py-1.5">
-                <Search className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                 <input
                   ref={searchRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Type to search…"
+                  placeholder="Type to filter..."
                   className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -165,14 +170,14 @@ export function Select({
           {/* Options list */}
           <div className="overflow-y-auto flex-1 py-1.5 custom-scrollbar">
             {filteredOptions.length === 0 ? (
-              <div className="px-3.5 py-2 text-xs text-slate-500 text-center">No options found</div>
+              <div className="px-3.5 py-3 text-xs text-slate-500 text-center">No matching options</div>
             ) : (
               filteredOptions.map((opt, idx) => {
                 const optVal = typeof opt === 'object' ? opt.value : opt;
                 const optLabel = typeof opt === 'object' ? opt.label : opt;
                 const optSub = typeof opt === 'object' ? opt.subtext : null;
                 const optBadge = typeof opt === 'object' ? opt.badge : null;
-                const isSelected = optVal === value;
+                const isSelected = String(optVal) === String(value);
 
                 return (
                   <div
@@ -237,18 +242,9 @@ export function NativeSelect({
 }) {
   const handleChange = (e) => {
     if (!onChange) return;
-    const rawVal = e.target.value;
-    // Support both event-style `(e) => setVal(e.target.value)` and value-style `(val) => setVal(val)`
-    // by passing an object that has `.target.value` AND coerces to primitive string/number.
-    const hybridEvent = {
-      target: { value: rawVal },
-      currentTarget: { value: rawVal },
-      value: rawVal,
-      toString: () => rawVal,
-      valueOf: () => rawVal,
-      [Symbol.toPrimitive]: (hint) => (hint === 'number' ? Number(rawVal) : rawVal),
-    };
-    onChange(hybridEvent);
+    // Standard React SyntheticEvent with convenient direct .value property
+    e.value = e.target.value;
+    onChange(e);
   };
 
   return (

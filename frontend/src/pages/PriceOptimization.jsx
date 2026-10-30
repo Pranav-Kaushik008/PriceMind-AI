@@ -84,7 +84,9 @@ export function PriceOptimization() {
 
   // Safe current SKU
   const currentSKU = useMemo(() => {
-    const found = (skus && skus.length > 0 ? skus.find(s => s.skuCode === selectedSkuCode) || skus[0] : null) || mockSKUs[0];
+    const rawTarget = typeof selectedSkuCode === 'object' ? (selectedSkuCode?.target?.value ?? selectedSkuCode?.value) : selectedSkuCode;
+    const targetCode = String(rawTarget || '').trim();
+    const found = (skus && skus.length > 0 ? skus.find(s => s.skuCode === targetCode || s.id === targetCode) || skus[0] : null) || mockSKUs[0];
     const currentPrice = Number(found.currentPrice) || 100.0;
     const recommendedPrice = Number(found.recommendedPrice) || Math.round(currentPrice * 1.06 * 100) / 100;
     const costPrice = Number(found.costPrice) || Math.round(currentPrice * 0.55 * 100) / 100;
@@ -154,14 +156,52 @@ export function PriceOptimization() {
 
   // Curve Data
   const curveData = useMemo(() => {
-    const raw = mockElasticityCurves[currentSKU.skuCode] || mockElasticityCurves['SKU-8921-PRO'] || [];
     const cost = currentSKU.costPrice;
-    return raw.map(pt => ({
-      ...pt,
-      cost: cost * pt.demand,
-      profit: (pt.price - cost) * pt.demand,
-      margin: pt.price > 0 ? ((pt.price - cost) / pt.price) * 100 : 0,
-    }));
+    const baseP = currentSKU.currentPrice || 100;
+    const ed = currentSKU.elasticity || -1.15;
+    const baseV = currentSKU.currentVelocity || 35;
+
+    if (mockElasticityCurves[currentSKU.skuCode]) {
+      return mockElasticityCurves[currentSKU.skuCode].map(pt => {
+        const d = Number(pt.demandUnits ?? pt.demand ?? 40);
+        return {
+          ...pt,
+          demand: d,
+          demandUnits: d,
+          cost: cost * d,
+          profit: (pt.price - cost) * d,
+          margin: pt.price > 0 ? ((pt.price - cost) / pt.price) * 100 : 0,
+        };
+      });
+    }
+
+    // Dynamic curve scaled around current SKU baseline price & elasticity
+    const points = [-0.20, -0.15, -0.10, -0.05, 0, 0.05, 0.077, 0.12, 0.18, 0.25];
+    return points.map(pct => {
+      const price = Math.round(baseP * (1 + pct) * 100) / 100;
+      const demandPct = pct * ed;
+      const demandUnits = Math.max(1, Math.round(baseV * 30 * (1 + demandPct)));
+      const revenue = Math.round(price * demandUnits);
+      const grossMarginDollars = Math.round((price - cost) * demandUnits);
+      const grossMarginPercent = price > 0 ? ((price - cost) / price) * 100 : 0;
+      const isCurrent = pct === 0;
+      const isOptimal = Math.abs(price - currentSKU.recommendedPrice) < (baseP * 0.03);
+
+      return {
+        price,
+        demand: demandUnits,
+        demandUnits,
+        revenue,
+        grossMarginDollars,
+        grossMarginPercent: Number(grossMarginPercent.toFixed(1)),
+        isCurrent,
+        isOptimalRevenue: isOptimal,
+        isOptimalMargin: isOptimal,
+        cost: cost * demandUnits,
+        profit: grossMarginDollars,
+        margin: grossMarginPercent,
+      };
+    });
   }, [currentSKU]);
 
   // Candidate Prices Matrix
@@ -224,24 +264,36 @@ export function PriceOptimization() {
   const predictedGrossProfit = (recPrice - cost) * predictedUnits;
 
   const skuOptions = useMemo(() => {
-    return skus.map(s => ({
-      value: s.skuCode,
-      label: `${s.skuCode} — ${s.name}`,
-      subtext: s.category,
-    }));
+    return skus.map(s => {
+      const priceStr = s.currentPrice ? `$${Number(s.currentPrice).toFixed(2)}` : '';
+      const catStr = s.category || '';
+      const sub = [catStr, priceStr].filter(Boolean).join(' · ');
+      return {
+        value: s.skuCode,
+        label: `${s.skuCode} — ${s.name}`,
+        subtext: sub,
+      };
+    });
   }, [skus]);
+
+  const handleSelectSku = (val) => {
+    const code = typeof val === 'object' ? (val?.target?.value ?? val?.value) : val;
+    if (code) {
+      setSelectedSkuCode(String(code));
+    }
+  };
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       {skus.length > 0 && (
-        <div className="w-64">
+        <div className="w-80 sm:w-96 max-w-full">
           <Select
             value={selectedSkuCode}
-            onChange={setSelectedSkuCode}
+            onChange={handleSelectSku}
             size="sm"
             searchable={true}
             options={skuOptions}
-            placeholder="Search SKU..."
+            placeholder="Search SKU code or name..."
           />
         </div>
       )}
