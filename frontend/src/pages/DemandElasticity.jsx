@@ -54,6 +54,7 @@ export function DemandElasticity() {
 
   // Dynamic API state
   const [skus, setSkus] = useState(mockSKUs);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Control State
@@ -64,12 +65,29 @@ export function DemandElasticity() {
   const [activeAnalysisTab, setActiveAnalysisTab] = useState('price_vs_demand'); // 'price_vs_demand' | 'seasonality' | 'distribution' | 'accuracy'
   const [rankingTab, setRankingTab] = useState('growth'); // 'growth' | 'decline' | 'volatility' | 'uncertainty'
 
+  // Fetch categories once
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCategories() {
+      try {
+        const catData = await apiClient.getCategories();
+        if (isMounted && Array.isArray(catData) && catData.length > 0) {
+          setCategories(catData.map(c => typeof c === 'string' ? c : c.name || c.category_name));
+        }
+      } catch (err) {
+        console.error('DemandElasticity: failed to fetch categories', err);
+      }
+    }
+    loadCategories();
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     async function loadCatalog() {
       setIsLoading(true);
       try {
-        const data = await apiClient.getSKUs(selectedCategory);
+        const data = await apiClient.getSKUs(selectedCategory, null, 500);
         if (isMounted && Array.isArray(data)) {
           setSkus(data);
         }
@@ -318,11 +336,13 @@ export function DemandElasticity() {
           {/* Slicers Toolbar: Product, Category, Date Range, Horizon */}
           <div className="flex items-center flex-wrap gap-2">
             {/* Target SKU selector */}
-            <div className="w-52">
+            <div className="w-64">
               <Select
                 value={selectedSkuCode}
                 onChange={setSelectedSkuCode}
                 size="sm"
+                searchable={true}
+                placeholder="Search SKU..."
                 options={[
                   { value: 'ALL', label: 'All Catalog (Aggregated)' },
                   ...skus.map((s) => ({ value: s.skuCode, label: `${s.skuCode} — ${s.name}`, subtext: s.category })),
@@ -331,19 +351,24 @@ export function DemandElasticity() {
             </div>
 
             {/* Category Select */}
-            <div className="w-40">
+            <div className="w-48">
               <Select
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 size="sm"
+                searchable={categories.length > 5}
                 options={[
                   { value: 'all', label: 'All Categories' },
-                  { value: 'Hardware & Tools', label: 'Hardware & Tools' },
-                  { value: 'Telecommunications', label: 'Telecommunications' },
-                  { value: 'IoT & Sensors', label: 'IoT & Sensors' },
-                  { value: 'Fluid Mechanics', label: 'Fluid Mechanics' },
-                  { value: 'HVAC & Air Handling', label: 'HVAC & Air' },
-                  { value: 'Computing Infrastructure', label: 'Computing' },
+                  ...(categories.length > 0
+                    ? categories.map(c => ({ value: c, label: c }))
+                    : [
+                        { value: 'Hardware & Tools', label: 'Hardware & Tools' },
+                        { value: 'Telecommunications', label: 'Telecommunications' },
+                        { value: 'IoT & Sensors', label: 'IoT & Sensors' },
+                        { value: 'Fluid Mechanics', label: 'Fluid Mechanics' },
+                        { value: 'HVAC & Air Handling', label: 'HVAC & Air' },
+                        { value: 'Computing Infrastructure', label: 'Computing' },
+                      ]),
                 ]}
               />
             </div>

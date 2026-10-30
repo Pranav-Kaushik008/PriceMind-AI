@@ -384,7 +384,7 @@ export function RevenueOptimization() {
     try {
       const [overview, skuList] = await Promise.all([
         apiClient.getAnalyticsOverview(),
-        apiClient.getSKUs(),
+        apiClient.getSKUs(null, null, 1000),
       ]);
       if (overview && overview.total_revenue > 0) {
         setBaseRevenue(overview.total_revenue);
@@ -471,7 +471,7 @@ export function RevenueOptimization() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="text-xs h-8">
+      <NativeSelect value={category} onChange={(e) => setCategory(e?.target?.value ?? e)} className="text-xs h-8">
         <option value="all">All Categories</option>
         {categoryOptions.map(cat => (
           <option key={cat} value={cat.toLowerCase()}>{cat}</option>

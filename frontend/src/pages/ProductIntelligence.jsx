@@ -77,6 +77,7 @@ export function ProductIntelligence() {
 
   // Dynamic API state
   const [rawSKUs, setRawSKUs] = useState(mockSKUs);
+  const [categories, setCategories] = useState([]);
   const [recs, setRecs] = useState(mockRecommendations);
   const [isLoading, setIsLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -94,6 +95,23 @@ export function ProductIntelligence() {
 
   // Row Selection for Batch Operations
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+  // Fetch full category list once so category dropdown doesn't collapse when filtered
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCategories() {
+      try {
+        const catData = await apiClient.getCategories();
+        if (isMounted && Array.isArray(catData) && catData.length > 0) {
+          setCategories(catData.map(c => typeof c === 'string' ? c : c.name || c.category_name));
+        }
+      } catch (err) {
+        console.error('ProductIntelligence: failed to fetch categories', err);
+      }
+    }
+    loadCategories();
+    return () => { isMounted = false; };
+  }, [refreshKey, dataRefreshCounter]);
 
   // Fetch dynamic products from backend
   useEffect(() => {
@@ -221,15 +239,15 @@ export function ProductIntelligence() {
     });
   }, [enrichedSKUs, search, selectedCategory, selectedChannel, selectedElasticity]);
 
-  // Dynamic categories list from dataset
+  // Dynamic categories list from dataset and catalog categories
   const categoryOptions = useMemo(() => {
-    const set = new Set();
+    const set = new Set(categories);
     enrichedSKUs.forEach((s) => {
       if (s.category) set.add(s.category);
     });
-    const dynamicCats = Array.from(set).map((c) => ({ value: c, label: c }));
+    const dynamicCats = Array.from(set).filter(Boolean).sort().map((c) => ({ value: c, label: c }));
     return [{ value: 'all', label: 'All Categories' }, ...dynamicCats];
-  }, [enrichedSKUs]);
+  }, [categories, enrichedSKUs]);
 
   // Table Columns Definition
   const allColumns = [
@@ -465,11 +483,12 @@ export function ProductIntelligence() {
             </div>
 
             {/* Category Select */}
-            <div className="w-44">
+            <div className="w-48">
               <Select
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 size="sm"
+                searchable={categoryOptions.length > 5}
                 options={categoryOptions}
               />
             </div>

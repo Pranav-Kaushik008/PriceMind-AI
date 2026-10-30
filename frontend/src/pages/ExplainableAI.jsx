@@ -30,7 +30,7 @@ export function ExplainableAI() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={selectedSkuId} onChange={(e) => setSelectedSkuId(e.target.value)} className="text-xs h-8">
+      <NativeSelect value={selectedSkuId} onChange={(e) => setSelectedSkuId(e?.target?.value ?? e)} className="text-xs h-8">
         {mockRecommendations.map(r => (
           <option key={r.id} value={r.id}>{r.skuCode} — {r.name}</option>
         ))}

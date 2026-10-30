@@ -550,6 +550,7 @@ export function ExecutiveOverview() {
               value={selectedCategory}
               onChange={setSelectedCategory}
               size="sm"
+              searchable={categories.length > 5}
               options={[
                 { value: 'all', label: 'All Categories' },
                 ...(categories.length > 0

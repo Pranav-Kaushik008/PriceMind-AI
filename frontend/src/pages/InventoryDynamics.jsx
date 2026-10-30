@@ -84,13 +84,13 @@ export function InventoryDynamics() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="text-xs h-8">
+      <NativeSelect value={filterCategory} onChange={(e) => setFilterCategory(e?.target?.value ?? e)} className="text-xs h-8">
         <option value="all">All Categories</option>
         <option value="hardware & tools">Hardware &amp; Tools</option>
         <option value="software">Software</option>
         <option value="iot hardware">IoT Hardware</option>
       </NativeSelect>
-      <NativeSelect value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} className="text-xs h-8">
+      <NativeSelect value={riskFilter} onChange={(e) => setRiskFilter(e?.target?.value ?? e)} className="text-xs h-8">
         <option value="all">All Inventory States</option>
         <option value="stockout risk">Stockout Risk (&lt;15d)</option>
         <option value="overstock">Overstock (&gt;60d)</option>

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ModuleShell } from '../components/layout/ModuleShell';
 import { Button } from '../components/ui/Button';
-import { NativeSelect } from '../components/ui/Select';
+import { NativeSelect, Select } from '../components/ui/Select';
 import { Badge, StatusBadge } from '../components/ui/Badge';
 import { ConfidenceIndicator } from '../components/ui/ConfidenceIndicator';
 import { SHAPWaterfall } from '../components/ui/SHAPWaterfall';
@@ -58,8 +58,8 @@ export function PriceOptimization() {
       setIsLoading(true);
       try {
         const [skuList, recList] = await Promise.all([
-          apiClient.getSKUs(),
-          apiClient.getRecommendations(),
+          apiClient.getSKUs(null, null, 500),
+          apiClient.getRecommendations(null, null, 500),
         ]);
         if (mounted) {
           if (Array.isArray(skuList)) {
@@ -223,18 +223,27 @@ export function PriceOptimization() {
   const predictedNetRevenue = recPrice * predictedUnits;
   const predictedGrossProfit = (recPrice - cost) * predictedUnits;
 
+  const skuOptions = useMemo(() => {
+    return skus.map(s => ({
+      value: s.skuCode,
+      label: `${s.skuCode} — ${s.name}`,
+      subtext: s.category,
+    }));
+  }, [skus]);
+
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       {skus.length > 0 && (
-        <NativeSelect
-          value={selectedSkuCode}
-          onChange={(e) => setSelectedSkuCode(e.target.value)}
-          className="text-xs h-8 font-mono"
-        >
-          {skus.map(s => (
-            <option key={s.id || s.skuCode} value={s.skuCode}>{s.skuCode} — {s.name}</option>
-          ))}
-        </NativeSelect>
+        <div className="w-64">
+          <Select
+            value={selectedSkuCode}
+            onChange={setSelectedSkuCode}
+            size="sm"
+            searchable={true}
+            options={skuOptions}
+            placeholder="Search SKU..."
+          />
+        </div>
       )}
       <Button
         variant="ghost"

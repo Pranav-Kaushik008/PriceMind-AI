@@ -89,7 +89,7 @@ export function AuditLogs() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={filterAction} onChange={(e) => setFilterAction(e.target.value)} className="text-xs h-8">
+      <NativeSelect value={filterAction} onChange={(e) => setFilterAction(e?.target?.value ?? e)} className="text-xs h-8">
         <option value="all">All Action Types</option>
         <option value="PRICE_APPROVAL">Price Approvals</option>
         <option value="POLICY_MUTATION">Policy Mutations</option>

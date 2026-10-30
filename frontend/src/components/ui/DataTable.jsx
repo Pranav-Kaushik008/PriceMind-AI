@@ -277,7 +277,8 @@ export function DataTable({
               <NativeSelect
                 value={pageSize}
                 onChange={(val) => {
-                  setPageSize(Number(val));
+                  const size = Number(val?.target?.value ?? val);
+                  setPageSize(isNaN(size) ? 10 : size);
                   setCurrentPage(1);
                 }}
                 options={pageSizeOptions.map((n) => ({ value: n, label: String(n) }))}

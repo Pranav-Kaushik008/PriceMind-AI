@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, X } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, Check, X, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 /**
  * Enterprise Select Component
  * Keyboard-navigable, searchable, customizable trigger and options list.
+ * Pass searchable={true} to enable a search input for large option lists.
  */
 export function Select({
   options = [],
@@ -19,9 +20,12 @@ export function Select({
   className = '',
   containerClassName = '',
   clearable = false,
+  searchable = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
+  const searchRef = useRef(null);
 
   // Close on outside click
   useEffect(() => {
@@ -36,20 +40,40 @@ export function Select({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Keyboard navigation
+  // Keyboard navigation + clear search on close
   useEffect(() => {
     function handleKeyDown(e) {
       if (!isOpen) return;
       if (e.key === 'Escape') {
         setIsOpen(false);
+        setSearchQuery('');
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchable && searchRef.current) {
+      setTimeout(() => searchRef.current?.focus(), 50);
+    }
+    if (!isOpen) setSearchQuery('');
+  }, [isOpen, searchable]);
+
   const selectedOption = options.find((opt) => (typeof opt === 'object' ? opt.value === value : opt === value));
   const selectedLabel = selectedOption ? (typeof selectedOption === 'object' ? selectedOption.label : selectedOption) : null;
+
+  // Filter options by search query when searchable
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchQuery.trim()) return options;
+    const q = searchQuery.toLowerCase();
+    return options.filter((opt) => {
+      const lbl = typeof opt === 'object' ? opt.label : opt;
+      const sub = typeof opt === 'object' ? (opt.subtext || '') : '';
+      return String(lbl).toLowerCase().includes(q) || String(sub).toLowerCase().includes(q);
+    }).slice(0, 200); // cap rendered options for perf
+  }, [options, searchQuery, searchable]);
 
   const sizes = {
     sm: 'h-8 text-xs px-3',
@@ -109,51 +133,82 @@ export function Select({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute top-full left-0 mt-1 w-full bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-2xl z-50 py-1.5 max-h-60 overflow-y-auto custom-scrollbar"
+          className="absolute top-full left-0 mt-1 w-full bg-[#0D1524]/95 backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-2xl z-50 flex flex-col"
+          style={{ maxHeight: '16rem' }}
         >
-          {options.length === 0 ? (
-            <div className="px-3.5 py-2 text-xs text-slate-500 text-center">No options available</div>
-          ) : (
-            options.map((opt, idx) => {
-              const optVal = typeof opt === 'object' ? opt.value : opt;
-              const optLabel = typeof opt === 'object' ? opt.label : opt;
-              const optSub = typeof opt === 'object' ? opt.subtext : null;
-              const optBadge = typeof opt === 'object' ? opt.badge : null;
-              const isSelected = optVal === value;
-
-              return (
-                <div
-                  key={idx}
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => {
-                    onChange(optVal);
-                    setIsOpen(false);
-                  }}
-                  className={cn(
-                    'flex items-center justify-between px-3.5 py-2 text-xs cursor-pointer transition-colors duration-150 select-none mx-1 rounded-lg',
-                    isSelected
-                      ? 'bg-indigo-500/20 text-indigo-300 font-semibold'
-                      : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
-                  )}
-                >
-                  <div className="flex flex-col min-w-0 pr-2">
-                    <span className="truncate">{optLabel}</span>
-                    {optSub && <span className="text-[10px] text-slate-400 truncate">{optSub}</span>}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {optBadge && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-white/[0.05] border border-white/[0.08] rounded-full text-slate-400">
-                        {optBadge}
-                      </span>
-                    )}
-                    {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
-                  </div>
-                </div>
-              );
-            })
+          {/* Search input for large lists */}
+          {searchable && (
+            <div className="px-2 pt-2 pb-1 border-b border-white/[0.08] flex-shrink-0">
+              <div className="flex items-center gap-2 bg-white/[0.05] rounded-lg px-2.5 py-1.5">
+                <Search className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Type to search…"
+                  className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-[10px] text-slate-500 mt-1 px-0.5">{filteredOptions.length} result{filteredOptions.length !== 1 ? 's' : ''}</p>
+              )}
+            </div>
           )}
+
+          {/* Options list */}
+          <div className="overflow-y-auto flex-1 py-1.5 custom-scrollbar">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3.5 py-2 text-xs text-slate-500 text-center">No options found</div>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const optVal = typeof opt === 'object' ? opt.value : opt;
+                const optLabel = typeof opt === 'object' ? opt.label : opt;
+                const optSub = typeof opt === 'object' ? opt.subtext : null;
+                const optBadge = typeof opt === 'object' ? opt.badge : null;
+                const isSelected = optVal === value;
+
+                return (
+                  <div
+                    key={idx}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(optVal);
+                      setIsOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className={cn(
+                      'flex items-center justify-between px-3.5 py-2 text-xs cursor-pointer transition-colors duration-150 select-none mx-1 rounded-lg',
+                      isSelected
+                        ? 'bg-indigo-500/20 text-indigo-300 font-semibold'
+                        : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
+                    )}
+                  >
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="truncate">{optLabel}</span>
+                      {optSub && <span className="text-[10px] text-slate-400 truncate">{optSub}</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {optBadge && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-white/[0.05] border border-white/[0.08] rounded-full text-slate-400">
+                          {optBadge}
+                        </span>
+                      )}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
@@ -180,11 +235,27 @@ export function NativeSelect({
   children,
   ...props
 }) {
+  const handleChange = (e) => {
+    if (!onChange) return;
+    const rawVal = e.target.value;
+    // Support both event-style `(e) => setVal(e.target.value)` and value-style `(val) => setVal(val)`
+    // by passing an object that has `.target.value` AND coerces to primitive string/number.
+    const hybridEvent = {
+      target: { value: rawVal },
+      currentTarget: { value: rawVal },
+      value: rawVal,
+      toString: () => rawVal,
+      valueOf: () => rawVal,
+      [Symbol.toPrimitive]: (hint) => (hint === 'number' ? Number(rawVal) : rawVal),
+    };
+    onChange(hybridEvent);
+  };
+
   return (
     <div className="relative inline-flex items-center">
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         disabled={disabled}
         className={cn(
           'appearance-none bg-[#131D31]/90 border border-white/[0.08] hover:border-white/[0.16] text-white font-sans rounded-lg pl-3 pr-8 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs shadow-inner min-w-[180px]',

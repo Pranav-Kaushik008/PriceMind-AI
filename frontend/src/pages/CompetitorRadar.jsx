@@ -288,7 +288,7 @@ export function CompetitorRadar() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="text-xs h-8 max-w-[240px]">
+      <NativeSelect value={selectedSku} onChange={(e) => setSelectedSku(e?.target?.value ?? e)} className="text-xs h-8 max-w-[240px]">
         <option value="all">All Monitored SKUs ({monitoredSkuOptions.length})</option>
         {monitoredSkuOptions.map(opt => (
           <option key={opt.code} value={opt.code}>{opt.label}</option>
@@ -451,7 +451,7 @@ export function CompetitorRadar() {
 
             <NativeSelect
               value={filterThreat}
-              onChange={(e) => setFilterThreat(e.target.value)}
+              onChange={(e) => setFilterThreat(e?.target?.value ?? e)}
               className="text-xs h-7"
             >
               <option value="all">All Threat Levels</option>
